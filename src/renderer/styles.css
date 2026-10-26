@@ -14,11 +14,12 @@
   --font-serif: 'Source Serif 4 Variable', Georgia, serif;
   --font-sans: 'Inter Variable', 'Segoe UI', sans-serif;
   --titlebar-height: 36px;
-  --card-width: 180px;
-  --card-height: 240px;
+  --card-width: 160px;
+  --card-height: 200px;
   --card-radius: 16px;
   --card-gap: 20px;
-  --avatar-size: 72px;
+  --avatar-size: 64px;
+  --running: #7fb77e;
   color-scheme: dark;
 }
 
@@ -28,9 +29,11 @@ body { display: flex; flex-direction: column; overflow: hidden; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* Draggable strip under the Windows caption buttons (titleBarOverlay). */
+/* Draggable strip under the Windows caption buttons (titleBarOverlay). It floats over the page, so the content
+   below is centred in the whole window. */
 .titlebar {
-  flex: none; height: var(--titlebar-height); padding: 0 12px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1;
+  height: var(--titlebar-height); padding: 0 12px;
   display: flex; align-items: center;
   font-size: 12px; color: var(--text-real-name);
   -webkit-app-region: drag; user-select: none;
@@ -39,7 +42,7 @@ button { font: inherit; color: inherit; }
 main {
   flex: 1; min-height: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 36px; padding: 0 24px 32px;
+  gap: 36px; padding: var(--titlebar-height) 24px;
 }
 
 /* Greeting */
@@ -72,22 +75,23 @@ main {
 }
 .card { position: relative; flex: none; width: var(--card-width); height: var(--card-height); }
 .card-open {
-  width: 100%; height: 100%; padding: 32px 14px 16px;
-  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  width: 100%; height: 100%; padding: 28px 10px 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   border: 1px solid var(--border); border-radius: var(--card-radius);
   background: var(--surface); cursor: pointer; text-align: center;
   transition: border-color .12s, background-color .12s;
 }
 .card-open:hover { border-color: var(--accent); background: var(--surface-hover); }
 .avatar {
-  flex: none; width: var(--avatar-size); height: var(--avatar-size); margin-bottom: 14px;
+  flex: none; width: var(--avatar-size); height: var(--avatar-size); margin-bottom: 10px;
   display: grid; place-items: center; border-radius: 50%;
   background: var(--accent); color: var(--bg);
-  font-family: var(--font-serif); font-size: 32px; font-weight: 500;
+  font-family: var(--font-serif); font-size: 28px; font-weight: 500;
 }
 .clip { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.label { font-family: var(--font-serif); font-size: 20px; }
-.email { font-size: 13px; color: var(--text-email); }
+.label { font-family: var(--font-serif); font-size: 19px; }
+.email:empty, .real-name:empty { display: none; }
+.email { font-size: 12px; color: var(--text-email); }
 .real-name { font-size: 12px; color: var(--text-real-name); }
 .card-menu {
   position: absolute; top: 8px; right: 8px; width: 30px; height: 30px; padding: 0;
@@ -95,6 +99,13 @@ main {
   font-size: 18px; line-height: 1; cursor: pointer;
 }
 .card-menu:hover, .card-menu[aria-expanded="true"] { background: var(--border); color: var(--text); }
+.card-open:disabled { cursor: progress; }
+.running {
+  position: absolute; top: 14px; left: 12px; display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-email); pointer-events: none;
+}
+.running::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--running); }
+.running[hidden] { display: none; }
 
 .add {
   padding: 10px 22px; border: 0; border-radius: 10px;

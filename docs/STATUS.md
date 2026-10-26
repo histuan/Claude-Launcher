@@ -1,7 +1,7 @@
 # Status
 
-**Current phase:** 2 — Screen, done on 2026-10-26 (PR open, waiting for Thiago's test and merge; issue #4).
-Next: Phase 3 — Open accounts (issue #5).
+**Current phase:** 3 — Open accounts, done on 2026-10-26 (PR open, waiting for Thiago's test and merge; issue #5).
+Next: Phase 4 — Sign-in by snapshot.
 
 ## Done
 
@@ -18,22 +18,26 @@ Next: Phase 3 — Open accounts (issue #5).
 - Phase 2 (2026-10-26, version 0.2.0): real screen with sample accounts (greeting with editable name, cards, ⋯ menu,
   Add button), launcher config in `userData`, original icon (`build/icon.svg` → `build/icon.ico`), bundled fonts,
   theme variables in `src/renderer/styles.css`. Screenshot: `docs/screenshots/phase-2.png`.
+- Phase 3 (2026-10-26, version 0.3.0): cards open Claude (Main without flag, others with `--user-data-dir`), the
+  launcher closes afterwards; "Running" indicator (process query every ~3 s while visible); **Add account** creates the
+  card and its profile folder (no sign-in yet); **Remove** deletes the profile folder (refused while that account runs);
+  `demo-*` accounts dropped; releases are now regular "latest" releases. Review fixes: cards 160 × 200 with centred
+  content, whole group centred in the window. Screenshot (mocked data): `docs/screenshots/phase-3.png`.
 
 ## Missing
 
-- Phases 3 to 6 (`docs/PHASES.md`).
+- Phases 4 to 6 (`docs/PHASES.md`).
 - Milestone "Multi-Account Launcher v1.0": the cloud session has no tool to create milestones. Thiago creates it on
   GitHub (Issues → Milestones → New milestone) and adds the open phase issues (#1–#5) to it.
 
-## Notes for Phase 3 (left open by Phase 2 on purpose)
+## Notes for Phase 4
 
-- Sample accounts: the first run seeds `demo-work` and `demo-college` (`demoConfig` in `src/core/config.ts`, called in
-  `src/main/main.ts`). Phase 3 must seed only Main (`defaultConfig`) and drop `demo-*` accounts from existing configs.
-- Remove only deletes the account from the config. Deleting its profile folder (SCOPE §2.3) belongs with the code
-  that creates folders (Phase 3); update `strings.remove.body` then.
-- Not wired yet: clicking a card (open), the **Add account** button, the "● Running" indicator (`strings.running`).
-- The greeting waits for the PowerShell name query (timeout 5 s) before the screen fills in. If it feels slow on the
-  PC, cache the name in the config.
+- Accounts added in 0.3.0 open Claude **signed out** (welcome screen). Phase 4 replaces the Add flow with the snapshot
+  sign-in; an existing signed-out card could reuse it ("Sign in" on the card or the ⋯ menu): decide in Phase 4.
+- `launchClaude` uses `windowsHide: true` (CLAUDE.md rule 7). libuv also applies it to GUI windows (`SW_HIDE` in
+  `STARTUPINFO`); if Claude's window does not appear when opened from the launcher, this is the first suspect.
+- Old (non-MSIX) install: it opens, but the "Running" indicator only matches `\WindowsApps\Claude_*\app\Claude.exe`.
+- The greeting still waits for the PowerShell name query (timeout 5 s). If it feels slow, cache the name in the config.
 
 ## Decisions
 
@@ -52,22 +56,28 @@ Next: Phase 3 — Open accounts (issue #5).
 - Fonts: `@fontsource-variable/source-serif-4` and `@fontsource-variable/inter` (variable weight), copied with their
   OFL licenses into `out/` by `scripts/copy-assets.mjs`.
 - Icon: `npm run icon` renders `build/icon.svg` with Playwright (not a project dependency) into `build/icon.ico`.
+- Profile ids come from the card name (ASCII slug, e.g. "Trabalho Ágil" → `trabalho-agil`), unique, never a Windows
+  device name nor a folder that already exists; the folder name is the id. The launcher only creates or deletes folders
+  directly inside `%USERPROFILE%\ClaudeProfiles` (`isLauncherProfileDir`).
+- Process filtering by exe path is done in `src/core/processes.ts` (tested); PowerShell only lists `claude.exe`.
+- Card size: CSS px already follow Windows scaling, so sizes are set for 100 % (160 × 200 shows as 240 × 300 at 150 %).
+- Releases: regular and marked as latest since 0.3.0.
 
 ## How to test
 
-Phase 2 (0.2.0):
-1. Get `Claude-Launcher-Setup-0.2.0.exe`: before the merge, from the PR's Actions run (artifact
-   **launcher-installer**); after the merge, from the **Releases** page (tag `launcher-v0.2.0`, *Pre-release*).
-2. Install (SmartScreen: "More info → Run anyway"; no administrator prompt). The installer and the Start menu entry
-   show the new icon (two coral sparkles on a dark tile).
-3. Open the app: dark window ~900 × 600 with dark title bar and Windows buttons; it cannot shrink below ~720 × 480.
-4. Greeting: "Good morning/afternoon/evening, histuan" (first word of your Windows name, without the " ."). Hover
-   **only the name**: a pencil appears. Click the name, type another name, Enter → it stays after closing and opening
-   the app. Edit again and clear the field → back to "histuan". Esc cancels.
-5. Cards: **Main** (no email yet), **Work** and **College** (sample data). Hover highlights in coral; Tab moves focus.
-   The College email is cut with "…" and shows the full text on hover. Shrink the window: the row scrolls sideways.
-6. ⋯ menu: **Rename** works on every card (empty name on Main → back to "Main"); **Change photo** is greyed out;
-   **Remove** appears only on Work/College and asks for confirmation. Close and reopen the app: changes are kept.
-7. Clicking a card and **+ Add account** do nothing yet (Phase 3).
-8. The config is `config.json` in the launcher's folder under `%APPDATA%` (`Multi-Account Launcher for Claude` or
-   `claude-launcher`; not checked on Windows yet: note which one in the PR).
+Phase 3 (0.3.0):
+1. Get `Claude-Launcher-Setup-0.3.0.exe`: before the merge, from the PR's Actions run (artifact
+   **launcher-installer**); after the merge, from the **Releases** page (tag `launcher-v0.3.0`, now a regular
+   *Latest* release). Install over 0.2.0.
+2. Open the launcher: the Work/College sample cards are gone; only **Main**. Cards are smaller (≈240 × 300 on a 150 %
+   screen) with the content centred, and greeting + cards + button sit in the middle of the window.
+3. With Claude closed, click **Main**: Claude opens with your normal account and the launcher closes.
+4. Open the launcher again: the Main card shows "● Running" within ~3 s. Close Claude: it disappears within ~3 s.
+   With only Claude Code (CLI) running, nothing shows as running.
+5. **+ Add account** → type "Work" → Add: a Work card appears and `%USERPROFILE%\ClaudeProfiles\work` exists.
+6. Click **Work**: a second Claude window opens, signed out (welcome screen), while Main stays signed in. Both cards
+   show "● Running". Clicking Work again only brings its window to the front. **If no window appears** but Task Manager
+   shows a new Claude process, tell me (see "Notes for Phase 4", `windowsHide`).
+7. ⋯ → **Remove** on Work while its Claude is open → "Close this account first". Close that window, remove again →
+   card gone and the `work` folder deleted.
+8. Uninstall Claude (or test on a PC without it) is optional: clicking a card should show "Claude is not installed".

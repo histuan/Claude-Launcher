@@ -109,7 +109,7 @@ Read: `SCOPE.md` §2, §3.
 - Tests: time rule, name cleanup (`"histuan ."` → `histuan`), config read/write.
 - Offscreen screenshot if possible (one image).
 
-## Phase 3 — Open accounts
+## Phase 3 — Open accounts ✅ (2026-10-26)
 
 Read: `WINDOWS.md` §1, §2, §3.
 
@@ -143,4 +143,4 @@ Read: `WINDOWS.md` §5, `SCOPE.md` §2.2–2.3.
 
 - `README.md` (what it is, how to install, SmartScreen, limitations, credits, notice that it is not affiliated with Anthropic).
 - Review the done criteria (`SCOPE.md` §7). Version `1.0.0` in `package.json` → the merge creates the Release
-  `launcher-v1.0.0` (no longer a pre-release).
+  `launcher-v1.0.0`.

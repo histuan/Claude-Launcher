@@ -1,4 +1,4 @@
-import type { LauncherApi, LauncherState } from '../core/api.js';
+import type { ActionResult, LauncherApi, LauncherState } from '../core/api.js';
 import type { Account } from '../core/config.js';
 import { greetingFor } from '../core/greeting.js';
 import { strings } from './strings.js';
@@ -9,6 +9,7 @@ declare global {
 
 const api = window.launcher;
 let state: LauncherState;
+let running = new Set<string>();
 
 function byId<T extends HTMLElement = HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -86,15 +87,45 @@ function renderCards(): void {
       h('span', { class: 'email clip' }, account.email ?? ''),
       h('span', { class: 'real-name clip' }, account.realName ?? ''),
     );
-    // Opening an account arrives in Phase 3.
+    open.addEventListener('click', () => void openAccount(account, open));
+    const status = h('span', { class: 'running', 'data-id': account.id }, strings.running);
+    status.hidden = !running.has(account.id);
     const more = h('button', {
       class: 'card-menu', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
       'aria-label': strings.accountOptions(name), title: strings.accountOptions(name),
     }, '⋯');
     more.addEventListener('click', () => openMenu(account, more));
-    return h('div', { class: 'card' }, open, more);
+    return h('div', { class: 'card' }, open, status, more);
   });
   byId('cards').replaceChildren(...cards);
+}
+
+async function openAccount(account: Account, button: HTMLButtonElement): Promise<void> {
+  if (button.disabled) return;
+  button.disabled = true; // no double launch while Claude starts
+  try {
+    await showResult(await api.openAccount(account.id)); // on success the launcher closes by itself
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// ---------- "Running" indicator: every ~3 s while the window is visible ----------
+
+function renderRunning(): void {
+  for (const el of document.querySelectorAll<HTMLElement>('.running')) el.hidden = !running.has(el.dataset.id ?? '');
+}
+
+async function pollRunning(): Promise<void> {
+  if (!document.hidden) {
+    try {
+      running = new Set(await api.runningAccounts());
+      renderRunning();
+    } catch {
+      // keep the last known state; the next poll tries again
+    }
+  }
+  setTimeout(() => void pollRunning(), 3000);
 }
 
 // Full text in a tooltip only when it is cut with an ellipsis.
@@ -170,13 +201,16 @@ byId('dialog-cancel').textContent = strings.cancel;
 byId('dialog-cancel').addEventListener('click', () => dialog.close());
 
 /** Resolves with the typed text (or '' without a field) on confirm, null on cancel. */
-function ask(opts: { title: string; body?: string; value?: string; confirm: string; danger?: boolean }): Promise<string | null> {
+function ask(opts: {
+  title: string; body?: string; value?: string; confirm: string; danger?: boolean; cancel?: boolean;
+}): Promise<string | null> {
   byId('dialog-title').textContent = opts.title;
   byId('dialog-body').textContent = opts.body ?? '';
   dialogInput.hidden = opts.value === undefined;
   dialogInput.value = opts.value ?? '';
   dialogConfirm.textContent = opts.confirm;
   dialogConfirm.classList.toggle('danger', opts.danger === true);
+  byId('dialog-cancel').hidden = opts.cancel === false;
   dialog.returnValue = '';
   dialog.showModal();
   if (opts.value !== undefined) dialogInput.select();
@@ -198,8 +232,23 @@ async function remove(account: Account): Promise<void> {
     title: strings.remove.title, body: strings.remove.body(cardName(account)), confirm: strings.remove.confirm, danger: true,
   });
   if (ok === null) return;
-  state = await api.removeAccount(account.id);
+  await showResult(await api.removeAccount(account.id));
+}
+
+async function addNew(): Promise<void> {
+  const label = await ask({ title: strings.add.title, body: strings.add.body, value: '', confirm: strings.add.confirm });
+  if (label === null || !label.trim()) return;
+  await showResult(await api.addAccount(label));
+}
+
+/** Shows the new cards, or the error message in the dialog. */
+async function showResult(result: ActionResult): Promise<void> {
+  state = result.state;
   renderCards();
+  if (result.error) {
+    const text = strings.errors[result.error];
+    await ask({ title: text.title, body: text.body, confirm: strings.ok, cancel: false });
+  }
 }
 
 // ---------- Start ----------
@@ -209,10 +258,11 @@ byId('app-name').textContent = strings.appName;
 byId('cards').setAttribute('aria-label', strings.accounts);
 const add = byId('add-account');
 add.textContent = `+ ${strings.addAccount}`;
-add.title = strings.comingSoon; // adding accounts arrives in Phase 3
+add.addEventListener('click', () => void addNew());
 
 state = await api.getState();
 renderGreetingText();
 renderName();
 renderCards();
 setInterval(renderGreetingText, 30_000); // follows the morning/afternoon/evening boundary
+void pollRunning();

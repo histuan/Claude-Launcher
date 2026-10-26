@@ -8,6 +8,32 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-26
+
+Phase 3: the first usable version. Cards open Claude; signing in extra accounts from the launcher arrives in 0.4.0.
+
+### Added
+
+- Clicking a card opens Claude for that account: Main without flag, other accounts with
+  `--user-data-dir=%USERPROFILE%\ClaudeProfiles\<id>`. `Claude.exe` is resolved on every launch with `Get-AppxPackage`
+  (fallback: old install in `%LOCALAPPDATA%\AnthropicClaude`). The launcher closes by itself afterwards.
+  If Claude is not installed, a clear message is shown.
+- "Running" indicator on the cards, from the Claude Desktop process list (filtered by exe path, so the Claude Code CLI
+  and Chromium child processes are ignored), refreshed every ~3 s while the window is visible.
+- **Add account** (temporary until the sign-in flow): asks for the card name, creates the card and its profile folder.
+- Tests with mocked PowerShell output and a mocked `spawn` (process list with CLI and child processes, exe resolution,
+  launch arguments, account ids and folder rules).
+
+### Changed
+
+- **Remove** also deletes the account's profile folder (only folders directly inside `ClaudeProfiles`). It is refused
+  while that account's Claude is open.
+- The first run starts with only the Main account; the Phase 2 sample accounts (`demo-work`, `demo-college`) are
+  dropped from existing configs.
+- Cards are smaller (160 × 200 at 100 % scale, avatar 64 px) with the content vertically centred; the greeting, cards
+  and button are centred in the whole window.
+- Releases are now regular releases marked as latest (0.1.0 and 0.2.0 were pre-releases).
+
 ## [0.2.0] - 2026-10-26
 
 Phase 2: the real screen, with sample accounts. Opening accounts arrives in 0.3.0.
@@ -65,6 +91,7 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.2.0...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.3.0...HEAD
+[0.3.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.2.0...launcher-v0.3.0
 [0.2.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.1.0...launcher-v0.2.0
 [0.1.0]: https://github.com/histuan/Claude-Launcher/releases/tag/launcher-v0.1.0

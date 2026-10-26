@@ -40,8 +40,9 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
 
 ### 2.2 Cards
 
-- Portrait rectangles (~180 × 240 px), rounded corners (~16 px), ~20 px gap between them.
-- Top: round avatar (~72 px), centred. Photo chosen by the person or, if none, the initial of the card name.
+- Portrait rectangles (~160 × 200 px at 100 % scale; Windows scaling enlarges them), rounded corners (~16 px),
+  ~20 px gap between them. Content vertically centred.
+- Top: round avatar (~64 px), centred. Photo chosen by the person or, if none, the initial of the card name.
 - Below, in this order: **card name** (larger), **email** (light grey), **real account name** (smaller, fainter grey).
   Long text is cut with an ellipsis and shows the full text in a tooltip.
 - "● Running" indicator when that account's instance is running.

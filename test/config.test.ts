@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CONFIG_VERSION, defaultConfig, demoConfig, parseConfig, profileDirFor,
+  addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
   removeAccount, renameAccount, setGreetingName, type Account,
 } from '../src/core/config.js';
 
@@ -16,14 +16,13 @@ test('default config has only the Main account (profileDir null)', () => {
   assert.equal(cfg.accounts[0]?.profileDir, null);
 });
 
-test('demo config: Main first, demo accounts under %USERPROFILE%\\ClaudeProfiles', () => {
-  const cfg = demoConfig('C:\\Users\\someone');
-  assert.equal(cfg.accounts[0]?.profileDir, null);
-  assert.ok(cfg.accounts.length > 1);
-  for (const a of cfg.accounts.slice(1)) {
-    assert.equal(a.profileDir, profileDirFor('C:\\Users\\someone', a.id));
-  }
+test('profile folders live in %USERPROFILE%\\ClaudeProfiles\\<id>', () => {
   assert.equal(profileDirFor('C:\\Users\\someone', 'abc'), 'C:\\Users\\someone\\ClaudeProfiles\\abc');
+});
+
+test('parseConfig drops the Phase 2 sample accounts', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null), acc('demo-work', 'D:\\dw'), acc('demo-college', 'D:\\dc'), acc('w', 'D:\\w')] });
+  assert.deepEqual(cfg.accounts.map((a) => a.id), ['main', 'w']);
 });
 
 test('parseConfig keeps valid data and normalises missing fields', () => {
@@ -76,4 +75,45 @@ test('remove: deletes the account, never the Main one', () => {
   assert.deepEqual(removeAccount(cfg, 'w').accounts.map((a) => a.id), ['main']);
   assert.equal(removeAccount(cfg, 'main'), cfg);
   assert.equal(removeAccount(cfg, 'missing'), cfg);
+});
+
+const HOME = 'C:\\Users\\thiag';
+
+test('add: id from the name, folder under ClaudeProfiles, appended last', () => {
+  const result = addAccount(defaultConfig(), '  Trabalho Ágil! ', HOME);
+  assert.ok(result);
+  assert.deepEqual(result.account, {
+    id: 'trabalho-agil', label: 'Trabalho Ágil!', email: null, realName: null, photo: null,
+    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\trabalho-agil',
+  });
+  assert.deepEqual(result.config.accounts.map((a) => a.id), ['main', 'trabalho-agil']);
+});
+
+test('add: unique ids (existing, reserved, Windows device names, folders already on disk)', () => {
+  let cfg = defaultConfig();
+  const ids: string[] = [];
+  for (const name of ['Work', 'work', 'Main', 'Demo Work', 'CON', '日本', '']) {
+    const r = addAccount(cfg, name, HOME, (dir) => dir.endsWith('\\work-3'));
+    if (!r) { ids.push('(none)'); continue; }
+    cfg = r.config;
+    ids.push(r.account.id);
+  }
+  assert.deepEqual(ids, ['work', 'work-2', 'main-2', 'demo-work-2', 'con-2', 'account', '(none)']);
+  const third = addAccount(cfg, 'Work', HOME, (dir) => dir.endsWith('\\work-3'));
+  assert.equal(third?.account.id, 'work-4');
+});
+
+test('add: name trimmed and capped like rename', () => {
+  assert.equal(addAccount(defaultConfig(), 'x'.repeat(100), HOME)?.account.label?.length, 40);
+});
+
+test('only direct children of %USERPROFILE%\\ClaudeProfiles count as launcher profile folders', () => {
+  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\work', HOME), true);
+  assert.equal(isLauncherProfileDir('c:\\users\\THIAG\\claudeprofiles\\work\\', HOME), true);
+  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\..', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\..\\Documents', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\a\\b', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\AppData\\Roaming\\Claude', HOME), false);
+  assert.equal(isLauncherProfileDir('', HOME), false);
 });
