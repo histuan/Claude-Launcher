@@ -10,7 +10,8 @@ Launcher para Windows (Electron) que abre o app desktop do Claude em perfis isol
 
 ## Antes de qualquer coisa
 
-1. Use a skill **dev-economico**. Se ela não estiver disponível nesta sessão, leia `docs/dev-economico.md` e siga.
+1. Use a skill **dev-economico** (vem da conta do Thiago). Se ela não estiver disponível nesta sessão, diga isso no começo
+   do relatório e trabalhe de forma econômica: ler só o necessário, escopo fechado, testar antes de dar por pronto.
 2. Leia `ESTADO.md` e só a seção da fase atual em `docs/FASES.md`. Leia `ESCOPO.md` e `WINDOWS.md` só nas seções que a fase citar.
 3. Trabalhe só em `claude-multiconta/` e em `.github/workflows/claude-multiconta.yml`. Este repositório é um monorepo:
    nunca leia nem altere as outras pastas (`lorax-space-invaders`, `web-development` etc.).

@@ -10,7 +10,7 @@ Troque `N` pelo número da fase:
 
 ```
 Fase N do projeto claude-multiconta (repo histuan/projects).
-1. Use a skill dev-economico (se não existir nesta sessão, siga claude-multiconta/docs/dev-economico.md).
+1. Use a skill dev-economico (se não existir nesta sessão, avise no relatório).
 2. Leia claude-multiconta/CLAUDE.md, claude-multiconta/ESTADO.md e a seção "Fase N" de claude-multiconta/docs/FASES.md.
    Leia ESCOPO.md e WINDOWS.md só nas seções que a fase citar.
 3. Faça SÓ a Fase N. Ao terminar: verificação, atualize ESTADO.md (incluindo "Como testar") e o CHANGELOG,
@@ -52,9 +52,8 @@ Objetivo: deixar o projeto com cara de projeto profissional e **todo em inglês*
      `appId` `com.histuan.claude-launcher`, nome do instalador sem espaços.
    - **Traduzir para inglês** toda a documentação: `CLAUDE.md`, `ESTADO.md` → `STATUS.md`, `docs/ESCOPO.md` → `docs/SCOPE.md`,
      `docs/WINDOWS.md`, `docs/FASES.md` → `docs/PHASES.md` (incluindo o prompt-modelo, com os caminhos novos).
-     Atualizar todas as referências cruzadas. Exceção: `docs/dev-economico.md` é cópia fiel da skill pessoal do Thiago e
-     fica em português; só trocar o comentário do topo por uma linha em inglês explicando isso.
-   - **Interface em inglês**, com todos os textos num único módulo (ex.: `src/renderer/strings.js`) para permitir outras
+     Atualizar todas as referências cruzadas.
+   - **Interface em inglês**, com todos os textos num único módulo (ex.: `src/renderer/strings.ts`) para permitir outras
      línguas depois. Saudação: "Good morning" (5h–11h59), "Good afternoon" (12h–17h59), "Good evening" (18h–4h59);
      card "Main"; menu "Rename / Change photo / Remove"; botão "Add account"; indicador "● Running".
    - Atualizar a linha do projeto no `README.md` da raiz (nome e link novos).
