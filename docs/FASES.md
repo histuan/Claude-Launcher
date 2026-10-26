@@ -32,7 +32,8 @@ Ler: `ESCOPO.md` §5.
 - Estrutura `src/core`, `src/main`, `src/main/system`, `src/renderer`, `test/`. Janela abre com um texto provisório.
 - `npm test` com `node:test` e 1 teste real de `src/core`.
 - `.github/workflows/claude-multiconta.yml` **na raiz do repo**:
-  - gatilhos: push na `main` com `paths: claude-multiconta/**` e o próprio workflow; `workflow_dispatch`; tags `multiconta-v*`;
+  - gatilhos: push em **qualquer branch** com `paths: claude-multiconta/**` e o próprio workflow (a sessão pode não
+    conseguir dar push na `main`); `pull_request` com os mesmos paths; `workflow_dispatch`; tags `multiconta-v*`;
   - `defaults.run.working-directory: claude-multiconta`;
   - job de testes (ubuntu) e job de build (`windows-latest`): `npm ci`, `npm test`, `electron-builder --win --publish never`;
   - `upload-artifact` do instalador; em tag, criar Release com o instalador (`gh release create`).

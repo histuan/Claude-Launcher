@@ -21,6 +21,12 @@ Launcher para Windows (Electron) que abre o app desktop do Claude em perfis isol
 - O `.exe` é gerado pelo **GitHub Actions** (`windows-latest`), nunca dentro da sessão. Não tente Wine nem Docker.
 - Exceção ao dev-economico: aqui o `ESTADO.md` vai **no git**, porque a VM da nuvem é apagada.
 - Commits: ao fim de cada fase, commit + push na `main` (já combinado). Mensagens de commit em inglês.
+  Se o push na `main` for recusado pelo ambiente, faça push na branch que a sessão permitir, abra um PR para a `main`
+  e diga isso no relatório (o workflow roda em qualquer branch, então o `.exe` sai mesmo assim).
+- Na nuvem não é preciso baixar o binário do Electron para testar a lógica: use `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`
+  (só tire isso se for tentar o print offscreen).
+- Para conferir o Actions, use `gh run list` / `gh run view` (API REST). Se o `gh` não funcionar, diga no relatório
+  e o Thiago confere na aba Actions.
 - Claude Code local (no PC do Thiago) é último recurso: só quando um bug só aparece no Windows real e os logs não bastam.
 
 ## Stack
