@@ -8,6 +8,10 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+### Changed
+
+- Docs: Phase 4 also adds a **Sign in** action for cards that exist but are not signed in yet (created in 0.3.0).
+
 ## [0.3.0] - 2026-10-26
 
 Phase 3: the first usable version. Cards open Claude; signing in extra accounts from the launcher arrives in 0.4.0.

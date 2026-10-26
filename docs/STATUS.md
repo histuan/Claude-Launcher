@@ -33,7 +33,8 @@ Next: Phase 4 — Sign-in by snapshot.
 ## Notes for Phase 4
 
 - Accounts added in 0.3.0 open Claude **signed out** (welcome screen). Phase 4 replaces the Add flow with the snapshot
-  sign-in; an existing signed-out card could reuse it ("Sign in" on the card or the ⋯ menu): decide in Phase 4.
+  sign-in. **Decided (Thiago, 2026-10-26):** cards that exist but are not signed in yet get a **Sign in** action that
+  runs the same snapshot flow on that card's profile (no new card).
 - `launchClaude` uses `windowsHide: true` (CLAUDE.md rule 7). libuv also applies it to GUI windows (`SW_HIDE` in
   `STARTUPINFO`); if Claude's window does not appear when opened from the launcher, this is the first suspect.
 - Old (non-MSIX) install: it opens, but the "Running" indicator only matches `\WindowsApps\Claude_*\app\Claude.exe`.
