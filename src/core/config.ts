@@ -35,16 +35,24 @@ export function defaultConfig(): LauncherConfig {
   return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }] };
 }
 
-/** Phase 2 only: sample accounts so the screen can be tried. Their ids start with "demo-". */
-export function demoConfig(userProfile: string): LauncherConfig {
-  const demo = (id: string, label: string, email: string, realName: string): Account =>
-    ({ id, label, email, realName, photo: null, profileDir: profileDirFor(userProfile, id) });
-  const cfg = defaultConfig();
-  cfg.accounts.push(
-    demo('demo-work', 'Work', 'me@company.example', 'Alex Morgan'),
-    demo('demo-college', 'College', 'alex.morgan@university.example', 'Alex M.'),
-  );
-  return cfg;
+/** Only direct children of %USERPROFILE%\ClaudeProfiles may be created or deleted by the launcher. */
+export function isLauncherProfileDir(dir: string, userProfile: string): boolean {
+  if (!dir.trim()) return false;
+  const norm = (p: string): string => path.win32.normalize(p).replace(/\\+$/, '').toLowerCase();
+  const full = norm(dir);
+  return path.win32.dirname(full) === norm(profileDirFor(userProfile, '')) && path.win32.basename(full) !== '';
+}
+
+// Phase 2 seeded these sample accounts; they are dropped when an old config is read.
+const DEMO_IDS = new Set(['demo-work', 'demo-college']);
+// Windows device names cannot be folder names.
+const WINDOWS_DEVICE = /^(con|prn|aux|nul|com\d|lpt\d)$/;
+
+/** Folder-safe id from the card name: ASCII letters, digits and dashes. */
+function slugFor(label: string): string {
+  const slug = label.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30).replace(/-+$/, '');
+  return slug || 'account';
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
@@ -67,7 +75,7 @@ export function parseConfig(raw: unknown): LauncherConfig {
     if (typeof item !== 'object' || item === null) continue;
     const a = item as Record<string, unknown>;
     const id = text(a.id);
-    if (!id || seen.has(id)) continue;
+    if (!id || seen.has(id) || DEMO_IDS.has(id)) continue;
     const account: Account = {
       id,
       label: text(a.label),
@@ -109,4 +117,26 @@ export function removeAccount(cfg: LauncherConfig, id: string): LauncherConfig {
   const target = cfg.accounts.find((a) => a.id === id);
   if (!target || isMain(target)) return cfg;
   return { ...cfg, accounts: cfg.accounts.filter((a) => a !== target) };
+}
+
+/**
+ * New account with its own profile folder. `folderTaken` lets the caller skip ids whose folder already exists on disk.
+ * Returns null for an empty name.
+ */
+export function addAccount(
+  cfg: LauncherConfig,
+  label: string,
+  userProfile: string,
+  folderTaken: (dir: string) => boolean = () => false,
+): { config: LauncherConfig; account: Account } | null {
+  const name = cleanName(label);
+  if (name === null) return null;
+  const base = slugFor(name);
+  const used = new Set(cfg.accounts.map((a) => a.id.toLowerCase()));
+  const free = (id: string): boolean =>
+    !used.has(id) && !DEMO_IDS.has(id) && !WINDOWS_DEVICE.test(id) && !folderTaken(profileDirFor(userProfile, id));
+  let id = base;
+  for (let n = 2; !free(id); n++) id = `${base}-${n}`;
+  const account: Account = { id, label: name, email: null, realName: null, photo: null, profileDir: profileDirFor(userProfile, id) };
+  return { config: { ...cfg, accounts: [...cfg.accounts, account] }, account };
 }

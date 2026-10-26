@@ -69,8 +69,7 @@ jobs:
             echo "::error::CHANGELOG.md has no section for $version"
             exit 1
           fi
-          prerelease=""
-          case "$version" in 0.*) prerelease="--prerelease" ;; esac
+          # Since 0.3.0 (the first usable version) every release is a regular one, marked as latest.
           gh release create "$tag" dist/*.exe --target "$GITHUB_SHA" \
             --title "Multi-Account Launcher for Claude $version" \
-            --notes-file release-notes.md $prerelease
+            --notes-file release-notes.md --latest
