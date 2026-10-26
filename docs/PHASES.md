@@ -126,6 +126,8 @@ Read: `WINDOWS.md` §1, §2, §3.
 Read: `WINDOWS.md` §4. Look at `engine.py` from ai-multi-instance (only the sign-in functions).
 
 - Full flow of section 4, with marker, stash, restore, cancel and recovery on startup.
+- Cards created in 0.3.0 (profile folder, but never signed in) get a **Sign in** action that runs the same flow on
+  that card's profile instead of creating a new card.
 - Tests with real temporary folders: they run on Linux **and** in the `windows-latest` job. Cover: success, cancel,
   "crash" in the middle (marker present on startup), default process still alive (abort).
 - "How to test" in `docs/STATUS.md` with a **manual backup first** (copy the default profile folder somewhere else).
