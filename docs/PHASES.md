@@ -12,7 +12,7 @@ Replace `N` with the phase number:
 
 ```
 Phase N of the claude-launcher project (repo histuan/projects).
-1. Use the dev-economico skill (if it does not exist in this session, follow claude-launcher/docs/dev-economico.md).
+1. Use the dev-economico skill (if it does not exist in this session, say so in the report).
 2. Read claude-launcher/CLAUDE.md, claude-launcher/STATUS.md and the "Phase N" section of claude-launcher/docs/PHASES.md.
    Read SCOPE.md and WINDOWS.md only in the sections the phase cites.
 3. Do ONLY Phase N. When done: verification, update STATUS.md (including "How to test") and CHANGELOG.md,
@@ -50,8 +50,7 @@ Goal: make the project look like a professional project and be **entirely in Eng
      `appId` `com.histuan.claude-launcher`, installer name without spaces.
    - **Translate into English** all documentation: `CLAUDE.md`, `ESTADO.md` → `STATUS.md`, `docs/ESCOPO.md` → `docs/SCOPE.md`,
      `docs/WINDOWS.md`, `docs/FASES.md` → `docs/PHASES.md` (including the prompt template, with the new paths).
-     Update all cross-references. Exception: `docs/dev-economico.md` is a faithful copy of Thiago's personal skill and
-     stays in Portuguese; only replace the top comment with an English line explaining that.
+     Update all cross-references.
    - **Interface in English**, with all texts in a single module (`src/renderer/strings.ts`) so other languages can be
      added later. Greeting: "Good morning" (5:00–11:59), "Good afternoon" (12:00–17:59), "Good evening" (18:00–4:59);
      card "Main"; menu "Rename / Change photo / Remove"; button "Add account"; indicator "● Running".

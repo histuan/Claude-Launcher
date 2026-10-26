@@ -10,7 +10,8 @@ one account per profile, with no signing out and back in.
 
 ## Before anything else
 
-1. Use the **dev-economico** skill. If it is not available in this session, read `docs/dev-economico.md` and follow it.
+1. Use the **dev-economico** skill (it comes from Thiago's account). If it is not available in this session, say so at the
+   start of the report and work economically: read only what is needed, closed scope, test before calling it done.
 2. Read `STATUS.md` and only the current phase's section in `docs/PHASES.md`. Read `SCOPE.md` and `WINDOWS.md` only in the sections the phase cites.
 3. Work only in `claude-launcher/`, `.github/workflows/claude-launcher.yml` and `.github/pull_request_template.md`.
    This repository is a monorepo: never read or change the other folders (`lorax-space-invaders`, `web-development` etc.).
