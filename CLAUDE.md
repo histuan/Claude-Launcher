@@ -32,7 +32,8 @@ Launcher para Windows (Electron) que abre o app desktop do Claude em perfis isol
 
 ## Stack
 
-- Electron + JavaScript (ES modules). Interface em HTML/CSS/JS puro, sem framework.
+- Electron + **TypeScript** (`strict`), compilado com `tsc`. Interface em HTML/CSS + TS, sem framework.
+  (Migração de JS para TS feita na Fase 1.5.)
 - Testes: `node:test` (sem dependência). Build: `electron-builder` (instalador NSIS).
 - Fontes livres (OFL) embutidas via `@fontsource`. Nada de CDN: o app funciona offline.
 - Dependência nova: justificar em uma linha no relatório.

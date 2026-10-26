@@ -58,6 +58,10 @@ Objetivo: deixar o projeto com cara de projeto profissional e **todo em inglês*
      línguas depois. Saudação: "Good morning" (5h–11h59), "Good afternoon" (12h–17h59), "Good evening" (18h–4h59);
      card "Main"; menu "Rename / Change photo / Remove"; botão "Add account"; indicador "● Running".
    - Atualizar a linha do projeto no `README.md` da raiz (nome e link novos).
+   - **Migrar para TypeScript** (todo o código, testes inclusive): `strict: true`, compilar com `tsc` para uma pasta de saída
+     ignorada pelo git (`out/`), sem bundler a menos que seja realmente necessário. Scripts: `build`, `typecheck`, `test`
+     (roda os testes compilados com `node --test`). O preload continua CommonJS (sandbox). O CI roda `typecheck` e `test`
+     antes do build, e o `electron-builder` empacota a saída compilada.
    - Todos os itens abaixo já usam os nomes novos: escopo de commit `launcher`, tags `launcher-v*`, milestone
      "Multi-Account Launcher v1.0".
 
