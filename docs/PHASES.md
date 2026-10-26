@@ -56,6 +56,10 @@ Goal: make the project look like a professional project and be **entirely in Eng
      added later. Greeting: "Good morning" (5:00–11:59), "Good afternoon" (12:00–17:59), "Good evening" (18:00–4:59);
      card "Main"; menu "Rename / Change photo / Remove"; button "Add account"; indicator "● Running".
    - Update the project line in the root `README.md` (new name and link).
+   - **Migrate to TypeScript** (all code, tests included): `strict: true`, compile with `tsc` to an output folder
+     ignored by git (`out/`), no bundler unless really needed. Scripts: `build`, `typecheck`, `test`
+     (runs the compiled tests with `node --test`). The preload stays CommonJS (sandbox). CI runs `typecheck` and `test`
+     before the build, and `electron-builder` packages the compiled output.
    - Everything below uses the new names: commit scope `launcher`, tags `launcher-v*`, milestone
      "Multi-Account Launcher v1.0".
 1. **PR flow:** rewrite the commits part of `CLAUDE.md` as a "GitHub process" section:

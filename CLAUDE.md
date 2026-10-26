@@ -41,7 +41,8 @@ one account per profile, with no signing out and back in.
 
 ## Stack
 
-- Electron + JavaScript (ES modules). Interface in plain HTML/CSS/JS, no framework.
+- Electron + **TypeScript** (`strict`), compiled with `tsc`. Interface in HTML/CSS + TS, no framework.
+  (Migrated from JS to TS in Phase 1.5.)
 - Tests: `node:test` (no dependency). Build: `electron-builder` (NSIS installer).
 - Free fonts (OFL) bundled via `@fontsource`. No CDN: the app works offline.
 - New dependency: justify it in one line in the report.
