@@ -13,10 +13,8 @@ one account per profile, with no signing out and back in.
 1. Use the **dev-economico** skill (it comes from Thiago's account). If it is not available in this session, say so at the
    start of the report and work economically: read only what is needed, closed scope, test before calling it done.
 2. Read `STATUS.md` and only the current phase's section in `docs/PHASES.md`. Read `SCOPE.md` and `WINDOWS.md` only in the sections the phase cites.
-3. Work only in `claude-launcher/` and `.github/workflows/claude-launcher.yml`. This repository is a monorepo:
-   never read or change the other folders (`lorax-space-invaders`, `web-development` etc.).
-   Everything of the project lives in `claude-launcher/`. The only exception is the workflow: GitHub Actions only reads
-   workflows from `.github/workflows/` at the repo root, so it must stay there (do not move it, do not delete `.github/`).
+3. The repository is `histuan/Claude-Launcher` and the project lives at its root. Do not read `node_modules/`, `out/`
+   or `dist/`.
 
 ## Environment
 
@@ -34,10 +32,10 @@ one account per profile, with no signing out and back in.
 - Each phase works on the session branch and ends with a **Pull Request to `main`**. Never push directly to `main`.
 - Commits follow *Conventional Commits* with the `launcher` scope: `feat(launcher): …`, `fix(launcher): …`,
   `docs(launcher): …`, `ci(launcher): …`. Commit messages in English.
-- The PR description follows `docs/PR_TEMPLATE.md` (fill it in yourself; GitHub does not auto-load it from this folder)
-  and includes `Closes #<phase issue>`
+- The PR description follows `.github/pull_request_template.md` (GitHub pre-fills it in the web UI; when opening the
+  PR through a tool, fill it in yourself) and includes `Closes #<phase issue>`
   (issues are titled `[launcher] Phase N — …`).
-- Each phase bumps `version` in `package.json` to `0.N.0` (Phase 1.5 kept `0.1.0`) and adds its section to `CHANGELOG.md`
+- Each phase bumps `version` in `package.json` to `0.N.0` (Phases 1.5 and 1.6 kept `0.1.0`) and adds its section to `CHANGELOG.md`
   (*Keep a Changelog*: move the `Unreleased` items into the new version section).
 - On merge to `main`, the workflow creates the tag `launcher-v<version>` and a GitHub Release with the installer and the
   notes from `CHANGELOG.md` (pre-release while the version is `< 1.0.0`). The PR run uploads the installer as an artifact.
@@ -51,7 +49,7 @@ one account per profile, with no signing out and back in.
 - Free fonts (OFL) bundled via `@fontsource`. No CDN: the app works offline.
 - New dependency: justify it in one line in the report.
 
-## Commands (inside `claude-launcher/`)
+## Commands (at the repo root)
 
 - `npm ci` — install
 - `npm run build` — compile `src/` and `test/` into `out/` (ignored by git) and copy the renderer's HTML/CSS

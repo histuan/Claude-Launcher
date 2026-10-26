@@ -1,7 +1,7 @@
 # Multi-Account Launcher for Claude
 
-[![claude-launcher](https://github.com/histuan/projects/actions/workflows/claude-launcher.yml/badge.svg)](https://github.com/histuan/projects/actions/workflows/claude-launcher.yml)
-[![Latest release](https://img.shields.io/github/v/release/histuan/projects?include_prereleases&filter=launcher-v*&label=release)](https://github.com/histuan/projects/releases)
+[![claude-launcher](https://github.com/histuan/Claude-Launcher/actions/workflows/claude-launcher.yml/badge.svg)](https://github.com/histuan/Claude-Launcher/actions/workflows/claude-launcher.yml)
+[![Latest release](https://img.shields.io/github/v/release/histuan/Claude-Launcher?include_prereleases&filter=launcher-v*&label=release)](https://github.com/histuan/Claude-Launcher/releases)
 
 A small Windows launcher that keeps several Claude accounts signed in at the same time, each one in its own
 isolated instance of the official Claude desktop app. Pick an account, click, done. No more signing out and back in.
@@ -12,7 +12,7 @@ isolated instance of the official Claude desktop app. Pick an account, click, do
 ## Download
 
 Get the latest installer (`Claude-Launcher-Setup-<version>.exe`) from the
-[Releases page](https://github.com/histuan/projects/releases) (tags `launcher-v*`).
+[Releases page](https://github.com/histuan/Claude-Launcher/releases) (tags `launcher-v*`).
 Pre-releases (`0.x`) are development builds.
 
 The installer is not signed, so Windows SmartScreen will warn you: choose **More info → Run anyway**.

@@ -3,21 +3,11 @@ name: claude-launcher
 on:
   push:
     branches: [main]
-    paths:
-      - 'claude-launcher/**'
-      - '.github/workflows/claude-launcher.yml'
   pull_request:
-    paths:
-      - 'claude-launcher/**'
-      - '.github/workflows/claude-launcher.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
-
-defaults:
-  run:
-    working-directory: claude-launcher
 
 jobs:
   test:
@@ -30,7 +20,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: claude-launcher/package-lock.json
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
@@ -46,7 +35,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: claude-launcher/package-lock.json
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
@@ -55,7 +43,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: launcher-installer
-          path: claude-launcher/dist/*.exe
+          path: dist/*.exe
           if-no-files-found: error
 
       # On a push to main (a merged PR): release launcher-v<package.json version>, once per version.

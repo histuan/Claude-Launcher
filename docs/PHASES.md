@@ -11,9 +11,9 @@ the PC and merges. The next phase starts only after the merge.
 Replace `N` with the phase number:
 
 ```
-Phase N of the claude-launcher project (repo histuan/projects).
+Phase N of Multi-Account Launcher for Claude (repo histuan/Claude-Launcher).
 1. Use the dev-economico skill (if it does not exist in this session, say so in the report).
-2. Read claude-launcher/CLAUDE.md, claude-launcher/STATUS.md and the "Phase N" section of claude-launcher/docs/PHASES.md.
+2. Read CLAUDE.md, STATUS.md and the "Phase N" section of docs/PHASES.md.
    Read SCOPE.md and WINDOWS.md only in the sections the phase cites.
 3. Do ONLY Phase N. When done: verification, update STATUS.md (including "How to test") and CHANGELOG.md,
    bump the version in package.json to 0.N.0, open a Pull Request to main following the "GitHub process" section
@@ -43,9 +43,8 @@ Read: `SCOPE.md` §5.
 Goal: make the project look like a professional project and be **entirely in English**.
 
 0. **Rename and translate (first):**
-   - App name: **Multi-Account Launcher for Claude**. Folder: `git mv claude-multiconta claude-launcher`.
-   - Workflow: `git mv` to `.github/workflows/claude-launcher.yml`; adjust `paths`, `working-directory`, artifact name
-     (`launcher-installer`) and tags `launcher-v*`.
+   - App name: **Multi-Account Launcher for Claude**.
+   - Workflow: `git mv` to `.github/workflows/claude-launcher.yml`; artifact name `launcher-installer` and tags `launcher-v*`.
    - `package.json`: `name` `claude-launcher`, `productName` "Multi-Account Launcher for Claude",
      `appId` `com.histuan.claude-launcher`, installer name without spaces.
    - **Translate into English** all documentation: `CLAUDE.md`, `ESTADO.md` → `STATUS.md`, `docs/ESCOPO.md` → `docs/SCOPE.md`,
@@ -54,7 +53,6 @@ Goal: make the project look like a professional project and be **entirely in Eng
    - **Interface in English**, with all texts in a single module (`src/renderer/strings.ts`) so other languages can be
      added later. Greeting: "Good morning" (5:00–11:59), "Good afternoon" (12:00–17:59), "Good evening" (18:00–4:59);
      card "Main"; menu "Rename / Change photo / Remove"; button "Add account"; indicator "● Running".
-   - Update the project line in the root `README.md` (new name and link).
    - **Migrate to TypeScript** (all code, tests included): `strict: true`, compile with `tsc` to an output folder
      ignored by git (`out/`), no bundler unless really needed. Scripts: `build`, `typecheck`, `test`
      (runs the compiled tests with `node --test`). The preload stays CommonJS (sandbox). CI runs `typecheck` and `test`
@@ -64,13 +62,11 @@ Goal: make the project look like a professional project and be **entirely in Eng
 1. **PR flow:** rewrite the commits part of `CLAUDE.md` as a "GitHub process" section:
    - each phase works on the session branch and ends with a **Pull Request to `main`** (never push directly to `main`);
    - commits follow *Conventional Commits* with the `launcher` scope (`feat(launcher): …`, `fix(…)`, `docs(…)`, `ci(…)`);
-   - PR description from the PR template (now `docs/PR_TEMPLATE.md`), with `Closes #<phase issue>`;
+   - PR description from the PR template (`.github/pull_request_template.md`), with `Closes #<phase issue>`;
    - the phase bumps the version in `package.json` to `0.N.0` (Phase 1.5 keeps `0.1.0`) and adds its section to `CHANGELOG.md`;
    - Thiago tests and merges; the next phase starts only after the merge.
-2. **PR template** (first at `.github/pull_request_template.md`; moved to `claude-launcher/docs/PR_TEMPLATE.md` after Phase 1.5
-   so the project stays inside its folder): Summary, Why, How it was tested,
-   Screenshots, Checklist.
-3. **`claude-launcher/CHANGELOG.md`** following *Keep a Changelog*, with the `0.1.0` entry (Phase 1) and `Unreleased`.
+2. **PR template** at `.github/pull_request_template.md`: Summary, Why, How it was tested, Screenshots, Checklist.
+3. **`CHANGELOG.md`** following *Keep a Changelog*, with the `0.1.0` entry (Phase 1) and `Unreleased`.
 4. **Automatic release on merge:** in the workflow, after the build on `windows-latest`, when the event is a push to `main`
    and the tag `launcher-v<package.json version>` does not exist yet: create the tag and the Release with the `.exe`
    installer, notes = that version's section of `CHANGELOG.md`, marked as *pre-release* while the version is `< 1.0.0`.
@@ -85,6 +81,20 @@ Goal: make the project look like a professional project and be **entirely in Eng
 
 Done when: the PR is open with the template filled in, Actions passes on the PR, and after the merge the Release
 `launcher-v0.1.0` (pre-release) appears with the installer.
+
+## Phase 1.6 — Standalone repository ✅ (2026-10-26)
+
+The project was split out of the `histuan/projects` monorepo (history preserved) into `histuan/Claude-Launcher`,
+with the project at the repo root. No version bump (stays `0.1.0`).
+
+- Workflow: no `paths` filters, no `working-directory` default, artifact and npm cache paths at the root.
+  Release on merge unchanged.
+- PR template moved to `.github/pull_request_template.md` (GitHub pre-fills it again).
+- `CLAUDE.md`, this file (prompt template included), `README.md` (badges and links) and `STATUS.md` point to
+  `histuan/Claude-Launcher`, with no monorepo rules left.
+- Phase issues in the new repo: Phase 2 = #4, Phase 3 = #5, Phase 4 = #3, Phase 5 = #2, Phase 6 = #1.
+
+Done when: the PR is open and its workflow run is green.
 
 ## Phase 2 — Screen
 
@@ -132,4 +142,3 @@ Read: `WINDOWS.md` §5, `SCOPE.md` §2.2–2.3.
 - `README.md` (what it is, how to install, SmartScreen, limitations, credits, notice that it is not affiliated with Anthropic).
 - Review the done criteria (`SCOPE.md` §7). Version `1.0.0` in `package.json` → the merge creates the Release
   `launcher-v1.0.0` (no longer a pre-release).
-- Update the project line in the root `README.md`.
