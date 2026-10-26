@@ -13,8 +13,11 @@ isolated instance of the official Claude desktop app. Pick an account, click, do
 
 Get the latest installer (`Claude-Launcher-Setup-<version>.exe`) from the
 [Releases page](https://github.com/histuan/Claude-Launcher/releases) (tags `launcher-v*`).
-Versions before 1.0.0 are still in development: 0.3.0 is the first usable one (it opens accounts; signing in
-extra accounts from the launcher arrives in a later version).
+Versions before 1.0.0 are still in development. Since 0.4.0 the launcher opens accounts and signs in extra
+accounts by itself.
+
+**Before your first sign-in from the launcher, back up your main Claude profile**: copy the folder
+`%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude` somewhere else (with Claude closed).
 
 The installer is not signed, so Windows SmartScreen will warn you: choose **More info → Run anyway**.
 It installs per user and does not need administrator rights.
@@ -24,6 +27,11 @@ It installs per user and does not need administrator rights.
 The Claude desktop app is built on Electron, which accepts Chromium's `--user-data-dir` flag. Each account gets its own
 profile folder, so logins, settings and caches never mix. The launcher always runs the real, installed Claude app;
 it never copies or modifies it.
+
+Signing in an extra account is the tricky part on Windows: the sign-in callback always goes to the default Claude
+instance. So the launcher closes your main Claude, sets its profile folder aside (a rename, never a delete), opens a
+blank Claude for you to sign in, moves that signed-in folder to the new account, and puts your main profile back.
+If the launcher is interrupted, the next start offers to restore your main profile first.
 
 ## Planned features (v1)
 

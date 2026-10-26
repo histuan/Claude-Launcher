@@ -144,5 +144,7 @@ dialog input {
 dialog input:focus { border-color: var(--accent); outline: none; }
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; }
 .dialog-buttons button { padding: 8px 16px; border: 0; border-radius: 8px; background: var(--border); cursor: pointer; }
-#dialog-confirm { background: var(--accent); color: var(--bg); font-weight: 600; }
+#dialog-confirm, .dialog-buttons .primary { background: var(--accent); color: var(--bg); font-weight: 600; }
+.dialog-buttons button:disabled { opacity: .5; cursor: progress; }
+dialog p { white-space: pre-line; overflow-wrap: anywhere; }
 #dialog-confirm.danger { background: var(--danger); }

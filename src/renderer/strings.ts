@@ -21,6 +21,7 @@ export const strings = {
     rename: 'Rename',
     changePhoto: 'Change photo',
     remove: 'Remove',
+    signIn: 'Sign in',
   },
   comingSoon: 'Available in a later version',
   rename: {
@@ -34,8 +35,46 @@ export const strings = {
   },
   add: {
     title: 'Add account',
-    body: 'Creates a new card with its own Claude profile. Signing in from the launcher arrives in a later version.',
-    confirm: 'Add',
+    body: "Your main Claude closes while you sign in, then reopens by itself. Don't close the launcher until it finishes.",
+    confirm: 'Continue',
+  },
+  signIn: {
+    title: (name: string) => `Sign in to “${name}”`,
+    body: "Your main Claude closes while you sign in, then reopens by itself. Don't close the launcher until it finishes.",
+    start: 'Continue',
+    notSignedIn: 'Not signed in',
+    waiting: {
+      title: 'Use the new Claude window to sign in',
+      body: 'A blank Claude window opened. Sign in there with the account for this card (email or Google). '
+        + 'The launcher notices it by itself.',
+    },
+    detected: {
+      title: 'Signed in',
+      body: 'Waiting for Claude to save the session. This can take up to a minute.',
+    },
+    saving: {
+      title: 'Saving the session',
+      body: 'Closing that window and putting your main Claude back…',
+    },
+    confirm: 'I\'ve signed in',
+    noSession: {
+      title: 'The sign-in was not saved',
+      body: 'Claude had not saved the session yet, so nothing was kept. Try again and wait a few seconds after signing in.',
+    },
+    failed: {
+      title: 'Could not finish the sign-in',
+      body: (stashPath: string | null) => (stashPath
+        ? `Your main Claude profile is safe in:\n${stashPath}\nOpen the launcher again to restore it.`
+        : 'Your main Claude profile is back in place. Try again.'),
+    },
+  },
+  /** Startup dialog when the last sign-in was interrupted (shown by the main process). */
+  recovery: {
+    title: 'A sign-in was interrupted',
+    body: (name: string) => `The launcher closed while signing in to “${name}”. Your main Claude profile was set aside, `
+      + 'not lost. Restore it now, or continue the sign-in.',
+    restore: 'Restore main profile',
+    continue: 'Continue sign-in',
   },
   errors: {
     notInstalled: {
@@ -48,11 +87,27 @@ export const strings = {
     },
     running: {
       title: 'Close this account first',
-      body: 'Claude is open with this account. Close its window, then remove it again.',
+      body: 'Claude is open with this account. Close its window, then try again.',
     },
     folder: {
       title: 'Could not change the profile folder',
       body: 'Nothing was changed. Close Claude for this account and try again.',
+    },
+    unsupported: {
+      title: 'Sign-in is not available',
+      body: 'Signing in from the launcher needs the current Claude desktop app (MSIX package). Reinstall Claude, then try again.',
+    },
+    pending: {
+      title: 'A previous sign-in is not finished',
+      body: 'Close and reopen the launcher to restore your main Claude profile first.',
+    },
+    defaultRunning: {
+      title: 'Could not close your main Claude',
+      body: 'Nothing was changed. Close Claude yourself, then try again.',
+    },
+    disk: {
+      title: 'Not enough disk space',
+      body: 'Free at least 500 MB on the system drive, then try again.',
     },
   } satisfies Record<ActionError, { title: string; body: string }>,
   ok: 'OK',

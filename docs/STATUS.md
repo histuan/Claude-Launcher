@@ -1,7 +1,7 @@
 # Status
 
-**Current phase:** 3 — Open accounts, done on 2026-10-26 (PR open, waiting for Thiago's test and merge; issue #5).
-Next: Phase 4 — Sign-in by snapshot.
+**Current phase:** 4 — Sign-in by snapshot, done on 2026-10-26 (PR open, waiting for Thiago's test and merge; issue #3).
+Next: Phase 5 — Account details and photo (issue #2).
 
 ## Done
 
@@ -24,20 +24,28 @@ Next: Phase 4 — Sign-in by snapshot.
   `demo-*` accounts dropped; releases are now regular "latest" releases. Review fixes: cards 160 × 200 with centred
   content, whole group centred in the window. Screenshot (mocked data): `docs/screenshots/phase-3.png`.
 
+- Phase 4 (2026-10-26, version 0.4.0): sign-in by snapshot (`docs/WINDOWS.md` §4) in `src/main/signInFlow.ts` (the only
+  code that writes to the default profile) and `src/core/signIn.ts`: marker, stash by rename, automatic detection +
+  "I've signed in" + Cancel, move to `ClaudeProfiles\<id>`, restore, recovery dialog on startup. **Add account** uses
+  it; signed-out cards get **Sign in**. Screenshot (mocked): `docs/screenshots/phase-4.png`.
+
 ## Missing
 
-- Phases 4 to 6 (`docs/PHASES.md`).
+- Phases 5 and 6 (`docs/PHASES.md`).
 - Milestone "Multi-Account Launcher v1.0": the cloud session has no tool to create milestones. Thiago creates it on
   GitHub (Issues → Milestones → New milestone) and adds the open phase issues (#1–#5) to it.
 
-## Notes for Phase 4
+## Notes for Phase 5
 
-- Accounts added in 0.3.0 open Claude **signed out** (welcome screen). Phase 4 replaces the Add flow with the snapshot
-  sign-in. **Decided (Thiago, 2026-10-26):** cards that exist but are not signed in yet get a **Sign in** action that
-  runs the same snapshot flow on that card's profile (no new card).
+- Email and real name are not detected yet: new cards show only their name (SCOPE §4.2.4, `docs/WINDOWS.md` §5).
+  The signed-in profile is `account.profileDir`; `src/main/system/claudeProfile.ts` already reads its `config.json`.
+- Sign-in was only tested with mocks and temp folders: the real MSIX behaviour (rename of the default folder while
+  Claude is closed, the cookie flush timing, `taskkill /T /F`) is checked by Thiago's test. If detection never fires,
+  the **I've signed in** button waits up to 40 s for the cookie flush, then saves (or reports "not saved").
 - `launchClaude` uses `windowsHide: true` (CLAUDE.md rule 7). libuv also applies it to GUI windows (`SW_HIDE` in
   `STARTUPINFO`); if Claude's window does not appear when opened from the launcher, this is the first suspect.
-- Old (non-MSIX) install: it opens, but the "Running" indicator only matches `\WindowsApps\Claude_*\app\Claude.exe`.
+- Old (non-MSIX) install: it opens, but the "Running" indicator and sign-in only support the MSIX package
+  ("Sign-in is not available" message).
 - The greeting still waits for the PowerShell name query (timeout 5 s). If it feels slow, cache the name in the config.
 
 ## Decisions
@@ -63,22 +71,37 @@ Next: Phase 4 — Sign-in by snapshot.
 - Process filtering by exe path is done in `src/core/processes.ts` (tested); PowerShell only lists `claude.exe`.
 - Card size: CSS px already follow Windows scaling, so sizes are set for 100 % (160 × 200 shows as 240 × 300 at 150 %).
 - Releases: regular and marked as latest since 0.3.0.
+- Sign-in (Phase 4): the default Claude is closed with `taskkill /PID <pid> /T /F` (as ai-multi-instance does); a failed
+  process query counts as "still running" (abort), never as "closed". The main Claude is reopened at the end only if it
+  was open before (cancel and success alike). "Signed in" for a card = `oauth:tokenCache*` key in its `config.json`;
+  "session saved" = the text `sessionKey` in the cookie database files (cookie values are never read or logged).
+  Minimum free space 500 MB on the drive of the default profile. The Add card is created only when the sign-in succeeds.
 
 ## How to test
 
-Phase 3 (0.3.0):
-1. Get `Claude-Launcher-Setup-0.3.0.exe`: before the merge, from the PR's Actions run (artifact
-   **launcher-installer**); after the merge, from the **Releases** page (tag `launcher-v0.3.0`, now a regular
-   *Latest* release). Install over 0.2.0.
-2. Open the launcher: the Work/College sample cards are gone; only **Main**. Cards are smaller (≈240 × 300 on a 150 %
-   screen) with the content centred, and greeting + cards + button sit in the middle of the window.
-3. With Claude closed, click **Main**: Claude opens with your normal account and the launcher closes.
-4. Open the launcher again: the Main card shows "● Running" within ~3 s. Close Claude: it disappears within ~3 s.
-   With only Claude Code (CLI) running, nothing shows as running.
-5. **+ Add account** → type "Work" → Add: a Work card appears and `%USERPROFILE%\ClaudeProfiles\work` exists.
-6. Click **Work**: a second Claude window opens, signed out (welcome screen), while Main stays signed in. Both cards
-   show "● Running". Clicking Work again only brings its window to the front. **If no window appears** but Task Manager
-   shows a new Claude process, tell me (see "Notes for Phase 4", `windowsHide`).
-7. ⋯ → **Remove** on Work while its Claude is open → "Close this account first". Close that window, remove again →
-   card gone and the `work` folder deleted.
-8. Uninstall Claude (or test on a PC without it) is optional: clicking a card should show "Claude is not installed".
+Phase 4 (0.4.0). **This phase moves your main Claude profile, so make the backup first.**
+
+0. **Manual backup:** close Claude completely (also from the tray icon). In File Explorer open
+   `%LOCALAPPDATA%\Packages`, enter the `Claude_…` folder, then `LocalCache\Roaming`, and copy the **Claude** folder
+   somewhere else (e.g. Desktop\Claude-backup). If anything goes wrong: close Claude, delete the `Claude` folder there
+   and put the copy back.
+1. Get `Claude-Launcher-Setup-0.4.0.exe`: before the merge, from the PR's Actions run (artifact
+   **launcher-installer**); after the merge, from the **Releases** page (tag `launcher-v0.4.0`). Install over 0.3.0.
+2. Open Claude normally (main account) and then the launcher. The 0.3.0 test card (if any) shows "Not signed in".
+3. **+ Add account** → name "Work" → Continue: your main Claude closes, a blank Claude opens and the launcher shows
+   "Use the new Claude window to sign in". While it is open, `…\LocalCache\Roaming` has `Claude.launcher-stash` and
+   `%LOCALAPPDATA%\ClaudeLauncher\login-pending.json` exists.
+4. Sign in there with **another** account (try email and, on a second card, Google). Within about a minute the dialog
+   goes to "Signed in" → "Saving the session…", the blank Claude closes, the **Work** card appears and your main Claude
+   reopens **still signed in to your main account**. The stash folder and the marker are gone.
+5. Click **Work**: Claude opens signed in to that account, next to the main one. If step 4 never moves on by itself,
+   press **I've signed in** (it may wait up to 40 s) and tell me.
+6. **Cancel:** start another Add, then press **Cancel** in the dialog: the blank Claude closes, no card is added and the
+   main Claude comes back signed in.
+7. **Crash/recovery:** start another Add, and while the dialog is open kill the launcher in Task Manager
+   ("Multi-Account Launcher for Claude"). Open the launcher again: it asks "A sign-in was interrupted". **Restore main
+   profile** → main Claude is back as before. (Optional: repeat and choose **Continue sign-in**.)
+8. **Sign in on an existing card:** on the 0.3.0 card ("Not signed in"), click it → Continue → sign in → that card
+   now opens signed in (no new card).
+9. Send me `login-pending.json` (no secrets in it) if anything stops halfway, plus the names of the folders in
+   `…\LocalCache\Roaming`.
