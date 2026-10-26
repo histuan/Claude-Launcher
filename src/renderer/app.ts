@@ -1,4 +1,4 @@
-import type { ActionResult, LauncherApi, LauncherState } from '../core/api.js';
+import type { ActionResult, LauncherApi, LauncherState, SignInStatus } from '../core/api.js';
 import type { Account } from '../core/config.js';
 import { greetingFor } from '../core/greeting.js';
 import { strings } from './strings.js';
@@ -33,6 +33,7 @@ const PENCIL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 
 const cardName = (a: Account): string => a.label ?? strings.mainAccount;
 const isMain = (a: Account): boolean => a.profileDir === null;
+const isSignedOut = (a: Account): boolean => state.signedOut.includes(a.id);
 const initial = (name: string): string => (Array.from(name.trim())[0] ?? '?').toLocaleUpperCase();
 
 // ---------- Greeting (SCOPE §2.1) ----------
@@ -84,10 +85,10 @@ function renderCards(): void {
     const open = h('button', { class: 'card-open', type: 'button', 'aria-label': strings.openAccount(name) },
       h('span', { class: 'avatar', 'aria-hidden': 'true' }, initial(name)),
       h('span', { class: 'label clip' }, name),
-      h('span', { class: 'email clip' }, account.email ?? ''),
+      h('span', { class: 'email clip' }, account.email ?? (isSignedOut(account) ? strings.signIn.notSignedIn : '')),
       h('span', { class: 'real-name clip' }, account.realName ?? ''),
     );
-    open.addEventListener('click', () => void openAccount(account, open));
+    open.addEventListener('click', () => void (isSignedOut(account) ? signIn(account) : openAccount(account, open)));
     const status = h('span', { class: 'running', 'data-id': account.id }, strings.running);
     status.hidden = !running.has(account.id);
     const more = h('button', {
@@ -152,10 +153,11 @@ function openMenu(account: Account, owner: HTMLElement): void {
     }
     return button;
   };
-  const items = [
+  const items = isSignedOut(account) ? [item(strings.menu.signIn, () => void signIn(account))] : [];
+  items.push(
     item(strings.menu.rename, () => void rename(account)),
     item(strings.menu.changePhoto, null), // the photo picker arrives in Phase 5
-  ];
+  );
   if (!isMain(account)) items.push(item(strings.menu.remove, () => void remove(account), { class: 'danger' }));
   menu.replaceChildren(...items);
   menu.hidden = false;
@@ -235,11 +237,63 @@ async function remove(account: Account): Promise<void> {
   await showResult(await api.removeAccount(account.id));
 }
 
+// ---------- Sign-in (WINDOWS.md §4): the main process runs the flow, the window shows its progress ----------
+
 async function addNew(): Promise<void> {
   const label = await ask({ title: strings.add.title, body: strings.add.body, value: '', confirm: strings.add.confirm });
   if (label === null || !label.trim()) return;
-  await showResult(await api.addAccount(label));
+  await startSignIn(await api.startSignIn({ label }));
 }
+
+async function signIn(account: Account): Promise<void> {
+  const ok = await ask({ title: strings.signIn.title(cardName(account)), body: strings.signIn.body, confirm: strings.signIn.start });
+  if (ok === null) return;
+  await startSignIn(await api.startSignIn({ accountId: account.id }));
+}
+
+async function startSignIn(result: ActionResult): Promise<void> {
+  await showResult(result);
+  if (!result.error) showSignIn({ phase: 'waiting' });
+}
+
+const signInDialog = byId<HTMLDialogElement>('signin');
+const signInConfirm = byId<HTMLButtonElement>('signin-confirm');
+const signInCancel = byId<HTMLButtonElement>('signin-cancel');
+signInConfirm.textContent = strings.signIn.confirm;
+signInCancel.textContent = strings.cancel;
+signInDialog.addEventListener('cancel', (e) => e.preventDefault()); // Esc does nothing: the buttons decide
+const lockSignIn = (): void => { signInConfirm.disabled = true; signInCancel.disabled = true; };
+signInConfirm.addEventListener('click', () => { lockSignIn(); void api.confirmSignIn(); });
+signInCancel.addEventListener('click', () => { lockSignIn(); void api.cancelSignIn(); });
+
+function showSignIn(status: SignInStatus): void {
+  if (status.phase === 'waiting' || status.phase === 'detected' || status.phase === 'saving') {
+    const text = strings.signIn[status.phase];
+    byId('signin-title').textContent = text.title;
+    byId('signin-body').textContent = text.body;
+    const saving = status.phase === 'saving';
+    signInConfirm.disabled = saving;
+    signInCancel.disabled = saving;
+    if (!signInDialog.open) signInDialog.showModal();
+    return;
+  }
+  if (signInDialog.open) signInDialog.close();
+  void signInFinished(status);
+}
+
+async function signInFinished(status: SignInStatus): Promise<void> {
+  state = await api.getState();
+  renderCards();
+  if (status.phase === 'noSession') {
+    await ask({ title: strings.signIn.noSession.title, body: strings.signIn.noSession.body, confirm: strings.ok, cancel: false });
+  } else if (status.phase === 'failed') {
+    await ask({
+      title: strings.signIn.failed.title, body: strings.signIn.failed.body(status.stashPath), confirm: strings.ok, cancel: false,
+    });
+  }
+}
+
+api.onSignIn(showSignIn);
 
 /** Shows the new cards, or the error message in the dialog. */
 async function showResult(result: ActionResult): Promise<void> {
@@ -266,3 +320,4 @@ renderName();
 renderCards();
 setInterval(renderGreetingText, 30_000); // follows the morning/afternoon/evening boundary
 void pollRunning();
+if (state.signIn) showSignIn(state.signIn); // a sign-in resumed on startup

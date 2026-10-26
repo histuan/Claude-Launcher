@@ -8,9 +8,33 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-26
+
+Phase 4: signing in extra accounts from the launcher (snapshot flow, `docs/WINDOWS.md` §4).
+
+### Added
+
+- **Add account** now signs in: after naming the card and confirming, the launcher closes the main Claude, writes a
+  marker (`%LOCALAPPDATA%\ClaudeLauncher\login-pending.json`), sets the default profile aside by renaming it to
+  `Claude.launcher-stash`, opens a blank Claude, waits for the sign-in, moves the signed-in folder to
+  `%USERPROFILE%\ClaudeProfiles\<id>`, renames the stash back and reopens the main Claude if it was open.
+- Automatic sign-in detection (OAuth token in `config.json` plus a cookie-store write after it, like
+  ai-multi-instance), with an **I've signed in** button as fallback and **Cancel** at any point. A session without
+  the `sessionKey` cookie is never kept.
+- **Sign in** on cards that exist but are not signed in yet (created in 0.3.0): click the card or use the ⋯ menu; the
+  flow replaces that card's folder instead of creating a new card. Such cards show "Not signed in".
+- Recovery on startup, before anything else: if a marker is found, choose **Restore main profile** (default) or
+  **Continue sign-in**; a sign-in interrupted after the move is completed automatically.
+- Safety checks: at least 500 MB free, the default Claude must be closed (otherwise nothing is touched), an existing
+  stash is never overwritten, the stash is only renamed back (never deleted) and a failed restore shows its exact path.
+  Closing the launcher during a sign-in cancels it cleanly.
+- Tests on real temporary folders (Linux and the `windows-latest` job): success, existing card, no main profile,
+  cancel, manual confirm without a saved session, live default instance (abort), low disk, existing stash, crashes at
+  three different moments, and a failing process query.
+
 ### Changed
 
-- Docs: Phase 4 also adds a **Sign in** action for cards that exist but are not signed in yet (created in 0.3.0).
+- Docs: README explains the sign-in flow and the manual backup; Phase 4 plan includes the **Sign in** action.
 
 ## [0.3.0] - 2026-10-26
 
@@ -95,7 +119,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.3.0...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.0...HEAD
+[0.4.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.3.0...launcher-v0.4.0
 [0.3.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.2.0...launcher-v0.3.0
 [0.2.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.1.0...launcher-v0.2.0
 [0.1.0]: https://github.com/histuan/Claude-Launcher/releases/tag/launcher-v0.1.0

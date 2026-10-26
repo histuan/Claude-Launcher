@@ -42,10 +42,15 @@ export async function resolveClaudeExe(
   return null;
 }
 
-/** Running Claude Desktop main processes. Errors give an empty list (the indicator just stays off). */
+/** Running Claude Desktop main processes. Throws if the query fails (the sign-in flow must not guess). */
+export async function queryClaudeProcesses(run: RunPowerShell): Promise<ClaudeProcess[]> {
+  return parseClaudeProcesses(await run(PROCESS_SCRIPT));
+}
+
+/** Same, for the "Running" indicator: errors give an empty list (the indicator just stays off). */
 export async function listClaudeProcesses(run: RunPowerShell): Promise<ClaudeProcess[]> {
   try {
-    return parseClaudeProcesses(await run(PROCESS_SCRIPT));
+    return await queryClaudeProcesses(run);
   } catch (err) {
     console.warn(`Process query failed: ${(err as Error).message}`);
     return [];

@@ -8,7 +8,12 @@ contextBridge.exposeInMainWorld('launcher', {
   setGreetingName: (name: string | null) => ipcRenderer.invoke('launcher:setGreetingName', name),
   renameAccount: (id: string, label: string) => ipcRenderer.invoke('launcher:renameAccount', id, label),
   openAccount: (id: string) => ipcRenderer.invoke('launcher:openAccount', id),
-  addAccount: (label: string) => ipcRenderer.invoke('launcher:addAccount', label),
+  startSignIn: (target: unknown) => ipcRenderer.invoke('launcher:startSignIn', target),
+  confirmSignIn: () => ipcRenderer.invoke('launcher:confirmSignIn'),
+  cancelSignIn: () => ipcRenderer.invoke('launcher:cancelSignIn'),
+  onSignIn: (listener: (status: unknown) => void) => {
+    ipcRenderer.on('launcher:signIn', (_e, status: unknown) => listener(status));
+  },
   removeAccount: (id: string) => ipcRenderer.invoke('launcher:removeAccount', id),
   runningAccounts: () => ipcRenderer.invoke('launcher:runningAccounts'),
 });

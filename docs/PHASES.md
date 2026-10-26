@@ -121,7 +121,7 @@ Read: `WINDOWS.md` §1, §2, §3.
 - Release type: from 0.3.0 on (the first usable version), publish regular releases marked as latest instead of
   pre-releases; update the workflow, `CLAUDE.md` and any doc that says pre-release while < 1.0.0.
 
-## Phase 4 — Sign-in by snapshot
+## Phase 4 — Sign-in by snapshot ✅ (2026-10-26)
 
 Read: `WINDOWS.md` §4. Look at `engine.py` from ai-multi-instance (only the sign-in functions).
 
