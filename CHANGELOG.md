@@ -10,7 +10,11 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ### Changed
 
-- PR template moved to `docs/PR_TEMPLATE.md`, so everything except the CI workflow lives in `claude-launcher/`.
+- Phase 1.6: the project now lives in its own repository, `histuan/Claude-Launcher`, at the repo root.
+- CI: the workflow runs on every pull request and push to `main` (no path filters) from the repo root; artifact and
+  npm cache paths updated. Release on merge unchanged.
+- PR template moved to `.github/pull_request_template.md`, so GitHub pre-fills it.
+- `CLAUDE.md`, `docs/PHASES.md`, `README.md` (badges and links) and `STATUS.md` point to the new repository.
 
 ### Fixed
 
@@ -36,5 +40,5 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/projects/compare/launcher-v0.1.0...HEAD
-[0.1.0]: https://github.com/histuan/projects/releases/tag/launcher-v0.1.0
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.1.0...HEAD
+[0.1.0]: https://github.com/histuan/Claude-Launcher/releases/tag/launcher-v0.1.0

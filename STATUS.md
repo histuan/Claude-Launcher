@@ -1,6 +1,6 @@
 # Status
 
-**Current phase:** 2 — Screen (not started). Phase 1.5 merged on 2026-10-26 (PR #8, pre-release `launcher-v0.1.0`).
+**Current phase:** 2 — Screen (not started, issue #4). Phase 1.6 (standalone repository) done on 2026-10-26.
 
 ## Done
 
@@ -8,23 +8,24 @@
 - Phase 0 on Thiago's PC (2026-10-26): isolated profile with `--user-data-dir` works on Claude 3.6556.2.0.
 - Phase 1 (2026-10-26): `package.json` (Electron 44, electron-builder 26, per-user NSIS), `src/` layout, window with
   placeholder text, `src/core/greeting.js` + test, workflow building the `.exe` on Windows.
-- Phase 1.5 (2026-10-26): renamed to **Multi-Account Launcher for Claude** (`claude-launcher/`), docs and interface in
+- Phase 1.5 (2026-10-26): renamed to **Multi-Account Launcher for Claude**, docs and interface in
   English (texts in `src/renderer/strings.ts`), PR flow in `CLAUDE.md`, PR template, `CHANGELOG.md`, automatic
-  pre-release on merge to `main`, actions at v7, issues #1–#7 (one per phase), README badges and Download section,
+  pre-release on merge to `main`, actions at v7, one issue per phase, README badges and Download section,
   code migrated to TypeScript (`strict`, TypeScript 7, output in `out/`).
+- Phase 1.6 (2026-10-26): standalone repository `histuan/Claude-Launcher`, project at the root; workflow without path
+  filters; PR template at `.github/pull_request_template.md`.
 
 ## Missing
 
 - Phases 2 to 6 (`docs/PHASES.md`).
 - Milestone "Multi-Account Launcher v1.0": the cloud session has no tool to create milestones. Thiago creates it on
-  GitHub (Issues → Milestones → New milestone) and adds issues #1–#7 to it.
+  GitHub (Issues → Milestones → New milestone) and adds the open phase issues (#1–#5) to it.
 - The icon is still Electron's default (original icon comes in Phase 2).
 
 ## Decisions
 
 - Electron + TypeScript; `.exe` only through GitHub Actions; one PR per phase, release on merge.
-- Everything lives in `claude-launcher/`, except `.github/workflows/claude-launcher.yml` (GitHub only reads workflows
-  from the repo root). The PR template is `docs/PR_TEMPLATE.md`.
+- Own repository (`histuan/Claude-Launcher`), project at the root. The PR template is `.github/pull_request_template.md`.
 - Extra accounts sign in by snapshot of the default profile, with stash and restore.
 - Email and name detected automatically with manual fallback; photo chosen by the person, initial by default.
 - Original icon and free serif font (no logo and no official Claude font).
