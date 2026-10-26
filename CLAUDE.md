@@ -6,13 +6,13 @@ one account per profile, with no signing out and back in.
 - Product scope: `docs/SCOPE.md`
 - Verified Windows facts and sign-in design: `docs/WINDOWS.md`
 - Phase plan (with the prompt for each phase): `docs/PHASES.md`
-- Where we stopped: `STATUS.md`. History of changes: `CHANGELOG.md`
+- Where we stopped: `docs/STATUS.md`. History of changes: `CHANGELOG.md`
 
 ## Before anything else
 
 1. Use the **dev-economico** skill (it comes from Thiago's account). If it is not available in this session, say so at the
    start of the report and work economically: read only what is needed, closed scope, test before calling it done.
-2. Read `STATUS.md` and only the current phase's section in `docs/PHASES.md`. Read `SCOPE.md` and `WINDOWS.md` only in the sections the phase cites.
+2. Read `docs/STATUS.md` and only the current phase's section in `docs/PHASES.md`. Read `SCOPE.md` and `WINDOWS.md` only in the sections the phase cites.
 3. The repository is `histuan/Claude-Launcher` and the project lives at its root. Do not read `node_modules/`, `out/`
    or `dist/`.
 
@@ -20,7 +20,7 @@ one account per profile, with no signing out and back in.
 
 - Usually you are in a **cloud session**: Linux, no display, no access to Thiago's PC.
 - The `.exe` is built by **GitHub Actions** (`windows-latest`), never inside the session. Do not try Wine or Docker.
-- Exception to dev-economico: here `STATUS.md` goes **into git**, because the cloud VM is deleted.
+- Exception to dev-economico: here `docs/STATUS.md` goes **into git**, because the cloud VM is deleted.
 - In the cloud you do not need the Electron binary to test the logic: use `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`
   (drop it only to try the offscreen screenshot).
 - To check Actions, use `gh run list` / `gh run view` (REST API) or the GitHub MCP tools. If neither works, say so in
@@ -83,7 +83,7 @@ one account per profile, with no signing out and back in.
 
 - Logic: `node:test` tests with mocks of `src/main/system/`. Run `npm run typecheck` and `npm test` before calling it done.
 - Interface: if possible, a screenshot via offscreen Electron (`xvfb-run`). If not possible in the cloud, say so and leave it to Thiago.
-- The real test is on Thiago's PC: at the end of the phase, write a short "How to test" in `STATUS.md`
+- The real test is on Thiago's PC: at the end of the phase, write a short "How to test" in `docs/STATUS.md`
   (download the installer from the Releases page or the PR artifact, install, what to check).
 - If something in the phase is impossible in the cloud, stop and explain instead of improvising.
 

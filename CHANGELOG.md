@@ -15,6 +15,8 @@ Releases are tagged `launcher-vX.Y.Z`.
   npm cache paths updated. Release on merge unchanged.
 - PR template moved to `.github/pull_request_template.md`, so GitHub pre-fills it.
 - `CLAUDE.md`, `docs/PHASES.md`, `README.md` (badges and links) and `STATUS.md` point to the new repository.
+- `STATUS.md` moved to `docs/STATUS.md`; references in `CLAUDE.md`, `docs/PHASES.md` (prompt template included) and
+  `README.md` updated.
 
 ### Fixed
 

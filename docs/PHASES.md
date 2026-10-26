@@ -13,9 +13,9 @@ Replace `N` with the phase number:
 ```
 Phase N of Multi-Account Launcher for Claude (repo histuan/Claude-Launcher).
 1. Use the dev-economico skill (if it does not exist in this session, say so in the report).
-2. Read CLAUDE.md, STATUS.md and the "Phase N" section of docs/PHASES.md.
+2. Read CLAUDE.md, docs/STATUS.md and the "Phase N" section of docs/PHASES.md.
    Read SCOPE.md and WINDOWS.md only in the sections the phase cites.
-3. Do ONLY Phase N. When done: verification, update STATUS.md (including "How to test") and CHANGELOG.md,
+3. Do ONLY Phase N. When done: verification, update docs/STATUS.md (including "How to test") and CHANGELOG.md,
    bump the version in package.json to 0.N.0, open a Pull Request to main following the "GitHub process" section
    of CLAUDE.md, and the final dev-economico report.
 If something in the phase is impossible in the cloud, stop and explain instead of improvising.
@@ -126,7 +126,7 @@ Read: `WINDOWS.md` §4. Look at `engine.py` from ai-multi-instance (only the sig
 - Full flow of section 4, with marker, stash, restore, cancel and recovery on startup.
 - Tests with real temporary folders: they run on Linux **and** in the `windows-latest` job. Cover: success, cancel,
   "crash" in the middle (marker present on startup), default process still alive (abort).
-- "How to test" in `STATUS.md` with a **manual backup first** (copy the default profile folder somewhere else).
+- "How to test" in `docs/STATUS.md` with a **manual backup first** (copy the default profile folder somewhere else).
 
 ## Phase 5 — Account details and photo
 
