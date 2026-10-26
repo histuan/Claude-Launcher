@@ -1,4 +1,11 @@
-// A sandboxed preload must be CommonJS (.cts compiles to preload.cjs). The API for the interface arrives in later phases.
+// A sandboxed preload must be CommonJS (.cts compiles to preload.cjs). Shape: LauncherApi in src/core/api.ts.
 import electron = require('electron');
 
-electron.contextBridge.exposeInMainWorld('launcher', {});
+const { contextBridge, ipcRenderer } = electron;
+
+contextBridge.exposeInMainWorld('launcher', {
+  getState: () => ipcRenderer.invoke('launcher:getState'),
+  setGreetingName: (name: string | null) => ipcRenderer.invoke('launcher:setGreetingName', name),
+  renameAccount: (id: string, label: string) => ipcRenderer.invoke('launcher:renameAccount', id, label),
+  removeAccount: (id: string) => ipcRenderer.invoke('launcher:removeAccount', id),
+});
