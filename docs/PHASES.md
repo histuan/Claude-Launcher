@@ -64,10 +64,11 @@ Goal: make the project look like a professional project and be **entirely in Eng
 1. **PR flow:** rewrite the commits part of `CLAUDE.md` as a "GitHub process" section:
    - each phase works on the session branch and ends with a **Pull Request to `main`** (never push directly to `main`);
    - commits follow *Conventional Commits* with the `launcher` scope (`feat(launcher): …`, `fix(…)`, `docs(…)`, `ci(…)`);
-   - PR description from the `.github/pull_request_template.md` template, with `Closes #<phase issue>`;
+   - PR description from the PR template (now `docs/PR_TEMPLATE.md`), with `Closes #<phase issue>`;
    - the phase bumps the version in `package.json` to `0.N.0` (Phase 1.5 keeps `0.1.0`) and adds its section to `CHANGELOG.md`;
    - Thiago tests and merges; the next phase starts only after the merge.
-2. **`.github/pull_request_template.md`** (repo root, generic for all projects): Summary, Why, How it was tested,
+2. **PR template** (first at `.github/pull_request_template.md`; moved to `claude-launcher/docs/PR_TEMPLATE.md` after Phase 1.5
+   so the project stays inside its folder): Summary, Why, How it was tested,
    Screenshots, Checklist.
 3. **`claude-launcher/CHANGELOG.md`** following *Keep a Changelog*, with the `0.1.0` entry (Phase 1) and `Unreleased`.
 4. **Automatic release on merge:** in the workflow, after the build on `windows-latest`, when the event is a push to `main`

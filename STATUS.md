@@ -1,7 +1,6 @@
 # Status
 
-**Current phase:** 1.5 — Professional GitHub process (PR open, waiting for Thiago's test and merge).
-Next: Phase 2 — Screen (starts only after the merge).
+**Current phase:** 2 — Screen (not started). Phase 1.5 merged on 2026-10-26 (PR #8, pre-release `launcher-v0.1.0`).
 
 ## Done
 
@@ -23,7 +22,9 @@ Next: Phase 2 — Screen (starts only after the merge).
 
 ## Decisions
 
-- Electron + plain JS; `.exe` only through GitHub Actions; one PR per phase, release on merge.
+- Electron + TypeScript; `.exe` only through GitHub Actions; one PR per phase, release on merge.
+- Everything lives in `claude-launcher/`, except `.github/workflows/claude-launcher.yml` (GitHub only reads workflows
+  from the repo root). The PR template is `docs/PR_TEMPLATE.md`.
 - Extra accounts sign in by snapshot of the default profile, with stash and restore.
 - Email and name detected automatically with manual fallback; photo chosen by the person, initial by default.
 - Original icon and free serif font (no logo and no official Claude font).

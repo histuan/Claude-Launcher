@@ -8,7 +8,13 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- PR template moved to `docs/PR_TEMPLATE.md`, so everything except the CI workflow lives in `claude-launcher/`.
+
+### Fixed
+
+- Restored the CI workflow (`.github/workflows/claude-launcher.yml`), deleted by mistake after the 0.1.0 merge.
 
 ## [0.1.0] - 2026-10-26
 
