@@ -6,7 +6,7 @@
 A small Windows launcher that keeps several Claude accounts signed in at the same time, each one in its own
 isolated instance of the official Claude desktop app. Pick an account, click, done. No more signing out and back in.
 
-> **Status:** in development. See [`STATUS.md`](./STATUS.md) for progress, [`CHANGELOG.md`](./CHANGELOG.md) for the
+> **Status:** in development. See [`docs/STATUS.md`](./docs/STATUS.md) for progress, [`CHANGELOG.md`](./CHANGELOG.md) for the
 > history of changes and [`docs/SCOPE.md`](./docs/SCOPE.md) for the full scope.
 
 ## Download
