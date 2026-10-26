@@ -1,9 +1,22 @@
-# Multiconta para Claude
+# Multi-Account Launcher for Claude
+
+[![claude-launcher](https://github.com/histuan/projects/actions/workflows/claude-launcher.yml/badge.svg)](https://github.com/histuan/projects/actions/workflows/claude-launcher.yml)
+[![Latest release](https://img.shields.io/github/v/release/histuan/projects?include_prereleases&filter=launcher-v*&label=release)](https://github.com/histuan/projects/releases)
 
 A small Windows launcher that keeps several Claude accounts signed in at the same time, each one in its own
 isolated instance of the official Claude desktop app. Pick an account, click, done. No more signing out and back in.
 
-> **Status:** in development. See [`ESTADO.md`](./ESTADO.md) for progress and [`docs/ESCOPO.md`](./docs/ESCOPO.md) for the full scope (in Portuguese).
+> **Status:** in development. See [`STATUS.md`](./STATUS.md) for progress, [`CHANGELOG.md`](./CHANGELOG.md) for the
+> history of changes and [`docs/SCOPE.md`](./docs/SCOPE.md) for the full scope.
+
+## Download
+
+Get the latest installer (`Claude-Launcher-Setup-<version>.exe`) from the
+[Releases page](https://github.com/histuan/projects/releases) (tags `launcher-v*`).
+Pre-releases (`0.x`) are development builds.
+
+The installer is not signed, so Windows SmartScreen will warn you: choose **More info → Run anyway**.
+It installs per user and does not need administrator rights.
 
 ## How it works
 

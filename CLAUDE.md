@@ -1,77 +1,91 @@
-# Multiconta para Claude — instruções para o Claude Code
+# Multi-Account Launcher for Claude — instructions for Claude Code
 
-Launcher para Windows (Electron) que abre o app desktop do Claude em perfis isolados
-(`--user-data-dir`), uma conta por perfil, sem precisar deslogar e logar.
+Windows launcher (Electron) that opens the Claude desktop app in isolated profiles (`--user-data-dir`),
+one account per profile, with no signing out and back in.
 
-- Escopo do produto: `docs/ESCOPO.md`
-- Fatos verificados do Windows e desenho do login: `docs/WINDOWS.md`
-- Plano por fases (com o prompt de cada uma): `docs/FASES.md`
-- Onde paramos: `ESTADO.md`
+- Product scope: `docs/SCOPE.md`
+- Verified Windows facts and sign-in design: `docs/WINDOWS.md`
+- Phase plan (with the prompt for each phase): `docs/PHASES.md`
+- Where we stopped: `STATUS.md`. History of changes: `CHANGELOG.md`
 
-## Antes de qualquer coisa
+## Before anything else
 
-1. Use a skill **dev-economico** (vem da conta do Thiago). Se ela não estiver disponível nesta sessão, diga isso no começo
-   do relatório e trabalhe de forma econômica: ler só o necessário, escopo fechado, testar antes de dar por pronto.
-2. Leia `ESTADO.md` e só a seção da fase atual em `docs/FASES.md`. Leia `ESCOPO.md` e `WINDOWS.md` só nas seções que a fase citar.
-3. Trabalhe só em `claude-multiconta/` e em `.github/workflows/claude-multiconta.yml`. Este repositório é um monorepo:
-   nunca leia nem altere as outras pastas (`lorax-space-invaders`, `web-development` etc.).
+1. Use the **dev-economico** skill (it comes from Thiago's account). If it is not available in this session, say so at the
+   start of the report and work economically: read only what is needed, closed scope, test before calling it done.
+2. Read `STATUS.md` and only the current phase's section in `docs/PHASES.md`. Read `SCOPE.md` and `WINDOWS.md` only in the sections the phase cites.
+3. Work only in `claude-launcher/`, `.github/workflows/claude-launcher.yml` and `.github/pull_request_template.md`.
+   This repository is a monorepo: never read or change the other folders (`lorax-space-invaders`, `web-development` etc.).
 
-## Ambiente
+## Environment
 
-- Normalmente você está numa **cloud session**: Linux, sem tela, sem acesso ao PC do Thiago.
-- O `.exe` é gerado pelo **GitHub Actions** (`windows-latest`), nunca dentro da sessão. Não tente Wine nem Docker.
-- Exceção ao dev-economico: aqui o `ESTADO.md` vai **no git**, porque a VM da nuvem é apagada.
-- Commits: ao fim de cada fase, commit + push na `main` (já combinado). Mensagens de commit em inglês.
-  Se o push na `main` for recusado pelo ambiente, faça push na branch que a sessão permitir, abra um PR para a `main`
-  e diga isso no relatório (o workflow roda em qualquer branch, então o `.exe` sai mesmo assim).
-  Se a `main` aceitar o push, não empurre também a branch da sessão (gera uma execução duplicada do workflow).
-- Na nuvem não é preciso baixar o binário do Electron para testar a lógica: use `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`
-  (só tire isso se for tentar o print offscreen).
-- Para conferir o Actions, use `gh run list` / `gh run view` (API REST). Se o `gh` não funcionar, diga no relatório
-  e o Thiago confere na aba Actions.
-- Claude Code local (no PC do Thiago) é último recurso: só quando um bug só aparece no Windows real e os logs não bastam.
+- Usually you are in a **cloud session**: Linux, no display, no access to Thiago's PC.
+- The `.exe` is built by **GitHub Actions** (`windows-latest`), never inside the session. Do not try Wine or Docker.
+- Exception to dev-economico: here `STATUS.md` goes **into git**, because the cloud VM is deleted.
+- In the cloud you do not need the Electron binary to test the logic: use `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`
+  (drop it only to try the offscreen screenshot).
+- To check Actions, use `gh run list` / `gh run view` (REST API) or the GitHub MCP tools. If neither works, say so in
+  the report and Thiago checks the Actions tab.
+- Local Claude Code (on Thiago's PC) is the last resort: only when a bug shows up only on real Windows and logs are not enough.
+
+## GitHub process
+
+- Each phase works on the session branch and ends with a **Pull Request to `main`**. Never push directly to `main`.
+- Commits follow *Conventional Commits* with the `launcher` scope: `feat(launcher): …`, `fix(launcher): …`,
+  `docs(launcher): …`, `ci(launcher): …`. Commit messages in English.
+- The PR description follows `.github/pull_request_template.md` and includes `Closes #<phase issue>`
+  (issues are titled `[launcher] Phase N — …`).
+- Each phase bumps `version` in `package.json` to `0.N.0` (Phase 1.5 kept `0.1.0`) and adds its section to `CHANGELOG.md`
+  (*Keep a Changelog*: move the `Unreleased` items into the new version section).
+- On merge to `main`, the workflow creates the tag `launcher-v<version>` and a GitHub Release with the installer and the
+  notes from `CHANGELOG.md` (pre-release while the version is `< 1.0.0`). The PR run uploads the installer as an artifact.
+- Thiago tests and merges. The next phase starts only after the merge.
 
 ## Stack
 
-- Electron + **TypeScript** (`strict`), compilado com `tsc`. Interface em HTML/CSS + TS, sem framework.
-  (Migração de JS para TS feita na Fase 1.5.)
-- Testes: `node:test` (sem dependência). Build: `electron-builder` (instalador NSIS).
-- Fontes livres (OFL) embutidas via `@fontsource`. Nada de CDN: o app funciona offline.
-- Dependência nova: justificar em uma linha no relatório.
+- Electron + **TypeScript** (`strict`), compiled with `tsc`. Interface in HTML/CSS + TS, no framework.
+  (Migrated from JS to TS in Phase 1.5.)
+- Tests: `node:test` on the compiled output. Build: `electron-builder` (NSIS installer) packages `out/`.
+- Free fonts (OFL) bundled via `@fontsource`. No CDN: the app works offline.
+- New dependency: justify it in one line in the report.
 
-## Comandos (dentro de `claude-multiconta/`)
+## Commands (inside `claude-launcher/`)
 
-- `npm ci` — instalar
-- `npm test` — testes
-- `npm start` — abre o app (não funciona na nuvem, que não tem tela)
+- `npm ci` — install
+- `npm run build` — compile `src/` and `test/` into `out/` (ignored by git) and copy the renderer's HTML/CSS
+- `npm run typecheck` — type check only
+- `npm test` — build, then run `out/test/**/*.test.js` with `node --test`
+- `npm start` — build and open the app (does not work in the cloud, which has no display)
 
-## Arquitetura
+## Architecture
 
-- `src/core/` — lógica pura e testável (saudação, nome, regras de perfil, estado do login).
-- `src/main/` — processo principal do Electron.
-- `src/main/system/` — o **único** lugar que toca o Windows (PowerShell, processos, pastas do Claude).
-  Tudo injetável, para os testes usarem mocks.
-- `src/renderer/` — interface. `preload` com `contextBridge`, `contextIsolation: true`, `nodeIntegration: false`.
-- Configuração do launcher: JSON em `app.getPath('userData')`.
+- `src/core/` — pure, testable logic (greeting, name, profile rules, sign-in state).
+- `src/main/` — Electron main process. The preload is `preload.cts` (compiles to CommonJS, required by the sandbox).
+- `src/main/system/` — the **only** place that touches Windows (PowerShell, processes, Claude folders).
+  Everything injectable, so tests can use mocks.
+- `src/renderer/` — interface. `preload` with `contextBridge`, `contextIsolation: true`, `nodeIntegration: false`.
+- **All user-facing texts** live in `src/renderer/strings.ts` (English), so other languages can be added later.
+  Never hard-code interface text elsewhere.
+- Launcher configuration: JSON in `app.getPath('userData')`.
 
-## Regras que nunca podem ser quebradas
+## Rules that must never be broken
 
-1. Nunca copiar, modificar ou mover o app do Claude (`WindowsApps`). Resolver o `Claude.exe` a cada abertura via `Get-AppxPackage`.
-2. O perfil padrão do Claude só é tocado pelo fluxo de login (`docs/WINDOWS.md`, seção 4), com stash, marcador e restauração. Nenhum outro código escreve lá.
-3. Cookies e tokens de sessão: nunca logar, nunca salvar em texto claro, nunca enviar para outro host além de `claude.ai`.
-4. Detectar processos do Claude pelo **caminho** do exe (`\WindowsApps\Claude_*\app\Claude.exe`), nunca só pelo nome:
-   o Claude Code CLI também se chama `claude.exe`. Ignorar processos com `--type=` (filhos do Chromium).
-5. Caminhos sempre por variável de ambiente (`USERPROFILE`, `LOCALAPPDATA`), nunca `C:\Users\thiag`.
-6. Não usar o logo nem a fonte oficial do Claude. Ícone original; fonte serifada livre.
-7. Abrir o Claude com `spawn` detached, `stdio: 'ignore'`, `windowsHide: true`, e `unref()`.
+1. Never copy, modify or move the Claude app (`WindowsApps`). Resolve `Claude.exe` on every launch via `Get-AppxPackage`.
+2. The default Claude profile is touched only by the sign-in flow (`docs/WINDOWS.md`, section 4), with stash, marker and restore. No other code writes there.
+3. Session cookies and tokens: never log them, never store them in plain text, never send them to any host other than `claude.ai`.
+4. Detect Claude processes by the exe **path** (`\WindowsApps\Claude_*\app\Claude.exe`), never by name alone:
+   the Claude Code CLI is also called `claude.exe`. Ignore processes with `--type=` (Chromium children).
+5. Paths always through environment variables (`USERPROFILE`, `LOCALAPPDATA`), never `C:\Users\thiag`.
+6. Do not use Claude's official logo or font. Original icon; free serif font.
+7. Open Claude with `spawn` detached, `stdio: 'ignore'`, `windowsHide: true`, and `unref()`.
 
-## Verificação
+## Verification
 
-- Lógica: testes `node:test` com mocks de `src/main/system/`.
-- Interface: se der, um print via Electron offscreen (`xvfb-run`). Se não der na nuvem, diga e deixe para o Thiago.
-- O teste real é no PC do Thiago: no fim da fase, escreva em `ESTADO.md` um "Como testar" curto (baixar o artefato do Actions, instalar, o que conferir).
-- Se algo da fase for impossível na nuvem, pare e explique em vez de improvisar.
+- Logic: `node:test` tests with mocks of `src/main/system/`. Run `npm run typecheck` and `npm test` before calling it done.
+- Interface: if possible, a screenshot via offscreen Electron (`xvfb-run`). If not possible in the cloud, say so and leave it to Thiago.
+- The real test is on Thiago's PC: at the end of the phase, write a short "How to test" in `STATUS.md`
+  (download the installer from the Releases page or the PR artifact, install, what to check).
+- If something in the phase is impossible in the cloud, stop and explain instead of improvising.
 
-## Manias a evitar
+## Habits to avoid
 
-- (vazio por enquanto; adicionar aqui o que o Thiago corrigir)
+- (empty for now; add here whatever Thiago corrects)
