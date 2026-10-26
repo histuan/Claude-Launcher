@@ -43,24 +43,26 @@ one account per profile, with no signing out and back in.
 
 - Electron + **TypeScript** (`strict`), compiled with `tsc`. Interface in HTML/CSS + TS, no framework.
   (Migrated from JS to TS in Phase 1.5.)
-- Tests: `node:test` (no dependency). Build: `electron-builder` (NSIS installer).
+- Tests: `node:test` on the compiled output. Build: `electron-builder` (NSIS installer) packages `out/`.
 - Free fonts (OFL) bundled via `@fontsource`. No CDN: the app works offline.
 - New dependency: justify it in one line in the report.
 
 ## Commands (inside `claude-launcher/`)
 
 - `npm ci` — install
-- `npm test` — tests
-- `npm start` — opens the app (does not work in the cloud, which has no display)
+- `npm run build` — compile `src/` and `test/` into `out/` (ignored by git) and copy the renderer's HTML/CSS
+- `npm run typecheck` — type check only
+- `npm test` — build, then run `out/test/**/*.test.js` with `node --test`
+- `npm start` — build and open the app (does not work in the cloud, which has no display)
 
 ## Architecture
 
 - `src/core/` — pure, testable logic (greeting, name, profile rules, sign-in state).
-- `src/main/` — Electron main process.
+- `src/main/` — Electron main process. The preload is `preload.cts` (compiles to CommonJS, required by the sandbox).
 - `src/main/system/` — the **only** place that touches Windows (PowerShell, processes, Claude folders).
   Everything injectable, so tests can use mocks.
 - `src/renderer/` — interface. `preload` with `contextBridge`, `contextIsolation: true`, `nodeIntegration: false`.
-- **All user-facing texts** live in `src/renderer/strings.js` (English), so other languages can be added later.
+- **All user-facing texts** live in `src/renderer/strings.ts` (English), so other languages can be added later.
   Never hard-code interface text elsewhere.
 - Launcher configuration: JSON in `app.getPath('userData')`.
 
@@ -77,7 +79,7 @@ one account per profile, with no signing out and back in.
 
 ## Verification
 
-- Logic: `node:test` tests with mocks of `src/main/system/`.
+- Logic: `node:test` tests with mocks of `src/main/system/`. Run `npm run typecheck` and `npm test` before calling it done.
 - Interface: if possible, a screenshot via offscreen Electron (`xvfb-run`). If not possible in the cloud, say so and leave it to Thiago.
 - The real test is on Thiago's PC: at the end of the phase, write a short "How to test" in `STATUS.md`
   (download the installer from the Releases page or the PR artifact, install, what to check).

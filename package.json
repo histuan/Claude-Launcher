@@ -4,25 +4,36 @@
   "private": true,
   "description": "Windows launcher that opens the Claude desktop app in isolated profiles, one account per profile.",
   "type": "module",
-  "main": "src/main/main.js",
+  "main": "out/src/main/main.js",
   "author": "histuan",
   "license": "MIT",
   "scripts": {
-    "start": "electron .",
-    "test": "node --test \"test/**/*.test.js\"",
-    "dist": "electron-builder --win --publish never"
+    "build": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && tsc -p . && node scripts/copy-assets.mjs",
+    "typecheck": "tsc -p . --noEmit",
+    "test": "npm run build && node --test \"out/test/**/*.test.js\"",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --win --publish never"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "electron": "^44.9.3",
-    "electron-builder": "^26.18.0"
+    "electron-builder": "^26.18.0",
+    "typescript": "^7.0.2"
   },
   "build": {
     "appId": "com.histuan.claude-launcher",
     "productName": "Multi-Account Launcher for Claude",
     "artifactName": "Claude-Launcher-Setup-${version}.${ext}",
-    "directories": { "output": "dist" },
-    "files": ["src/**/*", "package.json"],
-    "win": { "target": "nsis" },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
     "nsis": {
       "oneClick": false,
       "perMachine": false,

@@ -25,8 +25,10 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 
 - Renamed the project to **Multi-Account Launcher for Claude** (folder `claude-launcher`, app id
   `com.histuan.claude-launcher`).
-- Interface and documentation translated to English; all interface texts live in `src/renderer/strings.js`.
-- CI: actions updated to v7 (Node 24); runs on pull requests and on pushes to `main`.
+- Interface and documentation translated to English; all interface texts live in `src/renderer/strings.ts`.
+- Code and tests migrated to TypeScript (`strict`), compiled with `tsc` into `out/`; new `build` and `typecheck` scripts.
+- CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
+  pushes to `main`.
 
 [Unreleased]: https://github.com/histuan/projects/compare/launcher-v0.1.0...HEAD
 [0.1.0]: https://github.com/histuan/projects/releases/tag/launcher-v0.1.0

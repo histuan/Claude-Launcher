@@ -26,7 +26,7 @@ instance of the official app and stays signed in. Nothing more.
 └──────────────────────────────────────────────────────┘
 ```
 
-All interface texts live in `src/renderer/strings.js` (English in v1), so other languages can be added later.
+All interface texts live in `src/renderer/strings.ts` (English in v1), so other languages can be added later.
 
 ### 2.1 Greeting
 

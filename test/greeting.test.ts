@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { greetingFor } from '../src/core/greeting.js';
 import { strings } from '../src/renderer/strings.js';
 
-const at = (h, m = 0) => new Date(2026, 9, 26, h, m);
-const text = (date) => strings.greeting[greetingFor(date)];
+const at = (h: number, m = 0): Date => new Date(2026, 9, 26, h, m);
+const text = (date: Date): string => strings.greeting[greetingFor(date)];
 
 test('Good morning from 5:00 to 11:59', () => {
   assert.equal(text(at(5, 0)), 'Good morning');

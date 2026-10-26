@@ -10,8 +10,9 @@ Next: Phase 2 — Screen (starts only after the merge).
 - Phase 1 (2026-10-26): `package.json` (Electron 44, electron-builder 26, per-user NSIS), `src/` layout, window with
   placeholder text, `src/core/greeting.js` + test, workflow building the `.exe` on Windows.
 - Phase 1.5 (2026-10-26): renamed to **Multi-Account Launcher for Claude** (`claude-launcher/`), docs and interface in
-  English (texts in `src/renderer/strings.js`), PR flow in `CLAUDE.md`, PR template, `CHANGELOG.md`, automatic
-  pre-release on merge to `main`, actions at v7, issues #1–#7 (one per phase), README badges and Download section.
+  English (texts in `src/renderer/strings.ts`), PR flow in `CLAUDE.md`, PR template, `CHANGELOG.md`, automatic
+  pre-release on merge to `main`, actions at v7, issues #1–#7 (one per phase), README badges and Download section,
+  code migrated to TypeScript (`strict`, TypeScript 7, output in `out/`).
 
 ## Missing
 
@@ -27,7 +28,8 @@ Next: Phase 2 — Screen (starts only after the merge).
 - Email and name detected automatically with manual fallback; photo chosen by the person, initial by default.
 - Original icon and free serif font (no logo and no official Claude font).
 - Dark theme only in v1; the launcher closes by itself after opening an account.
-- `src/core` returns language-neutral keys (e.g. `greetingFor()` → `'morning'`); texts come from `strings.js`.
+- TypeScript with plain `tsc` (no bundler); a small `scripts/copy-assets.mjs` copies the renderer's HTML/CSS into `out/`.
+- `src/core` returns language-neutral keys (e.g. `greetingFor()` → `'morning'`); texts come from `strings.ts`.
 
 ## How to test
 

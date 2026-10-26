@@ -5,7 +5,7 @@ import { strings } from '../renderer/strings.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
-function createWindow() {
+function createWindow(): void {
   const win = new BrowserWindow({
     width: 900,
     height: 640,

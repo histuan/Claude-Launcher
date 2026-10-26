@@ -32,6 +32,7 @@ jobs:
           cache: npm
           cache-dependency-path: claude-launcher/package-lock.json
       - run: npm ci
+      - run: npm run typecheck
       - run: npm test
 
   build-windows:
@@ -47,7 +48,9 @@ jobs:
           cache: npm
           cache-dependency-path: claude-launcher/package-lock.json
       - run: npm ci
+      - run: npm run typecheck
       - run: npm test
+      # npm test already compiled the app into out/, which electron-builder packages.
       - run: npx electron-builder --win --publish never
       - uses: actions/upload-artifact@v7
         with:

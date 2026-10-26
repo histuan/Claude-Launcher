@@ -52,7 +52,7 @@ Goal: make the project look like a professional project and be **entirely in Eng
      `docs/WINDOWS.md`, `docs/FASES.md` → `docs/PHASES.md` (including the prompt template, with the new paths).
      Update all cross-references. Exception: `docs/dev-economico.md` is a faithful copy of Thiago's personal skill and
      stays in Portuguese; only replace the top comment with an English line explaining that.
-   - **Interface in English**, with all texts in a single module (`src/renderer/strings.js`) so other languages can be
+   - **Interface in English**, with all texts in a single module (`src/renderer/strings.ts`) so other languages can be
      added later. Greeting: "Good morning" (5:00–11:59), "Good afternoon" (12:00–17:59), "Good evening" (18:00–4:59);
      card "Main"; menu "Rename / Change photo / Remove"; button "Add account"; indicator "● Running".
    - Update the project line in the root `README.md` (new name and link).
@@ -92,7 +92,7 @@ Read: `SCOPE.md` §2, §3.
 
 - Full screen with fake data: greeting (time rule + Windows name + pencil on the name only), cards, Main card,
   horizontal scrolling, add button, ⋯ menu (rename and remove already working in the config; change photo may stay visual).
-- All texts in `src/renderer/strings.js`.
+- All texts in `src/renderer/strings.ts`.
 - Theme CSS variables in one place. Fonts via `@fontsource`. Original icon in SVG + `.ico` for the app and the installer.
 - Launcher config (JSON in `userData`): `{ version, greetingName, accounts: [{ id, label, email, realName, photo, profileDir }] }`
   (`profileDir: null` = Main).
