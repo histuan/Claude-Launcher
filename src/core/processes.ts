@@ -58,3 +58,59 @@ export function runningAccountIds(accounts: Account[], processes: ClaudeProcess[
     .filter((a) => dirs.has(a.profileDir === null ? null : samePath(a.profileDir)))
     .map((a) => a.id);
 }
+
+// ---------- Default profile from the running processes; processes using a folder ----------
+
+export interface RawProcess {
+  pid: number;
+  parentPid: number | null;
+  exe: string | null;
+  args: string[];
+}
+
+/** Any Win32_Process JSON (one object, an array or nothing) into a plain list. */
+export function parseProcessList(json: string): RawProcess[] {
+  if (!json.trim()) return [];
+  const data: unknown = JSON.parse(json);
+  const result: RawProcess[] = [];
+  for (const item of Array.isArray(data) ? data : [data]) {
+    if (typeof item !== 'object' || item === null) continue;
+    const p = item as Record<string, unknown>;
+    if (typeof p.ProcessId !== 'number') continue;
+    result.push({
+      pid: p.ProcessId,
+      parentPid: typeof p.ParentProcessId === 'number' ? p.ParentProcessId : null,
+      exe: typeof p.ExecutablePath === 'string' ? p.ExecutablePath : null,
+      args: splitArgs(typeof p.CommandLine === 'string' ? p.CommandLine : ''),
+    });
+  }
+  return result;
+}
+
+const argValue = (args: string[], name: string): string | null => {
+  const arg = args.find((a) => a.startsWith(`${name}=`));
+  return arg ? arg.slice(name.length + 1) || null : null;
+};
+
+/**
+ * Real folder of the default profile, as the default Claude uses it right now: its main process has no
+ * --user-data-dir, but its Chromium children get --user-data-dir=<profile> (seen on Claude 3.6556.2.0).
+ */
+export function defaultProfileFromProcesses(list: RawProcess[]): string | null {
+  const desktop = list.filter((p) => p.exe !== null && DESKTOP_EXE.test(p.exe));
+  const mains = new Set(desktop
+    .filter((p) => argValue(p.args, '--type') === null && argValue(p.args, '--user-data-dir') === null)
+    .map((p) => p.pid));
+  for (const child of desktop) {
+    if (child.parentPid === null || !mains.has(child.parentPid) || argValue(child.args, '--type') === null) continue;
+    const dir = argValue(child.args, '--user-data-dir');
+    if (dir) return dir;
+  }
+  return null;
+}
+
+/** Processes whose exe lives inside `dir` (e.g. the Claude Code CLI under <profile>\claude-code). */
+export function pidsInsideFolder(list: RawProcess[], dir: string): number[] {
+  const root = `${samePath(dir)}\\`;
+  return list.filter((p) => p.exe !== null && samePath(p.exe).startsWith(root)).map((p) => p.pid);
+}

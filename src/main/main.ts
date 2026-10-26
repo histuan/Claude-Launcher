@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,14 +9,16 @@ import {
   addAccount, defaultConfig, isMain, removeAccount, renameAccount, setGreetingName, type LauncherConfig,
 } from '../core/config.js';
 import { cleanDisplayName } from '../core/name.js';
-import { runningAccountIds } from '../core/processes.js';
+import { pidsInsideFolder, runningAccountIds } from '../core/processes.js';
 import type { Marker, MarkerAccount } from '../core/signIn.js';
 import { strings } from '../renderer/strings.js';
 import { ConfigStore } from './configStore.js';
 import { SignInFlow, type StartError } from './signInFlow.js';
-import { launchClaude, listClaudeProcesses, queryClaudeProcesses, resolveClaudeExe } from './system/claudeApp.js';
 import {
-  freeBytes, isSignedIn, killProcesses, markerFileFor, resolveDefaultSlot,
+  launchClaude, listClaudeProcesses, queryAllProcesses, queryClaudeProcesses, queryClaudeProcessList, resolveClaudeExe,
+} from './system/claudeApp.js';
+import {
+  describeProfileLookup, freeBytes, isSignedIn, killProcesses, markerFileFor, resolveDefaultProfile,
 } from './system/claudeProfile.js';
 import { createProfileDir, deleteProfileDir } from './system/profileFolders.js';
 import { runPowerShell, windowsDisplayName } from './system/windowsUser.js';
@@ -29,6 +32,7 @@ const TEXT = '#F5F4EE';
 const userProfile = process.env.USERPROFILE ?? os.homedir();
 const onWindows = process.platform === 'win32';
 const store = new ConfigStore(path.join(app.getPath('userData'), 'config.json'));
+const signInLog = path.join(app.getPath('userData'), 'sign-in-check.log');
 const defaultName: Promise<string> = onWindows
   ? windowsDisplayName(process.env, runPowerShell)
   : Promise.resolve(cleanDisplayName('', process.env.USERNAME ?? process.env.USER));
@@ -43,6 +47,8 @@ async function state(cfg: LauncherConfig): Promise<LauncherState> {
     greetingName: cfg.greetingName,
     accounts: cfg.accounts,
     signedOut: extra.filter((_a, i) => !signedIn[i]).map((a) => a.id),
+    signInAvailable: (await signInSlot) !== null,
+    signInLog,
     signIn: signInStatus,
   };
 }
@@ -99,6 +105,29 @@ async function onSignInStatus(status: SignInStatus): Promise<void> {
   win?.webContents.send('launcher:signIn', status);
 }
 
+/**
+ * Finds the default profile (see resolveDefaultProfile) and writes the folders checked to sign-in-check.log.
+ * null = not found with confidence: sign-in stays off, opening accounts keeps working.
+ */
+async function lookUpDefaultProfile(): Promise<string | null> {
+  if (!onWindows) return null;
+  const found = await resolveDefaultProfile({
+    run: runPowerShell,
+    env: process.env,
+    listClaudeProcesses: () => queryClaudeProcessList(runPowerShell),
+    exists: existsSync,
+    listDir: (dir) => readdirSync(dir),
+  });
+  const report = describeProfileLookup(found, new Date());
+  if (!found.slot) console.warn(report);
+  await writeFile(signInLog, report, 'utf8').catch((err: unknown) =>
+    console.warn(`Could not write ${signInLog}: ${(err as Error).message}`));
+  return found.slot;
+}
+
+/** Last lookup result (the startup one until a sign-in starts). */
+let signInSlot: Promise<string | null> = Promise.resolve(null);
+
 const markerFile = markerFileFor(process.env);
 const flow = onWindows && markerFile ? new SignInFlow({
   userProfile,
@@ -106,6 +135,7 @@ const flow = onWindows && markerFile ? new SignInFlow({
   listDefaultPids: async () =>
     (await queryClaudeProcesses(runPowerShell)).filter((p) => p.profileDir === null).map((p) => p.pid),
   kill: (pids) => killProcesses(pids),
+  listPidsInside: async (dir) => pidsInsideFolder(await queryAllProcesses(runPowerShell), dir),
   launchDefault: openDefaultClaude,
   freeBytes,
   onStatus: (status) => {
@@ -116,12 +146,17 @@ const flow = onWindows && markerFile ? new SignInFlow({
 setInterval(() => { if (flow?.active) void flow.poll(); }, 500);
 
 const START_ERRORS: Record<StartError, ActionError> = {
-  pending: 'pending', defaultRunning: 'defaultRunning', disk: 'disk', folder: 'folder', launchFailed: 'launchFailed',
+  pending: 'pending', defaultRunning: 'defaultRunning', profileInUse: 'profileInUse', disk: 'disk', folder: 'folder',
+  launchFailed: 'launchFailed',
 };
 
 async function startSignIn(target: SignInTarget): Promise<ActionResult> {
-  const slot = flow ? await resolveDefaultSlot(runPowerShell, process.env) : null;
-  if (!flow || !slot) return result(store.current, 'unsupported');
+  if (!flow) return result(store.current, 'noProfile');
+  if (flow.active) return result(store.current, 'pending');
+  // Looked up again now: the running Claude is the most reliable source.
+  signInSlot = lookUpDefaultProfile();
+  const slot = await signInSlot;
+  if (!slot) return result(store.current, 'noProfile');
   if (!(await resolveClaudeExe(runPowerShell, process.env, existsSync))) return result(store.current, 'notInstalled');
 
   let account: MarkerAccount;
@@ -255,6 +290,7 @@ async function start(): Promise<void> {
   // First run: only Main. Phase 2 sample accounts (demo-*) are dropped by parseConfig.
   await store.load(defaultConfig);
   if (marker) await recoverSignIn(marker);
+  signInSlot = lookUpDefaultProfile(); // after the recovery, which may put the main profile back
   registerIpc();
   createWindow();
 }

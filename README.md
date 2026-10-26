@@ -17,7 +17,7 @@ Versions before 1.0.0 are still in development. Since 0.4.0 the launcher opens a
 accounts by itself.
 
 **Before your first sign-in from the launcher, back up your main Claude profile**: copy the folder
-`%LOCALAPPDATA%\Packages\Claude_<id>\LocalCache\Roaming\Claude` somewhere else (with Claude closed).
+`%LOCALAPPDATA%\Claude-Data\claude_<id>` somewhere else (with Claude and Claude Code closed).
 
 The installer is not signed, so Windows SmartScreen will warn you: choose **More info → Run anyway**.
 It installs per user and does not need administrator rights.

@@ -93,9 +93,16 @@ export const strings = {
       title: 'Could not change the profile folder',
       body: 'Nothing was changed. Close Claude for this account and try again.',
     },
-    unsupported: {
-      title: 'Sign-in is not available',
-      body: 'Signing in from the launcher needs the current Claude desktop app (MSIX package). Reinstall Claude, then try again.',
+    noProfile: {
+      title: 'Sign-in is turned off',
+      body: 'The launcher could not find your main Claude profile with confidence, so it will not move anything. '
+        + 'Opening your accounts still works. Open Claude once, sign in, then restart the launcher. '
+        + 'The folders it checked are listed in sign-in-check.log, in the launcher\'s data folder.',
+    },
+    profileInUse: {
+      title: 'Your Claude folder is in use',
+      body: 'A program started from your main Claude profile folder is still running (for example Claude Code in a '
+        + 'terminal). Nothing was changed. Close it, then try again.',
     },
     pending: {
       title: 'A previous sign-in is not finished',
@@ -113,5 +120,6 @@ export const strings = {
   ok: 'OK',
   cancel: 'Cancel',
   addAccount: 'Add account',
+  signInOff: 'Adding accounts is turned off: the main Claude profile was not found.',
   running: 'Running',
 } as const;

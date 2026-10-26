@@ -16,6 +16,8 @@ interface World {
   target: string;
   account: MarkerAccount;
   pids: number[];
+  /** Processes running from inside the default profile folder (e.g. Claude Code CLI). */
+  insidePids: number[];
   launches: number;
   statuses: SignInStatus[];
   deps: SignInDeps;
@@ -26,7 +28,8 @@ async function world(t: { after: (fn: () => Promise<void>) => void }, opts: { ki
   const root = await mkdtemp(path.join(tmpdir(), 'launcher-signin-'));
   t.after(() => rm(root, { recursive: true, force: true }));
   const userProfile = path.join(root, 'User');
-  const slot = path.join(root, 'Local', 'Packages', 'Claude_x', 'LocalCache', 'Roaming', 'Claude');
+  // Real layout on Claude 3.6556.2.0: %LOCALAPPDATA%\Claude-Data\claude_<id>, cookie in Network\Cookies.
+  const slot = path.join(root, 'Local', 'Claude-Data', 'claude_x');
   if (!opts.noDefaultProfile) {
     await mkdir(path.join(slot, 'Network'), { recursive: true });
     await writeFile(path.join(slot, 'main.txt'), 'MAIN');
@@ -42,6 +45,7 @@ async function world(t: { after: (fn: () => Promise<void>) => void }, opts: { ki
     target,
     account: { id: 'work', label: 'Work', profileDir: target, isNew: opts.isNew ?? true },
     pids: opts.mainRunning === false ? [] : [11],
+    insidePids: [],
     launches: 0,
     statuses: [],
     deps: undefined as unknown as SignInDeps,
@@ -51,6 +55,7 @@ async function world(t: { after: (fn: () => Promise<void>) => void }, opts: { ki
     markerFile: w.markerFile,
     listDefaultPids: async () => [...w.pids],
     kill: async () => { if (opts.killWorks !== false) w.pids = []; },
+    listPidsInside: async (dir) => { assert.equal(dir, w.slot); return [...w.insidePids]; },
     launchDefault: async () => { w.launches++; w.pids = [22]; },
     freeBytes: async () => 10 ** 12,
     minFreeBytes: opts.minFreeBytes ?? 0,
@@ -160,6 +165,16 @@ test('abort: a default Claude that does not close → nothing is touched', async
   assert.equal(existsSync(w.stash), false);
   assert.equal(existsSync(w.markerFile), false);
   assert.equal(w.launches, 0);
+});
+
+test('abort: a program running from inside the profile folder (Claude Code CLI) → nothing moved', async (t) => {
+  const w = await world(t);
+  w.insidePids = [33];
+  assert.equal(await new SignInFlow(w.deps).start(w.slot, w.account), 'profileInUse');
+  assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN');
+  assert.equal(existsSync(w.stash), false);
+  assert.equal(existsSync(w.markerFile), false);
+  assert.equal(w.launches, 1, 'the main Claude it closed is opened again');
 });
 
 test('abort: not enough disk space → main Claude is not even closed', async (t) => {

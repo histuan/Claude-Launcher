@@ -8,6 +8,27 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-26
+
+Fix of the Phase 4 sign-in after the first test on a real PC (Claude 3.6556.2.0).
+
+### Fixed
+
+- The default Claude profile is `%LOCALAPPDATA%\Claude-Data\claude_<id>`, not the MSIX
+  `LocalCache\Roaming\Claude` folder (empty on that version). It is now found on every sign-in: from the
+  `--user-data-dir` of the running default Claude's child processes, else `Claude-Data\<PackageFamilyName lowercased>`,
+  else any `Claude-Data\claude_*` folder, else the old MSIX path; a folder counts only if it holds `Network\Cookies`
+  (or `Cookies`). Nothing is hard-coded.
+- Sign-in detection and the saved-session check look at `<profile>\Network\Cookies` (and its `-journal`/`-wal`).
+
+### Added
+
+- The sign-in stops before touching anything if a program runs from inside the profile folder (for example the
+  Claude Code CLI under `claude-code\…`): "Your Claude folder is in use".
+- Fail-safe: when no profile folder can be trusted, **Add account** and **Sign in** are turned off with a message
+  (opening accounts keeps working) and `sign-in-check.log` in the launcher's data folder lists the folders checked
+  (paths and yes/no only).
+
 ## [0.4.0] - 2026-10-26
 
 Phase 4: signing in extra accounts from the launcher (snapshot flow, `docs/WINDOWS.md` §4).
@@ -119,7 +140,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.0...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.1...HEAD
+[0.4.1]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.0...launcher-v0.4.1
 [0.4.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.3.0...launcher-v0.4.0
 [0.3.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.2.0...launcher-v0.3.0
 [0.2.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.1.0...launcher-v0.2.0
