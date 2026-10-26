@@ -1,8 +1,8 @@
 {
-  "name": "claude-multiconta",
+  "name": "claude-launcher",
   "version": "0.1.0",
   "private": true,
-  "description": "Launcher para abrir o app desktop do Claude em perfis isolados, uma conta por perfil.",
+  "description": "Windows launcher that opens the Claude desktop app in isolated profiles, one account per profile.",
   "type": "module",
   "main": "src/main/main.js",
   "author": "histuan",
@@ -17,9 +17,9 @@
     "electron-builder": "^26.18.0"
   },
   "build": {
-    "appId": "com.histuan.multiconta",
-    "productName": "Multiconta para Claude",
-    "artifactName": "Multiconta-para-Claude-Setup-${version}.${ext}",
+    "appId": "com.histuan.claude-launcher",
+    "productName": "Multi-Account Launcher for Claude",
+    "artifactName": "Claude-Launcher-Setup-${version}.${ext}",
     "directories": { "output": "dist" },
     "files": ["src/**/*", "package.json"],
     "win": { "target": "nsis" },
@@ -30,7 +30,7 @@
       "allowToChangeInstallationDirectory": false,
       "createStartMenuShortcut": true,
       "createDesktopShortcut": false,
-      "shortcutName": "Multiconta para Claude"
+      "shortcutName": "Multi-Account Launcher for Claude"
     }
   }
 }

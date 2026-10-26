@@ -1,2 +1,2 @@
-Único lugar que toca o Windows (PowerShell, processos, pastas do Claude). Tudo injetável para os testes usarem mocks.
-Vazio na Fase 1.
+The only place that touches Windows (PowerShell, processes, Claude folders). Everything is injectable so tests can use mocks.
+Empty in Phase 1.
