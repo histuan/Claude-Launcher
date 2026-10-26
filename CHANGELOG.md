@@ -8,6 +8,29 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-26
+
+Phase 2: the real screen, with sample accounts. Opening accounts arrives in 0.3.0.
+
+### Added
+
+- Launcher screen: greeting by time of day with the Windows display name (first word, stray punctuation removed,
+  `USERNAME` as fallback); hovering the name shows a pencil and the name can be edited (Enter or leaving the field
+  saves, Esc cancels, empty restores the Windows name).
+- Account cards in a single row with horizontal scrolling: initial avatar, card name, email and real name (cut with an
+  ellipsis, full text in a tooltip), hover and keyboard focus. The Main card (default Claude profile) is always first.
+- Card ⋯ menu: **Rename** and **Remove** (with confirmation; not on Main) save to the launcher config;
+  **Change photo** is shown but not available yet. The **Add account** button is visual only.
+- Launcher config `config.json` in the app's `userData` folder (`{ version, greetingName, accounts }`), written
+  atomically; an unreadable file is kept aside as `config.json.corrupt-<time>`. The first run adds two sample
+  accounts (`demo-*`) so the screen can be tried.
+- Original icon (two four-point sparkles) for the app, the installer and the greeting; `npm run icon` regenerates
+  `build/icon.ico` from `build/icon.svg`.
+- Bundled OFL fonts (Source Serif 4 and Inter, variable) via `@fontsource-variable`; theme colours and sizes as CSS
+  variables in one place; dark title bar (`titleBarOverlay`); window 900 × 600, minimum 720 × 480.
+- Tests: display-name cleanup, config rules (Main first, rename, remove), config file read/write, Windows name with a
+  mocked PowerShell.
+
 ### Changed
 
 - Phase 1.6: the project now lives in its own repository, `histuan/Claude-Launcher`, at the repo root.
@@ -42,5 +65,6 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.1.0...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.2.0...HEAD
+[0.2.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.1.0...launcher-v0.2.0
 [0.1.0]: https://github.com/histuan/Claude-Launcher/releases/tag/launcher-v0.1.0

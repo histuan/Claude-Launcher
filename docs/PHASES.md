@@ -96,7 +96,7 @@ with the project at the repo root. No version bump (stays `0.1.0`).
 
 Done when: the PR is open and its workflow run is green.
 
-## Phase 2 — Screen
+## Phase 2 — Screen ✅ (2026-10-26)
 
 Read: `SCOPE.md` §2, §3.
 
@@ -118,6 +118,8 @@ Read: `WINDOWS.md` §1, §2, §3.
 - "● Running" indicator: process query filtered by path, every ~3 s while the window is visible.
 - Temporary until Phase 4: "Add account" only creates the card and the profile folder (no sign-in).
 - Tests with PowerShell mocks (sample JSON outputs, including Claude Code CLI processes that must be ignored).
+- Release type: from 0.3.0 on (the first usable version), publish regular releases marked as latest instead of
+  pre-releases; update the workflow, `CLAUDE.md` and any doc that says pre-release while < 1.0.0.
 
 ## Phase 4 — Sign-in by snapshot
 
