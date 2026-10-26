@@ -1,0 +1,4 @@
+html, body { margin: 0; height: 100%; background: #1f1e1d; color: #ece9e2; font-family: Georgia, serif; }
+main { height: 100%; display: grid; place-content: center; text-align: center; }
+h1 { font-weight: 400; margin: 0 0 .5rem; }
+p { opacity: .7; margin: 0; }
