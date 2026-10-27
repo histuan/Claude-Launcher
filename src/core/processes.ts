@@ -6,6 +6,8 @@ export interface ClaudeProcess {
   pid: number;
   /** --user-data-dir value; null = default profile (Main). */
   profileDir: string | null;
+  /** Only from the window query: the process has a visible top-level window (MainWindowHandle != 0). */
+  hasWindow?: boolean;
 }
 
 // Claude Desktop only. The Claude Code CLI is also called claude.exe, but lives elsewhere.
@@ -45,12 +47,33 @@ export function parseClaudeProcesses(json: string): ClaudeProcess[] {
     const args = splitArgs(typeof cmd === 'string' ? cmd : '');
     if (args.some((a) => a.startsWith('--type='))) continue; // Chromium child process
     const dirArg = args.find((a) => a.startsWith('--user-data-dir='));
-    result.push({ pid, profileDir: dirArg ? dirArg.slice('--user-data-dir='.length) || null : null });
+    const proc: ClaudeProcess = { pid, profileDir: dirArg ? dirArg.slice('--user-data-dir='.length) || null : null };
+    if ('MainWindowHandle' in item) {
+      const handle = (item as Record<string, unknown>).MainWindowHandle;
+      proc.hasWindow = typeof handle === 'number' && handle !== 0;
+    }
+    result.push(proc);
   }
   return result;
 }
 
 const samePath = (p: string): string => path.win32.normalize(p.replace(/\//g, '\\')).replace(/\\+$/, '').toLowerCase();
+
+const sameProfile = (a: string | null, b: string | null): boolean =>
+  (a === null || b === null ? a === b : samePath(a) === samePath(b));
+
+/**
+ * Main processes of one profile only: null = the default profile (no --user-data-dir), else that exact folder.
+ * Other profiles never match, so closing one account never touches another.
+ */
+export function pidsForProfile(processes: ClaudeProcess[], profileDir: string | null): number[] {
+  return processes.filter((p) => sameProfile(p.profileDir, profileDir)).map((p) => p.pid);
+}
+
+/** Whether that profile's main process shows a window (Claude hides in the tray when its window is closed). */
+export function profileHasWindow(processes: ClaudeProcess[], profileDir: string | null): boolean {
+  return processes.some((p) => p.hasWindow === true && sameProfile(p.profileDir, profileDir));
+}
 
 export function runningAccountIds(accounts: Account[], processes: ClaudeProcess[]): string[] {
   const dirs = new Set(processes.map((p) => (p.profileDir === null ? null : samePath(p.profileDir))));

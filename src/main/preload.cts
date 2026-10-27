@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('launcher', {
   onSignIn: (listener: (status: unknown) => void) => {
     ipcRenderer.on('launcher:signIn', (_e, status: unknown) => listener(status));
   },
-  removeAccount: (id: string) => ipcRenderer.invoke('launcher:removeAccount', id),
+  closeAccount: (id: string) => ipcRenderer.invoke('launcher:closeAccount', id),
+  removeAccount: (id: string, closeFirst?: boolean) => ipcRenderer.invoke('launcher:removeAccount', id, closeFirst === true),
   runningAccounts: () => ipcRenderer.invoke('launcher:runningAccounts'),
 });

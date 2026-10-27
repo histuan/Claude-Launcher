@@ -8,6 +8,40 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-27
+
+Phase 4.1: fixes and account controls after testing 0.4.1 on a real PC.
+
+### Fixed
+
+- After a successful sign-in only the main Claude reopened and the new account's window stayed closed. Now the main
+  Claude is put back and the new account opens too, so you land in it. (Present in 0.4.0 and 0.4.1.)
+- The first open of a freshly signed-in account could start Claude in the tray with no window while the launcher
+  closed, so a second click was needed. The launcher now waits (up to ~8 s) for that profile's window, opens it once
+  more after ~3 s without one, and closes only when the window is visible; otherwise it stays open and says so.
+  (Present in 0.4.0 and 0.4.1.)
+- "Not signed in" did not show after signing out inside an account: the `config.json` keys stay after a sign-out.
+  The signal is now the claude.ai `sessionKey` cookie row in `<profile>\Network\Cookies`, read from a temporary copy
+  (cookie names and hosts only; values are never read; the copy is deleted). A running account keeps its last known
+  state; `config.json` is only a fallback when the cookie database cannot be read. Uses Node's built-in
+  `node:sqlite` (no new dependency). (Present in 0.4.0 and 0.4.1.)
+- **Add account** closes only the main (default profile) Claude; extra accounts stay open. Covered by tests now.
+- Sign-in: **Cancel** pressed while the sign-in was already finishing could put the main profile back and then move
+  it into the new account's folder. Cancel is now ignored while finishing, and the "I've signed in" countdown no
+  longer reappears (re-enabling Cancel) once finishing has started. (Found in the 0.4.2 review.)
+
+### Added
+
+- Card ⋯ menu: **Close this account**, enabled only while that account runs. It ends only that profile's Claude
+  (closing the window only hides it in the tray).
+- **Remove** on a running account asks "Cancel" / "Close and remove".
+
+### Changed
+
+- **I've signed in** checks at once and continues if the session is saved; otherwise it shows "Checking… (N s)"
+  for ~15 s with Cancel available, then "No sign-in found…". It never moves or restores anything by itself (before,
+  it waited up to 40 s and then put the main profile back).
+
 ## [0.4.1] - 2026-10-26
 
 Fix of the Phase 4 sign-in after the first test on a real PC (Claude 3.6556.2.0).
@@ -140,7 +174,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.1...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...HEAD
+[0.4.2]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.1...launcher-v0.4.2
 [0.4.1]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.0...launcher-v0.4.1
 [0.4.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.3.0...launcher-v0.4.0
 [0.3.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.2.0...launcher-v0.3.0

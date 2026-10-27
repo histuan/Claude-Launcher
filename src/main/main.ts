@@ -9,17 +9,22 @@ import {
   addAccount, defaultConfig, isMain, removeAccount, renameAccount, setGreetingName, type LauncherConfig,
 } from '../core/config.js';
 import { cleanDisplayName } from '../core/name.js';
-import { pidsInsideFolder, runningAccountIds } from '../core/processes.js';
+import { launchUntilWindow } from '../core/launch.js';
+import { pidsForProfile, pidsInsideFolder, profileHasWindow, runningAccountIds } from '../core/processes.js';
 import type { Marker, MarkerAccount } from '../core/signIn.js';
 import { strings } from '../renderer/strings.js';
+import { closeProfile, removeProfile, type AccountProcessDeps } from './accountActions.js';
 import { ConfigStore } from './configStore.js';
+import { SignedInTracker } from './signedIn.js';
 import { SignInFlow, type StartError } from './signInFlow.js';
 import {
-  launchClaude, listClaudeProcesses, queryAllProcesses, queryClaudeProcesses, queryClaudeProcessList, resolveClaudeExe,
+  launchClaude, listClaudeProcesses, queryAllProcesses, queryClaudeProcesses, queryClaudeProcessList, queryClaudeWindows,
+  resolveClaudeExe,
 } from './system/claudeApp.js';
 import {
   describeProfileLookup, freeBytes, isSignedIn, killProcesses, markerFileFor, resolveDefaultProfile,
 } from './system/claudeProfile.js';
+import { hasSessionCookie } from './system/cookies.js';
 import { createProfileDir, deleteProfileDir } from './system/profileFolders.js';
 import { runPowerShell, windowsDisplayName } from './system/windowsUser.js';
 
@@ -39,14 +44,15 @@ const defaultName: Promise<string> = onWindows
 
 let win: BrowserWindow | null = null;
 
+/** "Not signed in": sessionKey cookie first, config.json keys only when the cookie database cannot be read. */
+const signedInTracker = new SignedInTracker({ sessionCookie: (dir) => hasSessionCookie(dir), configOauth: isSignedIn });
+
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
-  const extra = cfg.accounts.filter((a) => a.profileDir !== null);
-  const signedIn = await Promise.all(extra.map((a) => isSignedIn(a.profileDir as string)));
   return {
     defaultName: await defaultName,
     greetingName: cfg.greetingName,
     accounts: cfg.accounts,
-    signedOut: extra.filter((_a, i) => !signedIn[i]).map((a) => a.id),
+    signedOut: await signedInTracker.signedOut(cfg.accounts, await runningIds()),
     signInAvailable: (await signInSlot) !== null,
     signInLog,
     signIn: signInStatus,
@@ -62,7 +68,15 @@ async function runningIds(): Promise<string[]> {
   return runningAccountIds(store.current.accounts, await listClaudeProcesses(runPowerShell));
 }
 
-/** Opens Claude for the account, then closes the launcher (SCOPE §4.1). */
+const accountProcesses: AccountProcessDeps = {
+  listProcesses: () => queryClaudeProcesses(runPowerShell),
+  kill: (pids) => killProcesses(pids),
+};
+
+/**
+ * Opens Claude for the account and closes the launcher once its window is visible (SCOPE §4.1). A fresh profile may
+ * start in the tray only: launchUntilWindow spawns it once more. No window after ~8 s: the launcher stays open.
+ */
 async function openAccount(id: string): Promise<ActionResult> {
   const account = store.current.accounts.find((a) => a.id === id);
   if (!account) return result(store.current);
@@ -70,12 +84,31 @@ async function openAccount(id: string): Promise<ActionResult> {
   if (!exe) return result(store.current, 'notInstalled');
   try {
     if (account.profileDir !== null) await createProfileDir(account.profileDir, userProfile);
-    await launchClaude(exe, account.profileDir);
+    const shown = await launchUntilWindow({
+      launch: () => launchClaude(exe, account.profileDir),
+      hasWindow: async () => profileHasWindow(await queryClaudeWindows(runPowerShell), account.profileDir),
+    });
+    if (!shown) return result(store.current, 'noWindow');
   } catch (err) {
     console.warn(`Could not open Claude: ${(err as Error).message}`);
     return result(store.current, 'launchFailed');
   }
   setTimeout(() => app.quit(), 0); // after the reply reaches the window
+  return result(store.current);
+}
+
+/** "Close this account": ends only that profile's Claude processes. */
+async function closeAccount(id: string): Promise<ActionResult> {
+  const account = store.current.accounts.find((a) => a.id === id);
+  if (!account || !onWindows) return result(store.current);
+  // During a sign-in the default profile belongs to the sign-in flow (its Cancel closes it).
+  if (flow?.active) return result(store.current, 'pending');
+  try {
+    if (!(await closeProfile(accountProcesses, account.profileDir))) return result(store.current, 'closeFailed');
+  } catch (err) {
+    console.warn(`Could not close the account: ${(err as Error).message}`);
+    return result(store.current, 'closeFailed');
+  }
   return result(store.current);
 }
 
@@ -94,9 +127,10 @@ async function openDefaultClaude(): Promise<void> {
 }
 
 async function onSignInStatus(status: SignInStatus): Promise<void> {
-  const final = !['waiting', 'detected', 'saving'].includes(status.phase);
+  const final = !['waiting', 'detected', 'saving', 'checking', 'notFound'].includes(status.phase);
   signInStatus = final ? null : status;
   if (final) lastSignInOutcome = status;
+  if (status.phase === 'done') signedInTracker.forget(status.account.id);
   if (status.phase === 'done' && status.account.isNew) {
     const { id, label, profileDir } = status.account;
     await store.update((c) => (c.accounts.some((a) => a.id === id) ? c
@@ -132,8 +166,8 @@ const markerFile = markerFileFor(process.env);
 const flow = onWindows && markerFile ? new SignInFlow({
   userProfile,
   markerFile,
-  listDefaultPids: async () =>
-    (await queryClaudeProcesses(runPowerShell)).filter((p) => p.profileDir === null).map((p) => p.pid),
+  // Only the default instance: extra accounts (own --user-data-dir) stay open during Add account.
+  listDefaultPids: async () => pidsForProfile(await queryClaudeProcesses(runPowerShell), null),
   kill: (pids) => killProcesses(pids),
   listPidsInside: async (dir) => pidsInsideFolder(await queryAllProcesses(runPowerShell), dir),
   launchDefault: openDefaultClaude,
@@ -209,17 +243,28 @@ async function recoverSignIn(marker: Marker): Promise<void> {
   }
 }
 
-/** Deletes the profile folder, then the card. Refused while that account's Claude is open (the folder is locked). */
-async function removeExisting(id: string): Promise<ActionResult> {
+/**
+ * Deletes the profile folder, then the card. A running account (its folder is locked) is refused, unless the person
+ * chose "Close and remove": then only that account's Claude is closed first.
+ */
+async function removeExisting(id: string, closeFirst: boolean): Promise<ActionResult> {
   const account = store.current.accounts.find((a) => a.id === id);
   if (!account || isMain(account) || account.profileDir === null) return result(store.current);
-  if ((await runningIds()).includes(id)) return result(store.current, 'running');
+  const dir = account.profileDir;
+  let error: ActionError | null;
   try {
-    await deleteProfileDir(account.profileDir, userProfile);
+    error = await removeProfile({
+      ...accountProcesses,
+      // Off Windows there is no Claude to look for.
+      listProcesses: onWindows ? accountProcesses.listProcesses : async () => [],
+      deleteDir: (d) => deleteProfileDir(d, userProfile),
+    }, dir, closeFirst);
   } catch (err) {
-    console.warn(`Could not delete the profile folder: ${(err as Error).message}`);
-    return result(store.current, 'folder');
+    console.warn(`Could not check the account's processes: ${(err as Error).message}`);
+    error = 'closeFailed';
   }
+  if (error) return result(store.current, error);
+  signedInTracker.forget(id);
   return result(await store.update((c) => removeAccount(c, id)));
 }
 
@@ -245,9 +290,13 @@ function registerIpc(): void {
   });
   ipcMain.handle('launcher:confirmSignIn', () => flow?.confirm());
   ipcMain.handle('launcher:cancelSignIn', () => flow?.cancel());
-  ipcMain.handle('launcher:removeAccount', (_e, id: unknown) => {
+  ipcMain.handle('launcher:closeAccount', (_e, id: unknown) => {
     if (!isText(id)) throw new Error('Invalid arguments');
-    return removeExisting(id);
+    return closeAccount(id);
+  });
+  ipcMain.handle('launcher:removeAccount', (_e, id: unknown, closeFirst: unknown) => {
+    if (!isText(id)) throw new Error('Invalid arguments');
+    return removeExisting(id, closeFirst === true);
   });
   ipcMain.handle('launcher:runningAccounts', () => runningIds());
 }

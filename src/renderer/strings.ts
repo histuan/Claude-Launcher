@@ -22,6 +22,9 @@ export const strings = {
     changePhoto: 'Change photo',
     remove: 'Remove',
     signIn: 'Sign in',
+    close: 'Close this account',
+    /** Tooltip of the greyed "Close this account". */
+    closeOff: 'This account is not running',
   },
   comingSoon: 'Available in a later version',
   rename: {
@@ -32,6 +35,10 @@ export const strings = {
     title: 'Remove account?',
     body: (name: string) => `“${name}” will be removed from the launcher and its Claude profile folder deleted.`,
     confirm: 'Remove',
+    /** The account is running: closing it is part of the removal. */
+    runningBody: (name: string) => `Claude is open with “${name}”. It will be closed, then the account removed from the `
+      + 'launcher and its Claude profile folder deleted.',
+    closeAndRemove: 'Close and remove',
   },
   add: {
     title: 'Add account',
@@ -57,6 +64,8 @@ export const strings = {
       body: 'Closing that window and putting your main Claude back…',
     },
     confirm: 'I\'ve signed in',
+    checking: (seconds: number) => `Checking… (${seconds} s)`,
+    notFound: 'No sign-in found. Sign in in the Claude window, then press I\'ve signed in again.',
     noSession: {
       title: 'The sign-in was not saved',
       body: 'Claude had not saved the session yet, so nothing was kept. Try again and wait a few seconds after signing in.',
@@ -87,7 +96,7 @@ export const strings = {
     },
     running: {
       title: 'Close this account first',
-      body: 'Claude is open with this account. Close its window, then try again.',
+      body: 'Claude is open with this account. Choose “Close this account” in its ⋯ menu, then try again.',
     },
     folder: {
       title: 'Could not change the profile folder',
@@ -111,6 +120,15 @@ export const strings = {
     defaultRunning: {
       title: 'Could not close your main Claude',
       body: 'Nothing was changed. Close Claude yourself, then try again.',
+    },
+    noWindow: {
+      title: 'Claude is starting in the background',
+      body: 'Claude started, but its window has not appeared yet. Look for the Claude icon in the system tray, next to '
+        + 'the clock, or click the card again.',
+    },
+    closeFailed: {
+      title: 'Could not close this account',
+      body: 'Claude is still running with this account. Try again, or quit it from the Claude icon in the system tray.',
     },
     disk: {
       title: 'Not enough disk space',

@@ -28,8 +28,9 @@ export interface SignInDeps {
   sleep?: (ms: number) => Promise<void>;
   /** Pause after the session is detected, so Chromium finishes writing. */
   settleMs?: number;
-  /** "I've signed in": how long to wait for the cookie flush before closing Claude anyway. */
-  flushWaitMs?: number;
+  /** "I've signed in": how long to keep checking for a saved session before saying none was found. */
+  checkMs?: number;
+  now?: () => number;
   closeTimeoutMs?: number;
   pollMs?: number;
 }
@@ -43,6 +44,7 @@ export class SignInFlow {
   private marker: Marker | null = null;
   private watch: LoginWatch | null = null;
   private busy = false;
+  private checking = false;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly pollMs: number;
 
@@ -114,15 +116,33 @@ export class SignInFlow {
     if (!wasDetected && this.watch.detected) this.deps.onStatus({ phase: 'detected' });
   }
 
-  /** "I've signed in" button: waits a little for the cookie flush, then finishes. */
+  /**
+   * "I've signed in" button. Read-only check: finishes at once if the session is already saved on disk; otherwise
+   * keeps checking for ~15 s ("checking" with a countdown, Cancel stays available) and then reports "notFound".
+   * A negative result never stashes, moves or restores anything: the sign-in simply stays open.
+   */
   async confirm(): Promise<void> {
-    if (!this.marker || this.busy) return;
-    this.busy = true;
-    this.deps.onStatus({ phase: 'saving' });
-    const tries = Math.ceil((this.deps.flushWaitMs ?? 40_000) / this.pollMs);
-    for (let i = 0; i < tries && !(await this.sample(Date.now())); i++) await this.sleep(this.pollMs);
-    this.busy = false;
-    await this.finish();
+    const marker = this.marker;
+    if (!marker || this.busy || this.checking) return;
+    this.checking = true;
+    const now = this.deps.now ?? Date.now;
+    const deadline = now() + (this.deps.checkMs ?? 15_000);
+    let shown = -1;
+    try {
+      for (;;) {
+        if (this.marker !== marker || this.busy) return; // cancelled, or the automatic detection is finishing
+        if (await this.sessionSaved(marker.slot)) return await this.finish();
+        if (this.marker !== marker || this.busy) return; // the same, after the read: never re-enable Cancel then
+        const left = Math.ceil((deadline - now()) / 1000);
+        if (left <= 0) break;
+        if (left !== shown) this.deps.onStatus({ phase: 'checking', secondsLeft: left });
+        shown = left;
+        await this.sleep(this.pollMs);
+      }
+      if (this.marker === marker && !this.busy) this.deps.onStatus({ phase: 'notFound' });
+    } finally {
+      this.checking = false;
+    }
   }
 
   // ---------- Finish (steps 6–7) ----------
@@ -135,9 +155,7 @@ export class SignInFlow {
       this.deps.onStatus({ phase: 'saving' });
       await this.sleep(this.deps.settleMs ?? 1200);
       if (!(await this.closeDefault())) return this.failed(marker);
-      const cookies = await Promise.all(COOKIE_FILES.map((f) =>
-        readFile(path.join(marker.slot, f)).catch(() => Buffer.alloc(0))));
-      if (!containsSessionKey(cookies)) {
+      if (!(await this.sessionSaved(marker.slot))) {
         // Never keep a partial session: it would be a broken profile.
         return await this.restore(marker, { phase: 'noSession' });
       }
@@ -165,7 +183,9 @@ export class SignInFlow {
 
   async cancel(): Promise<void> {
     const marker = this.marker;
-    if (!marker) return;
+    // While finishing (or already cancelling) Cancel is ignored: a restore running alongside the finish would put the
+    // main profile back into the slot, and the finish would then move it into the account folder.
+    if (!marker || this.busy) return;
     this.busy = true;
     try {
       if (!(await this.closeDefault())) return this.failed(marker);
@@ -209,6 +229,13 @@ export class SignInFlow {
   }
 
   // ---------- Helpers ----------
+
+  /** The sessionKey cookie is on disk. The slot is a blank profile here, so a plain text search is enough. */
+  private async sessionSaved(slot: string): Promise<boolean> {
+    const cookies = await Promise.all(COOKIE_FILES.map((f) =>
+      readFile(path.join(slot, f)).catch(() => Buffer.alloc(0))));
+    return containsSessionKey(cookies);
+  }
 
   private async beginWatch(): Promise<void> {
     this.watch = new LoginWatch(await this.cookieSignature());

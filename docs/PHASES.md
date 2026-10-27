@@ -132,6 +132,18 @@ Read: `WINDOWS.md` §4. Look at `engine.py` from ai-multi-instance (only the sig
   "crash" in the middle (marker present on startup), default process still alive (abort).
 - "How to test" in `docs/STATUS.md` with a **manual backup first** (copy the default profile folder somewhere else).
 
+## Phase 4.1 — fixes and account controls ✅ (2026-10-27, version 0.4.2)
+
+After testing 0.4.1 on the PC (email and Google sign-in, cancel and crash recovery all worked).
+
+- Bugs: after a sign-in, open the new account too (not only the main Claude); wait for a visible window after opening
+  (spawn once more after ~3 s, keep the launcher open if none after ~8 s); "Not signed in" from the claude.ai
+  `sessionKey` cookie row (temporary copy, names and hosts only) instead of `config.json`; Add account closes only
+  the default instance.
+- Card ⋯ menu: **Close this account** (enabled only while running). **Remove** on a running account: "Close and
+  remove". **I've signed in**: immediate, read-only check with a ~15 s countdown.
+- Docs: `config.json` keys in `WINDOWS.md` §1; `lastKnownAccountUuid` as a Phase 5 candidate in §5.
+
 ## Phase 5 — Account details and photo
 
 Read: `WINDOWS.md` §5, `SCOPE.md` §2.2–2.3.

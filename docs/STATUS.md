@@ -1,7 +1,7 @@
 # Status
 
-**Current phase:** 4 — Sign-in by snapshot. 0.4.0 merged; fix 0.4.1 (real default profile path) in a PR, waiting for
-Thiago's test and merge (issue #3).
+**Current phase:** 4.1 — Fixes and account controls (0.4.2), in a PR, waiting for Thiago's test and merge.
+0.4.0 and 0.4.1 merged; on the PC, sign-in by email and Google, cancel and crash recovery worked.
 Next: Phase 5 — Account details and photo (issue #2).
 
 ## Done
@@ -33,6 +33,11 @@ Next: Phase 5 — Account details and photo (issue #2).
   MSIX LocalCache (empty). Resolution order and fail-safe in `docs/WINDOWS.md` §2; abort when something runs from the
   profile folder (Claude Code CLI); `sign-in-check.log` with the folders checked.
 
+- Phase 4.1 (0.4.2): after a sign-in the new account opens too; opening waits for a visible window (spawns once more
+  after ~3 s, launcher stays open if none after ~8 s); "Not signed in" from the claude.ai `sessionKey` cookie row
+  (`node:sqlite` on a temp copy); **Close this account** in the ⋯ menu; **Close and remove**; **I've signed in** is a
+  read-only check with a 15 s countdown. Add account closes only the default instance (tested).
+
 ## Missing
 
 - Phases 5 and 6 (`docs/PHASES.md`).
@@ -43,12 +48,11 @@ Next: Phase 5 — Account details and photo (issue #2).
 
 - Email and real name are not detected yet: new cards show only their name (SCOPE §4.2.4, `docs/WINDOWS.md` §5).
   The signed-in profile is `account.profileDir`; `src/main/system/claudeProfile.ts` already reads its `config.json`.
-- Sign-in was only tested with mocks and temp folders: the real MSIX behaviour (rename of the default folder while
-  Claude is closed, the cookie flush timing, `taskkill /T /F`) is checked by Thiago's test. If detection never fires,
-  the **I've signed in** button waits up to 40 s for the cookie flush, then saves (or reports "not saved").
-- Not verified on the PC yet: automatic detection also needs the `oauth:tokenCache*` key in `<profile>\config.json`.
-  If that file lives elsewhere on 3.6556.2.0, detection never fires and only **I've signed in** works (it still checks
-  `Network\Cookies` for `sessionKey` before keeping anything). The "Not signed in" label uses the same file.
+- `config.json` holds `oauth:tokenCache`, `oauth:tokenCacheV2` and `lastKnownAccountUuid` (seen in the 0.4.1 test).
+  `lastKnownAccountUuid` may identify the account without secrets: try it first (`docs/WINDOWS.md` §5).
+- Not verified on the PC yet: the window query (`Get-Process` `MainWindowHandle` joined to `Win32_Process` by id) and
+  the cookie reader on a real Chromium `Cookies` file. If "Not signed in" looks wrong, the reader may have failed and
+  fallen back to `config.json` (a warning goes to the console).
 - `launchClaude` uses `windowsHide: true` (CLAUDE.md rule 7). libuv also applies it to GUI windows (`SW_HIDE` in
   `STARTUPINFO`); if Claude's window does not appear when opened from the launcher, this is the first suspect.
 - Old (non-MSIX) install: it opens, but the "Running" indicator and sign-in only support the MSIX package
@@ -80,38 +84,43 @@ Next: Phase 5 — Account details and photo (issue #2).
 - Releases: regular and marked as latest since 0.3.0.
 - Sign-in (Phase 4): the default Claude is closed with `taskkill /PID <pid> /T /F` (as ai-multi-instance does); a failed
   process query counts as "still running" (abort), never as "closed". The main Claude is reopened at the end only if it
-  was open before (cancel and success alike). "Signed in" for a card = `oauth:tokenCache*` key in its `config.json`;
-  "session saved" = the text `sessionKey` in the cookie database files (cookie values are never read or logged).
+  was open before (cancel and success alike); after a success the new account opens too.
+  "Session saved" (inside the sign-in, blank profile) = the text `sessionKey` in the cookie database files.
+- "Signed in" for a card (0.4.2) = a claude.ai `sessionKey` row in `<profile>\Network\Cookies`, queried with the
+  built-in `node:sqlite` on a temporary copy (names and hosts only, never values; copy deleted). A running account
+  keeps its last known state; `config.json` oauth keys only when the database cannot be read. A plain text search is
+  not enough: SQLite keeps a deleted row's text in free pages after a sign-out.
+- Opening an account waits up to ~8 s for that profile's visible window (spawns once more after ~3 s); the launcher
+  closes only then. "Close this account" / "Close and remove" end only that profile's main processes
+  (`taskkill /T /F`): Main = no `--user-data-dir`, extra = its own `--user-data-dir`.
   Minimum free space 500 MB on the drive of the default profile. The Add card is created only when the sign-in succeeds.
 
 ## How to test
 
-Phase 4 (0.4.1, fix of 0.4.0: real profile path). **This phase moves your main Claude profile, so make the backup first.**
+Phase 4.1 (0.4.2). Sign-in still moves your main Claude profile for a moment: keep the backup from the 0.4.1 test
+(`%LOCALAPPDATA%\Claude-Data\claude_…` copied elsewhere), or make a new one with Claude fully closed.
 
-0. **Manual backup:** close Claude completely (also from the tray icon) and any Claude Code terminal. In File
-   Explorer open `%LOCALAPPDATA%\Claude-Data` and copy the **claude_…** folder (≈1 GB; on your PC
-   `claude_pzs8sxrjxfjjc`) somewhere else (e.g. Desktop\Claude-backup). If anything goes wrong: close Claude, delete
-   the `claude_…` folder there and put the copy back with the same name.
-1. Get `Claude-Launcher-Setup-0.4.1.exe`: before the merge, from the PR's Actions run (artifact
-   **launcher-installer**); after the merge, from the **Releases** page (tag `launcher-v0.4.1`). Install over 0.4.0.
-2. Open Claude normally (main account) and then the launcher. The 0.3.0 test card (if any) shows "Not signed in".
-3. **+ Add account** → name "Work" → Continue: your main Claude closes, a blank Claude opens and the launcher shows
-   "Use the new Claude window to sign in". While it is open, `%LOCALAPPDATA%\Claude-Data` has
-   `claude_….launcher-stash` and `%LOCALAPPDATA%\ClaudeLauncher\login-pending.json` exists.
-4. Sign in there with **another** account (try email and, on a second card, Google). Within about a minute the dialog
-   goes to "Signed in" → "Saving the session…", the blank Claude closes, the **Work** card appears and your main Claude
-   reopens **still signed in to your main account**. The stash folder and the marker are gone.
-5. Click **Work**: Claude opens signed in to that account, next to the main one. If step 4 never moves on by itself,
-   press **I've signed in** (it may wait up to 40 s) and tell me.
-6. **Cancel:** start another Add, then press **Cancel** in the dialog: the blank Claude closes, no card is added and the
-   main Claude comes back signed in.
-7. **Crash/recovery:** start another Add, and while the dialog is open kill the launcher in Task Manager
-   ("Multi-Account Launcher for Claude"). Open the launcher again: it asks "A sign-in was interrupted". **Restore main
-   profile** → main Claude is back as before. (Optional: repeat and choose **Continue sign-in**.)
-8. **Sign in on an existing card:** on the 0.3.0 card ("Not signed in"), click it → Continue → sign in → that card
-   now opens signed in (no new card).
-9. **Fail-safe / Claude Code:** with a Claude Code terminal open, start an Add: it stops with "Your Claude folder is
-   in use" and nothing moves. If "+ Add account" is greyed out with "Adding accounts is turned off", send me
-   `sign-in-check.log` (launcher's data folder under `%APPDATA%`): it lists the folders checked.
-10. Send me `login-pending.json` (no secrets in it) if anything stops halfway, plus the names of the folders in
-   `%LOCALAPPDATA%\Claude-Data`.
+0. Get `Claude-Launcher-Setup-0.4.2.exe`: before the merge, from the PR's Actions run (artifact
+   **launcher-installer**); after the merge, from the **Releases** page (tag `launcher-v0.4.2`). Install over 0.4.1.
+1. **(a) New account opens after sign-in:** open your main Claude, then the launcher → **+ Add account** → name it →
+   sign in with another account. At the end your main Claude reopens **and** the new account's Claude opens, signed
+   in; the launcher closes once that window shows.
+2. **(b) First open shows a window:** quit that new account (step 5 below, or from its tray icon), then click its card
+   once. Its Claude window must appear with one click and only then the launcher closes. If no window appears within
+   ~8 s, the launcher stays open with "Claude is starting in the background" (tell me if you see this).
+3. **(c) "Not signed in":** in an extra account's Claude, sign out from inside Claude, then close it with **Close
+   this account** (step 5). Reopen the launcher: that card says **Not signed in**. Sign in on it again (card → Continue)
+   and it no longer says so. While an account is running, its label does not change.
+4. **(d) Add account keeps extra accounts open:** with an extra account open, start **+ Add account**: only the main
+   Claude closes; the extra account's window stays. Cancel the dialog afterwards.
+5. **(e) Close this account:** open an account, reopen the launcher, wait for **Running** on its card, then ⋯ →
+   **Close this account**: that Claude disappears (also from the tray) and **Running** goes off; other accounts stay
+   open. On a card that is not running, the item is greyed ("This account is not running"). Also try it on Main.
+6. **(f) Remove a running account:** with a test account running, ⋯ → **Remove**: the dialog offers **Cancel** and
+   **Close and remove**. Cancel keeps everything; Close and remove closes only that account and removes the card.
+7. **(g) I've signed in:** start **+ Add account** and, **before** signing in, press **I've signed in**: it shows
+   "Checking… (15 s)" counting down, Cancel works meanwhile, and at the end "No sign-in found…"; the blank Claude stays
+   open and nothing moves. Now sign in there and press it again: it continues at once (or within the countdown).
+8. **(h) Docs:** nothing to test (`docs/WINDOWS.md` §1 and §5 record the `config.json` keys).
+9. If anything stops halfway, send me `login-pending.json` (`%LOCALAPPDATA%\ClaudeLauncher`, no secrets in it) and the
+   names of the folders in `%LOCALAPPDATA%\Claude-Data`.
