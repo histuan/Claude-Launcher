@@ -9,7 +9,7 @@ import {
   containsSessionKey, hasOauth, LoginWatch, MARKER_VERSION, parseMarker, STASH_SUFFIX, type Marker, type MarkerAccount,
 } from '../core/signIn.js';
 
-export type StartError = 'pending' | 'defaultRunning' | 'disk' | 'folder' | 'launchFailed';
+export type StartError = 'pending' | 'defaultRunning' | 'profileInUse' | 'disk' | 'folder' | 'launchFailed';
 
 export interface SignInDeps {
   userProfile: string;
@@ -18,6 +18,8 @@ export interface SignInDeps {
   /** Main processes of the default Claude instance (no --user-data-dir). */
   listDefaultPids(): Promise<number[]>;
   kill(pids: number[]): Promise<void>;
+  /** Any process whose exe lives inside `dir` (e.g. the Claude Code CLI under <profile>\claude-code). */
+  listPidsInside(dir: string): Promise<number[]>;
   /** Opens Claude without flag (default profile). */
   launchDefault(): Promise<void>;
   freeBytes(dir: string): Promise<number>;
@@ -32,7 +34,9 @@ export interface SignInDeps {
   pollMs?: number;
 }
 
-const COOKIE_FILES = ['Cookies', 'Cookies-journal', 'Cookies-wal'];
+// The login cookie lives in <profile>\Network\Cookies; plain <profile>\Cookies only in old layouts.
+// Partitions\*\Network\Cookies (launch previews) are not looked at.
+const COOKIE_FILES = ['Cookies', 'Cookies-journal', 'Cookies-wal'].flatMap((f) => [path.join('Network', f), f]);
 const exists = (p: string): Promise<boolean> => stat(p).then(() => true, () => false);
 
 export class SignInFlow {
@@ -65,6 +69,12 @@ export class SignInFlow {
     const pids = await this.deps.listDefaultPids();
     const mainWasRunning = pids.length > 0;
     if (!(await this.closeDefault())) return 'defaultRunning';
+    // Something else still runs from the profile folder (e.g. Claude Code in a terminal): it would lock files or
+    // break when its folder moves. Do not touch it; give the person their main Claude back.
+    if ((await this.deps.listPidsInside(slot)).length > 0) {
+      if (mainWasRunning) await this.deps.launchDefault().catch(() => undefined);
+      return 'profileInUse';
+    }
 
     const marker: Marker = {
       version: MARKER_VERSION, state: 'signing-in', slot, stash, stashed: await exists(slot), mainWasRunning,
@@ -126,7 +136,7 @@ export class SignInFlow {
       await this.sleep(this.deps.settleMs ?? 1200);
       if (!(await this.closeDefault())) return this.failed(marker);
       const cookies = await Promise.all(COOKIE_FILES.map((f) =>
-        readFile(path.join(marker.slot, 'Network', f)).catch(() => Buffer.alloc(0))));
+        readFile(path.join(marker.slot, f)).catch(() => Buffer.alloc(0))));
       if (!containsSessionKey(cookies)) {
         // Never keep a partial session: it would be a broken profile.
         return await this.restore(marker, { phase: 'noSession' });
@@ -215,7 +225,7 @@ export class SignInFlow {
   /** Size and time of the cookie files. Only stat: the database is locked while Claude runs. */
   private async cookieSignature(): Promise<string> {
     const slot = this.marker?.slot ?? '';
-    const parts = await Promise.all(COOKIE_FILES.map((f) => stat(path.join(slot, 'Network', f))
+    const parts = await Promise.all(COOKIE_FILES.map((f) => stat(path.join(slot, f))
       .then((s) => `${s.size}:${s.mtimeMs}`, () => '-')));
     return parts.join('|');
   }

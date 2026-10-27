@@ -34,6 +34,7 @@ const PENCIL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const cardName = (a: Account): string => a.label ?? strings.mainAccount;
 const isMain = (a: Account): boolean => a.profileDir === null;
 const isSignedOut = (a: Account): boolean => state.signedOut.includes(a.id);
+const signInOff = (): boolean => !state.signInAvailable;
 const initial = (name: string): string => (Array.from(name.trim())[0] ?? '?').toLocaleUpperCase();
 
 // ---------- Greeting (SCOPE §2.1) ----------
@@ -149,11 +150,12 @@ function openMenu(account: Account, owner: HTMLElement): void {
       button.addEventListener('click', () => { closeMenu(); action(); });
     } else {
       button.setAttribute('aria-disabled', 'true');
-      button.title = strings.comingSoon;
+      button.title = extra.title ?? strings.comingSoon;
     }
     return button;
   };
-  const items = isSignedOut(account) ? [item(strings.menu.signIn, () => void signIn(account))] : [];
+  const items = !isSignedOut(account) ? []
+    : [signInOff() ? item(strings.menu.signIn, null, { title: strings.signInOff }) : item(strings.menu.signIn, () => void signIn(account))];
   items.push(
     item(strings.menu.rename, () => void rename(account)),
     item(strings.menu.changePhoto, null), // the photo picker arrives in Phase 5
@@ -239,13 +241,31 @@ async function remove(account: Account): Promise<void> {
 
 // ---------- Sign-in (WINDOWS.md §4): the main process runs the flow, the window shows its progress ----------
 
+/** Sign-in is off when the main Claude profile was not found with confidence: explain instead of starting. */
+async function explainSignInOff(): Promise<boolean> {
+  if (!signInOff()) return false;
+  await showResult({ state, error: 'noProfile' });
+  return true;
+}
+
+function renderSignInAvailability(): void {
+  const off = signInOff();
+  add.setAttribute('aria-disabled', String(off));
+  add.title = off ? strings.signInOff : '';
+  const note = byId('signin-note');
+  note.textContent = off ? strings.signInOff : '';
+  note.hidden = !off;
+}
+
 async function addNew(): Promise<void> {
+  if (await explainSignInOff()) return;
   const label = await ask({ title: strings.add.title, body: strings.add.body, value: '', confirm: strings.add.confirm });
   if (label === null || !label.trim()) return;
   await startSignIn(await api.startSignIn({ label }));
 }
 
 async function signIn(account: Account): Promise<void> {
+  if (await explainSignInOff()) return;
   const ok = await ask({ title: strings.signIn.title(cardName(account)), body: strings.signIn.body, confirm: strings.signIn.start });
   if (ok === null) return;
   await startSignIn(await api.startSignIn({ accountId: account.id }));
@@ -284,6 +304,7 @@ function showSignIn(status: SignInStatus): void {
 async function signInFinished(status: SignInStatus): Promise<void> {
   state = await api.getState();
   renderCards();
+  renderSignInAvailability();
   if (status.phase === 'noSession') {
     await ask({ title: strings.signIn.noSession.title, body: strings.signIn.noSession.body, confirm: strings.ok, cancel: false });
   } else if (status.phase === 'failed') {
@@ -299,9 +320,11 @@ api.onSignIn(showSignIn);
 async function showResult(result: ActionResult): Promise<void> {
   state = result.state;
   renderCards();
+  renderSignInAvailability();
   if (result.error) {
     const text = strings.errors[result.error];
-    await ask({ title: text.title, body: text.body, confirm: strings.ok, cancel: false });
+    const body = result.error === 'noProfile' ? `${text.body}\n\n${state.signInLog}` : text.body;
+    await ask({ title: text.title, body, confirm: strings.ok, cancel: false });
   }
 }
 
@@ -318,6 +341,7 @@ state = await api.getState();
 renderGreetingText();
 renderName();
 renderCards();
+renderSignInAvailability();
 setInterval(renderGreetingText, 30_000); // follows the morning/afternoon/evening boundary
 void pollRunning();
 if (state.signIn) showSignIn(state.signIn); // a sign-in resumed on startup

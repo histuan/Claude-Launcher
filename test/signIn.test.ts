@@ -12,6 +12,8 @@ test('marker: round trip; stash must be the slot + suffix and the slot the Claud
   assert.deepEqual(parseMarker(JSON.parse(JSON.stringify(marker))), marker);
   assert.equal(parseMarker({ ...marker, stash: 'C:\\elsewhere' }), null);
   assert.equal(parseMarker({ ...marker, slot: 'C:\\Users\\x', stash: 'C:\\Users\\x.launcher-stash' }), null);
+  const real = 'C:\\L\\Claude-Data\\claude_pzs8sxrjxfjjc';
+  assert.equal(parseMarker({ ...marker, slot: real, stash: real + '.launcher-stash' })?.slot, real);
   assert.equal(parseMarker({ ...marker, state: 'weird' }), null);
   assert.equal(parseMarker({ ...marker, account: null }), null);
   assert.equal(parseMarker('nope'), null);

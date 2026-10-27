@@ -1,7 +1,7 @@
 // Finds, lists and opens the Claude desktop app (WINDOWS.md §1–3). The app itself is never copied or changed.
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import { parseClaudeProcesses, type ClaudeProcess } from '../../core/processes.js';
+import { parseClaudeProcesses, parseProcessList, type ClaudeProcess, type RawProcess } from '../../core/processes.js';
 import type { RunPowerShell } from './windowsUser.js';
 
 const UTF8 = '[Console]::OutputEncoding = [Text.Encoding]::UTF8';
@@ -10,7 +10,11 @@ const APPX_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-AppxPa
 
 // Filtering by exe path happens in parseClaudeProcesses (tested), not here.
 const PROCESS_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -Filter "Name='claude.exe'" `
-  + '| Select-Object ProcessId, ExecutablePath, CommandLine)';
+  + '| Select-Object ProcessId, ParentProcessId, ExecutablePath, CommandLine)';
+
+// Every process, exe path only (no command lines): to find programs running from inside a profile folder.
+const ALL_PROCESSES_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process `
+  + '| Select-Object ProcessId, ExecutablePath)';
 
 /**
  * Path to Claude.exe, resolved on every call (the MSIX folder changes on every update).
@@ -45,6 +49,16 @@ export async function resolveClaudeExe(
 /** Running Claude Desktop main processes. Throws if the query fails (the sign-in flow must not guess). */
 export async function queryClaudeProcesses(run: RunPowerShell): Promise<ClaudeProcess[]> {
   return parseClaudeProcesses(await run(PROCESS_SCRIPT));
+}
+
+/** Every claude.exe with its parent and command line (to read the default profile from its children). Throws. */
+export async function queryClaudeProcessList(run: RunPowerShell): Promise<RawProcess[]> {
+  return parseProcessList(await run(PROCESS_SCRIPT));
+}
+
+/** Every process with its exe path. Throws if the query fails. */
+export async function queryAllProcesses(run: RunPowerShell): Promise<RawProcess[]> {
+  return parseProcessList(await run(ALL_PROCESSES_SCRIPT));
 }
 
 /** Same, for the "Running" indicator: errors give an empty list (the indicator just stays off). */

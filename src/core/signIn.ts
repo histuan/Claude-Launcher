@@ -26,8 +26,9 @@ export interface Marker {
   startedAt: number;
 }
 
-// The default profile is always ...\LocalCache\Roaming\Claude (either separator, so tests run on Linux too).
-const SLOT = /[\\/]LocalCache[\\/]Roaming[\\/]Claude$/i;
+// The default profile is %LOCALAPPDATA%\Claude-Data\claude_<id> (verified on Claude 3.6556.2.0), or the old
+// MSIX ...\LocalCache\Roaming\Claude as a last fallback. Either separator, so tests run on Linux too.
+const SLOT = /([\\/]Claude-Data[\\/]claude_[^\\/]+|[\\/]LocalCache[\\/]Roaming[\\/]Claude)$/i;
 
 const str = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
 

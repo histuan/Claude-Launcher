@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultConfig, type Account } from '../src/core/config.js';
-import { parseClaudeProcesses, runningAccountIds } from '../src/core/processes.js';
+import {
+  defaultProfileFromProcesses, parseClaudeProcesses, parseProcessList, pidsInsideFolder, runningAccountIds,
+} from '../src/core/processes.js';
 
 const APP = 'C:\\Program Files\\WindowsApps\\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe';
 const CLI = 'C:\\Users\\thiag\\AppData\\Local\\Claude-Data\\x\\claude-code\\2.1.0\\claude.exe';
@@ -46,4 +48,28 @@ test('maps processes to account ids (Main = no flag; paths compared without case
   assert.deepEqual(runningAccountIds(accounts, [{ pid: 1, profileDir: 'c:/users/THIAG/ClaudeProfiles/Work/' }]), ['work']);
   assert.deepEqual(runningAccountIds(accounts, [{ pid: 1, profileDir: null }]), ['main']);
   assert.deepEqual(runningAccountIds(accounts, []), []);
+});
+
+const PROFILE = 'C:\\Users\\thiag\\AppData\\Local\\Claude-Data\\claude_pzs8sxrjxfjjc';
+const ALL = JSON.stringify([
+  { ProcessId: 100, ParentProcessId: 4, ExecutablePath: APP, CommandLine: `"${APP}"` },
+  { ProcessId: 101, ParentProcessId: 100, ExecutablePath: APP, CommandLine: `"${APP}" --type=gpu-process "--user-data-dir=${PROFILE}"` },
+  // An extra account: its children carry its own folder and must not be taken for the default one.
+  { ProcessId: 200, ParentProcessId: 4, ExecutablePath: APP, CommandLine: `"${APP}" --user-data-dir=C:\\Users\\thiag\\ClaudeProfiles\\work` },
+  { ProcessId: 201, ParentProcessId: 200, ExecutablePath: APP, CommandLine: `"${APP}" --type=renderer --user-data-dir=C:\\Users\\thiag\\ClaudeProfiles\\work` },
+  { ProcessId: 300, ParentProcessId: 1, ExecutablePath: `${PROFILE}\\claude-code\\2.1.0\\claude.exe`, CommandLine: 'claude' },
+  { ProcessId: 400, ParentProcessId: 1, ExecutablePath: `${PROFILE}-other\\x.exe`, CommandLine: null },
+  { ProcessId: 500, ExecutablePath: null },
+]);
+
+test('default profile = --user-data-dir of a child of the default (flagless) main process', () => {
+  assert.equal(defaultProfileFromProcesses(parseProcessList(ALL)), PROFILE);
+  const onlyExtra = parseProcessList(ALL).filter((p) => p.pid !== 100 && p.pid !== 101);
+  assert.equal(defaultProfileFromProcesses(onlyExtra), null);
+  assert.equal(defaultProfileFromProcesses(parseProcessList('')), null);
+});
+
+test('processes running from inside a folder (not a sibling with the same prefix)', () => {
+  assert.deepEqual(pidsInsideFolder(parseProcessList(ALL), PROFILE.toUpperCase() + '\\'), [300]);
+  assert.deepEqual(pidsInsideFolder(parseProcessList(ALL), 'C:\\Elsewhere'), []);
 });

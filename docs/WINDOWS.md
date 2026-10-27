@@ -15,6 +15,10 @@ Windows adaptation of the macOS guide "Run a Separate Claude Desktop App for Eac
 | `claude.exe` process list | 1 main without flag, 1 with `--user-data-dir`, and **Claude Code CLI processes** also named `claude.exe` (under `%LOCALAPPDATA%\Claude-Data\...\claude-code\...`) |
 | `Win32_UserAccount.FullName` | `"histuan ."` (not the real name; that is why the greeting is editable) |
 | App console output | `MaxListenersExceededWarning` warnings from Claude itself: harmless. The launcher opens Claude with `stdio: 'ignore'` |
+| **Real default profile** (Phase 4 test, 2026-10-26) | `%LOCALAPPDATA%\Claude-Data\claude_<publisher id>` (here `claude_pzs8sxrjxfjjc` = `PackageFamilyName` lowercased), ~1 GB. The main `Claude.exe` has no `--user-data-dir`; its Chromium children run with `--user-data-dir="%LOCALAPPDATA%\Claude-Data\claude_pzs8sxrjxfjjc"` |
+| MSIX LocalCache | `%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Roaming\Claude` and `…\LocalCache\Local\Claude` exist but are **empty** (0 MB) |
+| Login cookie | `<profile>\Network\Cookies` (not at the root). `Partitions\launch-preview-*\Network\Cookies` also exist: ignored |
+| Claude Code CLI | Its binaries live in the same folder (`<profile>\claude-code\…`) and run from there while desktop sessions are open |
 
 ## 2. macOS guide → Windows
 
@@ -29,9 +33,19 @@ Windows adaptation of the macOS guide "Run a Separate Claude Desktop App for Eac
 | Shared `~/.claude` | Same: `%USERPROFILE%\.claude` is shared by all instances |
 | Per-account scheduled tasks | Out of v1 |
 
-Real folder of the default profile (MSIX redirects `%APPDATA%\Claude`):
-`%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Roaming\Claude`.
-Get `PackageFamilyName` from `Get-AppxPackage` (on Thiago's PC: `Claude_pzs8sxrjxfjjc`), never hard-coded.
+Real folder of the default profile (verified on Claude 3.6556.2.0): `%LOCALAPPDATA%\Claude-Data\claude_<id>`.
+The old assumption (`%LOCALAPPDATA%\Packages\<PackageFamilyName>\LocalCache\Roaming\Claude`) is wrong on that
+version: the folder is empty. The launcher resolves it on every sign-in, never hard-coded, in this order, and accepts a
+folder only if it holds `Network\Cookies` (or `Cookies`):
+
+1. the `--user-data-dir` of the running default Claude's children (exe path filter of CLAUDE.md rule 4; the child's
+   parent is the flagless main process);
+2. `%LOCALAPPDATA%\Claude-Data\<PackageFamilyName lowercased>` (`PackageFamilyName` from `Get-AppxPackage`);
+3. any `%LOCALAPPDATA%\Claude-Data\claude_*` folder (stash folders ignored);
+4. last fallback: the MSIX LocalCache path above.
+
+No match → sign-in is turned off (Add account / Sign in disabled with a message; opening accounts keeps working) and
+the folders checked are written to `sign-in-check.log` in the launcher's `userData` (paths and yes/no only).
 
 Known limitation: local agent mode uses **one VM per machine**; only one instance can use it at a time.
 
@@ -60,9 +74,12 @@ per profile is not possible on current Windows. Source: README of `Zoltak-Dev/ai
 **Solution** (same idea as ai-multi-instance; credit it in the README):
 
 ```
+0. Resolve the default profile folder (§2); none found with confidence → do not start
 1. Confirm with the person → close all DEFAULT Claude instances
+   → abort if any process whose exe is inside the profile folder still runs (e.g. Claude Code CLI)
 2. Write marker  %LOCALAPPDATA%\ClaudeLauncher\login-pending.json  (state + paths)
-3. STASH: rename the default profile folder → "Claude.launcher-stash"   (same volume: atomic rename)
+3. STASH: rename the default profile folder → "<folder>.launcher-stash"   (same parent: atomic rename)
+   e.g. Claude-Data\claude_<id> → Claude-Data\claude_<id>.launcher-stash
 4. Open the default Claude (no flag) → starts clean → the person signs in
 5. Detect sign-in (automatic) or "I've signed in" button (fallback) or "Cancel"
 6. Close the default Claude → move the signed-in folder → %USERPROFILE%\ClaudeProfiles\<id>
@@ -76,7 +93,9 @@ Flow rules:
 - On startup, the launcher looks for the marker **before anything else**. If it exists: offer "restore main profile" (default)
   or "continue sign-in".
 - Cancel at any point = close the default Claude, delete the new folder (it is disposable) and undo the stash.
-- **Sign-in detection:** the app is signed in when the `sessionKey` cookie exists. The cookie database is locked while the app
+- The profile folder also holds the Claude Code CLI (`claude-code\…`): the stash moves it too, so nothing may run from it.
+- **Sign-in detection:** the app is signed in when the `sessionKey` cookie exists, in `<profile>\Network\Cookies`
+  (plus its `-journal`/`-wal`; `Partitions\*` are ignored). The cookie database is locked while the app
   is open, so watch for changes in the cookie database and its `-journal`/`-wal`, together with the profile's `config.json`
   (a plain file, readable while the app is open), ignoring writes at app startup. See how ai-multi-instance does it
   (`engine.py`) before inventing anything. Always keep the manual button.

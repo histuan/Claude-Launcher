@@ -18,6 +18,10 @@ export interface LauncherState {
   accounts: Account[];
   /** Ids of the extra accounts whose profile is not signed in yet (they get a "Sign in" action). */
   signedOut: string[];
+  /** false when the default Claude profile could not be found with confidence: Add account / Sign in are off. */
+  signInAvailable: boolean;
+  /** Diagnostics file listing the folders checked (paths only). */
+  signInLog: string;
   /** Sign-in in progress (e.g. resumed on startup), or null. */
   signIn: SignInStatus | null;
 }
@@ -29,7 +33,7 @@ export type SignInTarget = { label: string } | { accountId: string };
 export type ActionError =
   | 'notInstalled' | 'launchFailed' | 'running' | 'folder'
   // sign-in
-  | 'unsupported' | 'pending' | 'defaultRunning' | 'disk';
+  | 'noProfile' | 'pending' | 'defaultRunning' | 'profileInUse' | 'disk';
 
 export interface ActionResult {
   state: LauncherState;
