@@ -224,6 +224,45 @@ test('"I\'ve signed in": Cancel during the countdown cancels; no notFound afterw
   assert.equal(existsSync(w.markerFile), false);
 });
 
+test('Cancel while the sign-in is finishing is ignored: the main profile is never moved to the account', async (t) => {
+  const w = await world(t);
+  let releaseSettle: () => void = () => undefined;
+  w.deps.settleMs = 1200;
+  w.deps.sleep = (ms) => (ms === 1200 ? new Promise<void>((r) => { releaseSettle = r; }) : Promise.resolve());
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await signInInClaude(w, flow, false);
+  // Automatic detection: token + a later cookie write (no sessionKey yet) → finish starts and pauses in its settle.
+  await writeFile(path.join(w.slot, 'Network', 'Cookies'), 'startup changed');
+  const finishing = flow.poll(9000);
+  for (let i = 0; i < 200 && last(w)?.phase !== 'saving'; i++) await new Promise((r) => setTimeout(r, 5));
+  assert.equal(last(w)?.phase, 'saving');
+  await flow.cancel(); // e.g. a stale "checking" status re-enabled the Cancel button
+  releaseSettle();
+  await finishing;
+  assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN', 'the main profile is back in place');
+  assert.equal(existsSync(path.join(w.target, 'main.txt')), false, 'the main profile was not moved to the account');
+  assert.deepEqual(last(w), { phase: 'noSession' });
+  assert.equal(w.statuses.some((s) => s.phase === 'cancelled'), false);
+});
+
+test('"I\'ve signed in" never shows the countdown again once the sign-in is finishing', async (t) => {
+  const w = await world(t);
+  clockFor(w);
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await signInInClaude(w, flow, false);
+  // The automatic detection fires while "I've signed in" is reading the cookie files: a large file (no sessionKey)
+  // keeps that read slow, while the detection tick only stats it.
+  await writeFile(path.join(w.slot, 'Network', 'Cookies'), Buffer.alloc(32 * 1024 ** 2, 'x'));
+  const confirming = flow.confirm();
+  const polling = flow.poll(9000); // runs while confirm awaits its first read
+  await Promise.all([confirming, polling]);
+  const saving = w.statuses.findIndex((s) => s.phase === 'saving');
+  assert.notEqual(saving, -1);
+  assert.equal(w.statuses.slice(saving).some((s) => s.phase === 'checking'), false, 'no countdown after saving');
+});
+
 test('abort: a default Claude that does not close → nothing is touched', async (t) => {
   const w = await world(t, { killWorks: false });
   const flow = new SignInFlow(w.deps);

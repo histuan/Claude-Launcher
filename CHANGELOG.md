@@ -26,6 +26,9 @@ Phase 4.1: fixes and account controls after testing 0.4.1 on a real PC.
   state; `config.json` is only a fallback when the cookie database cannot be read. Uses Node's built-in
   `node:sqlite` (no new dependency). (Present in 0.4.0 and 0.4.1.)
 - **Add account** closes only the main (default profile) Claude; extra accounts stay open. Covered by tests now.
+- Sign-in: **Cancel** pressed while the sign-in was already finishing could put the main profile back and then move
+  it into the new account's folder. Cancel is now ignored while finishing, and the "I've signed in" countdown no
+  longer reappears (re-enabling Cancel) once finishing has started. (Found in the 0.4.2 review.)
 
 ### Added
 

@@ -132,6 +132,7 @@ export class SignInFlow {
       for (;;) {
         if (this.marker !== marker || this.busy) return; // cancelled, or the automatic detection is finishing
         if (await this.sessionSaved(marker.slot)) return await this.finish();
+        if (this.marker !== marker || this.busy) return; // the same, after the read: never re-enable Cancel then
         const left = Math.ceil((deadline - now()) / 1000);
         if (left <= 0) break;
         if (left !== shown) this.deps.onStatus({ phase: 'checking', secondsLeft: left });
@@ -182,7 +183,9 @@ export class SignInFlow {
 
   async cancel(): Promise<void> {
     const marker = this.marker;
-    if (!marker) return;
+    // While finishing (or already cancelling) Cancel is ignored: a restore running alongside the finish would put the
+    // main profile back into the slot, and the finish would then move it into the account folder.
+    if (!marker || this.busy) return;
     this.busy = true;
     try {
       if (!(await this.closeDefault())) return this.failed(marker);
