@@ -19,6 +19,9 @@ Windows adaptation of the macOS guide "Run a Separate Claude Desktop App for Eac
 | MSIX LocalCache | `%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Roaming\Claude` and `…\LocalCache\Local\Claude` exist but are **empty** (0 MB) |
 | Login cookie | `<profile>\Network\Cookies` (not at the root). `Partitions\launch-preview-*\Network\Cookies` also exist: ignored |
 | Claude Code CLI | Its binaries live in the same folder (`<profile>\claude-code\…`) and run from there while desktop sessions are open |
+| `<profile>\config.json` after sign-in (0.4.1 test, 2026-10-27) | Holds **both** `oauth:tokenCache` and `oauth:tokenCacheV2`, plus `lastKnownAccountUuid`. These keys can **stay after signing out**, so they are not a signed-in signal: the launcher uses the claude.ai `sessionKey` cookie row (names and hosts only, from a temporary copy of `Network\Cookies`) and falls back to these keys only when the cookie database cannot be read |
+| Closing the window | Claude keeps running in the tray: the process remains until it is ended ("Close this account" in the launcher) |
+| First open of a freshly signed-in profile | Claude may start in the tray without a window; spawning the same command again shows it (single-instance re-activation) |
 
 ## 2. macOS guide → Windows
 
@@ -81,7 +84,8 @@ per profile is not possible on current Windows. Source: README of `Zoltak-Dev/ai
 3. STASH: rename the default profile folder → "<folder>.launcher-stash"   (same parent: atomic rename)
    e.g. Claude-Data\claude_<id> → Claude-Data\claude_<id>.launcher-stash
 4. Open the default Claude (no flag) → starts clean → the person signs in
-5. Detect sign-in (automatic) or "I've signed in" button (fallback) or "Cancel"
+5. Detect sign-in (automatic) or "I've signed in" button (fallback, read-only: it checks for the saved session for
+   ~15 s and, if none, says so and leaves everything as it is) or "Cancel"
 6. Close the default Claude → move the signed-in folder → %USERPROFILE%\ClaudeProfiles\<id>
 7. Undo the stash (rename back) → delete marker → reopen the main Claude
 ```
@@ -113,6 +117,9 @@ Order of attempts, stopping at the first that works:
 3. Manual: the person types the email when adding the account.
 
 Store only email and name in the launcher config. Never store the token.
+
+Phase 5 candidate: `config.json` has `lastKnownAccountUuid` (seen in the 0.4.1 test). It may identify the account
+without any secret; check whether it maps to the email before trying option 2.
 
 ## 6. References
 

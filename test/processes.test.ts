@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultConfig, type Account } from '../src/core/config.js';
 import {
-  defaultProfileFromProcesses, parseClaudeProcesses, parseProcessList, pidsInsideFolder, runningAccountIds,
+  defaultProfileFromProcesses, parseClaudeProcesses, parseProcessList, pidsForProfile, pidsInsideFolder, profileHasWindow,
+  runningAccountIds,
 } from '../src/core/processes.js';
 
 const APP = 'C:\\Program Files\\WindowsApps\\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe';
@@ -72,4 +73,27 @@ test('default profile = --user-data-dir of a child of the default (flagless) mai
 test('processes running from inside a folder (not a sibling with the same prefix)', () => {
   assert.deepEqual(pidsInsideFolder(parseProcessList(ALL), PROFILE.toUpperCase() + '\\'), [300]);
   assert.deepEqual(pidsInsideFolder(parseProcessList(ALL), 'C:\\Elsewhere'), []);
+});
+
+test('pidsForProfile: null = default instance only; a folder matches only that profile', () => {
+  const list = parseClaudeProcesses(SAMPLE);
+  assert.deepEqual(pidsForProfile(list, null), [100]);
+  assert.deepEqual(pidsForProfile(list, 'c:/users/THIAG/claudeprofiles/work/'), [200]);
+  assert.deepEqual(pidsForProfile(list, 'C:\\Users\\thiag\\ClaudeProfiles\\nope'), []);
+});
+
+test('window query: MainWindowHandle 0 or null = no window (Claude in the tray)', () => {
+  const json = JSON.stringify([
+    { ProcessId: 100, ExecutablePath: APP, CommandLine: `"${APP}"`, MainWindowHandle: 0 },
+    { ProcessId: 101, ExecutablePath: APP, CommandLine: `"${APP}" --type=gpu-process`, MainWindowHandle: 77 },
+    { ProcessId: 200, ExecutablePath: APP, CommandLine: `"${APP}" --user-data-dir=C:\\P\\work`, MainWindowHandle: 4242 },
+    { ProcessId: 201, ExecutablePath: APP, CommandLine: `"${APP}" --user-data-dir=C:\\P\\home`, MainWindowHandle: null },
+  ]);
+  const list = parseClaudeProcesses(json);
+  assert.deepEqual(list.map((p) => p.hasWindow), [false, true, false]);
+  assert.equal(profileHasWindow(list, null), false);
+  assert.equal(profileHasWindow(list, 'C:\\P\\work'), true);
+  assert.equal(profileHasWindow(list, 'C:\\P\\home'), false);
+  assert.equal(profileHasWindow(parseClaudeProcesses(SAMPLE), 'C:\\Users\\thiag\\ClaudeProfiles\\work'), false,
+    'the plain process query has no window information');
 });

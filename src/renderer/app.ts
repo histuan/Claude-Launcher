@@ -118,15 +118,17 @@ function renderRunning(): void {
   for (const el of document.querySelectorAll<HTMLElement>('.running')) el.hidden = !running.has(el.dataset.id ?? '');
 }
 
-async function pollRunning(): Promise<void> {
-  if (!document.hidden) {
-    try {
-      running = new Set(await api.runningAccounts());
-      renderRunning();
-    } catch {
-      // keep the last known state; the next poll tries again
-    }
+async function refreshRunning(): Promise<void> {
+  try {
+    running = new Set(await api.runningAccounts());
+    renderRunning();
+  } catch {
+    // keep the last known state; the next poll tries again
   }
+}
+
+async function pollRunning(): Promise<void> {
+  if (!document.hidden) await refreshRunning();
   setTimeout(() => void pollRunning(), 3000);
 }
 
@@ -159,6 +161,9 @@ function openMenu(account: Account, owner: HTMLElement): void {
   items.push(
     item(strings.menu.rename, () => void rename(account)),
     item(strings.menu.changePhoto, null), // the photo picker arrives in Phase 5
+    running.has(account.id)
+      ? item(strings.menu.close, () => void closeAccount(account))
+      : item(strings.menu.close, null, { title: strings.menu.closeOff }),
   );
   if (!isMain(account)) items.push(item(strings.menu.remove, () => void remove(account), { class: 'danger' }));
   menu.replaceChildren(...items);
@@ -232,11 +237,29 @@ async function rename(account: Account): Promise<void> {
 }
 
 async function remove(account: Account): Promise<void> {
-  const ok = await ask({
-    title: strings.remove.title, body: strings.remove.body(cardName(account)), confirm: strings.remove.confirm, danger: true,
+  const name = cardName(account);
+  /** A running account gets "Cancel" / "Close and remove" (its folder is locked while Claude runs). */
+  const askRunning = (): Promise<string | null> => ask({
+    title: strings.remove.title, body: strings.remove.runningBody(name), confirm: strings.remove.closeAndRemove, danger: true,
   });
+  const isRunning = running.has(account.id);
+  const ok = isRunning
+    ? await askRunning()
+    : await ask({ title: strings.remove.title, body: strings.remove.body(name), confirm: strings.remove.confirm, danger: true });
   if (ok === null) return;
-  await showResult(await api.removeAccount(account.id));
+  let result = await api.removeAccount(account.id, isRunning);
+  // The "Running" indicator is refreshed every ~3 s: the account may have started in between.
+  if (result.error === 'running') {
+    if ((await askRunning()) === null) return;
+    result = await api.removeAccount(account.id, true);
+  }
+  await showResult(result);
+  await refreshRunning();
+}
+
+async function closeAccount(account: Account): Promise<void> {
+  await showResult(await api.closeAccount(account.id));
+  await refreshRunning();
 }
 
 // ---------- Sign-in (WINDOWS.md §4): the main process runs the flow, the window shows its progress ----------
@@ -287,6 +310,16 @@ signInConfirm.addEventListener('click', () => { lockSignIn(); void api.confirmSi
 signInCancel.addEventListener('click', () => { lockSignIn(); void api.cancelSignIn(); });
 
 function showSignIn(status: SignInStatus): void {
+  if (status.phase === 'checking' || status.phase === 'notFound') {
+    // "I've signed in": countdown, then the hint. Cancel stays available; nothing was moved.
+    byId('signin-title').textContent = strings.signIn.waiting.title;
+    byId('signin-body').textContent = status.phase === 'checking'
+      ? strings.signIn.checking(status.secondsLeft) : strings.signIn.notFound;
+    signInConfirm.disabled = status.phase === 'checking';
+    signInCancel.disabled = false;
+    if (!signInDialog.open) signInDialog.showModal();
+    return;
+  }
   if (status.phase === 'waiting' || status.phase === 'detected' || status.phase === 'saving') {
     const text = strings.signIn[status.phase];
     byId('signin-title').textContent = text.title;
@@ -305,7 +338,11 @@ async function signInFinished(status: SignInStatus): Promise<void> {
   state = await api.getState();
   renderCards();
   renderSignInAvailability();
-  if (status.phase === 'noSession') {
+  if (status.phase === 'done') {
+    // The main Claude was already put back (and reopened if it was open); now open the new account so the person
+    // lands in it. The launcher closes once its window is visible.
+    await showResult(await api.openAccount(status.account.id));
+  } else if (status.phase === 'noSession') {
     await ask({ title: strings.signIn.noSession.title, body: strings.signIn.noSession.body, confirm: strings.ok, cancel: false });
   } else if (status.phase === 'failed') {
     await ask({

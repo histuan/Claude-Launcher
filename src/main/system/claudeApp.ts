@@ -12,6 +12,13 @@ const APPX_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-AppxPa
 const PROCESS_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -Filter "Name='claude.exe'" `
   + '| Select-Object ProcessId, ParentProcessId, ExecutablePath, CommandLine)';
 
+// Same list plus each process's main window handle (0 = no visible window, e.g. Claude hidden in the tray).
+// Get-Process gives the handle, Win32_Process the command line; joined by process id.
+const WINDOW_SCRIPT = `${UTF8}; $w = @{}; Get-Process -Name claude -ErrorAction SilentlyContinue `
+  + '| ForEach-Object { $w[[int]$_.Id] = [int64]$_.MainWindowHandle }; '
+  + `ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -Filter "Name='claude.exe'" `
+  + "| Select-Object ProcessId, ExecutablePath, CommandLine, @{n='MainWindowHandle';e={$w[[int]$_.ProcessId]}})";
+
 // Every process, exe path only (no command lines): to find programs running from inside a profile folder.
 const ALL_PROCESSES_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process `
   + '| Select-Object ProcessId, ExecutablePath)';
@@ -49,6 +56,11 @@ export async function resolveClaudeExe(
 /** Running Claude Desktop main processes. Throws if the query fails (the sign-in flow must not guess). */
 export async function queryClaudeProcesses(run: RunPowerShell): Promise<ClaudeProcess[]> {
   return parseClaudeProcesses(await run(PROCESS_SCRIPT));
+}
+
+/** Claude Desktop main processes with hasWindow set (to confirm a window appeared after opening). Throws. */
+export async function queryClaudeWindows(run: RunPowerShell): Promise<ClaudeProcess[]> {
+  return parseClaudeProcesses(await run(WINDOW_SCRIPT));
 }
 
 /** Every claude.exe with its parent and command line (to read the default profile from its children). Throws. */
