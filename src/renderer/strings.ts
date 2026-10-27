@@ -1,5 +1,6 @@
 // Every user-facing text lives here, so other languages can be added later.
-import type { ActionError } from '../core/api.js';
+import type { ActionError, StartStep } from '../core/api.js';
+import type { CardBadge } from '../core/card.js';
 import type { GreetingPeriod } from '../core/greeting.js';
 
 export const strings = {
@@ -15,6 +16,12 @@ export const strings = {
   yourName: 'Your name',
   accounts: 'Accounts',
   mainAccount: 'Main',
+  /** Small fixed badge on a card; Main keeps it when renamed. */
+  badges: {
+    main: 'Main',
+  } satisfies Record<CardBadge, string>,
+  /** Bottom-left corner, e.g. "v0.4.3". */
+  version: (version: string) => `v${version}`,
   openAccount: (name: string) => `Open ${name}`,
   accountOptions: (name: string) => `Options for ${name}`,
   menu: {
@@ -55,13 +62,18 @@ export const strings = {
       body: 'A blank Claude window opened. Sign in there with the account for this card (email or Google). '
         + 'The launcher notices it by itself.',
     },
-    detected: {
-      title: 'Signed in',
-      body: 'Waiting for Claude to save the session. This can take up to a minute.',
+    /** Shown at once after the click, until the sign-in window is up. */
+    starting: {
+      title: 'Getting a sign-in window ready',
+      steps: {
+        closing: 'Closing Claude…',
+        preparing: 'Preparing a clean profile…',
+        opening: 'Opening sign-in window…',
+      } satisfies Record<StartStep, string>,
     },
     saving: {
       title: 'Saving the session',
-      body: 'Closing that window and putting your main Claude back…',
+      body: 'Closing that window and putting your main Claude back. This can take up to a minute.',
     },
     confirm: 'I\'ve signed in',
     checking: (seconds: number) => `Checking… (${seconds} s)`,

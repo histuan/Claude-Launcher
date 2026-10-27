@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { existsSync, readdirSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { appendFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +22,8 @@ import {
   resolveClaudeExe,
 } from './system/claudeApp.js';
 import {
-  describeProfileLookup, freeBytes, isSignedIn, killProcesses, markerFileFor, resolveDefaultProfile,
+  closeProcessesGracefully, describeProfileLookup, freeBytes, isProcessAlive, isSignedIn, killProcesses, markerFileFor,
+  resolveDefaultProfile,
 } from './system/claudeProfile.js';
 import { hasSessionCookie } from './system/cookies.js';
 import { createProfileDir, deleteProfileDir } from './system/profileFolders.js';
@@ -38,6 +39,8 @@ const userProfile = process.env.USERPROFILE ?? os.homedir();
 const onWindows = process.platform === 'win32';
 const store = new ConfigStore(path.join(app.getPath('userData'), 'config.json'));
 const signInLog = path.join(app.getPath('userData'), 'sign-in-check.log');
+/** Step timings of Add account / Sign in (paths and durations only, no secrets). Appended; restarted past 64 KB. */
+const timingsLog = path.join(app.getPath('userData'), 'sign-in-timings.log');
 const defaultName: Promise<string> = onWindows
   ? windowsDisplayName(process.env, runPowerShell)
   : Promise.resolve(cleanDisplayName('', process.env.USERNAME ?? process.env.USER));
@@ -56,6 +59,7 @@ async function state(cfg: LauncherConfig): Promise<LauncherState> {
     signInAvailable: (await signInSlot) !== null,
     signInLog,
     signIn: signInStatus,
+    version: app.getVersion(),
   };
 }
 
@@ -126,8 +130,21 @@ async function openDefaultClaude(): Promise<void> {
   await launchClaude(exe, null);
 }
 
+/** Timing lines are written in order, never block the flow, and a failed write only warns. */
+let timingWork: Promise<void> = Promise.resolve();
+function logTiming(line: string): void {
+  const text = `${new Date().toISOString()}  ${line}\n`;
+  console.log(`[sign-in] ${line}`);
+  timingWork = timingWork
+    .then(async () => {
+      const size = await stat(timingsLog).then((s) => s.size, () => 0);
+      await (size > 64 * 1024 ? writeFile(timingsLog, text, 'utf8') : appendFile(timingsLog, text, 'utf8'));
+    })
+    .catch((err: unknown) => console.warn(`Could not write ${timingsLog}: ${(err as Error).message}`));
+}
+
 async function onSignInStatus(status: SignInStatus): Promise<void> {
-  const final = !['waiting', 'detected', 'saving', 'checking', 'notFound'].includes(status.phase);
+  const final = !['starting', 'waiting', 'saving', 'checking', 'notFound'].includes(status.phase);
   signInStatus = final ? null : status;
   if (final) lastSignInOutcome = status;
   if (status.phase === 'done') signedInTracker.forget(status.account.id);
@@ -168,16 +185,20 @@ const flow = onWindows && markerFile ? new SignInFlow({
   markerFile,
   // Only the default instance: extra accounts (own --user-data-dir) stay open during Add account.
   listDefaultPids: async () => pidsForProfile(await queryClaudeProcesses(runPowerShell), null),
+  closeGracefully: (pids) => closeProcessesGracefully(pids),
   kill: (pids) => killProcesses(pids),
+  isAlive: (pid) => isProcessAlive(pid),
   listPidsInside: async (dir) => pidsInsideFolder(await queryAllProcesses(runPowerShell), dir),
   launchDefault: openDefaultClaude,
   freeBytes,
+  log: logTiming,
   onStatus: (status) => {
     statusWork = statusWork.then(() => onSignInStatus(status)).catch((err: unknown) =>
       console.warn(`Sign-in status: ${(err as Error).message}`));
   },
 }) : null;
-setInterval(() => { if (flow?.active) void flow.poll(); }, 500);
+// Detection: the oauth key names in config.json, checked every ~1 s while a sign-in is open.
+setInterval(() => { if (flow?.active) void flow.poll(); }, 1000);
 
 const START_ERRORS: Record<StartError, ActionError> = {
   pending: 'pending', defaultRunning: 'defaultRunning', profileInUse: 'profileInUse', disk: 'disk', folder: 'folder',
@@ -187,11 +208,14 @@ const START_ERRORS: Record<StartError, ActionError> = {
 async function startSignIn(target: SignInTarget): Promise<ActionResult> {
   if (!flow) return result(store.current, 'noProfile');
   if (flow.active) return result(store.current, 'pending');
-  // Looked up again now: the running Claude is the most reliable source.
+  const t0 = Date.now();
+  logTiming(`--- ${'label' in target ? 'Add account' : 'Sign in'}`);
+  // Looked up again now: the running Claude is the most reliable source. Both PowerShell queries run in parallel.
   signInSlot = lookUpDefaultProfile();
-  const slot = await signInSlot;
+  const [slot, exe] = await Promise.all([signInSlot, resolveClaudeExe(runPowerShell, process.env, existsSync)]);
+  logTiming(`start: find the main profile and Claude.exe: ${Date.now() - t0} ms`);
   if (!slot) return result(store.current, 'noProfile');
-  if (!(await resolveClaudeExe(runPowerShell, process.env, existsSync))) return result(store.current, 'notInstalled');
+  if (!exe) return result(store.current, 'notInstalled');
 
   let account: MarkerAccount;
   if ('label' in target) {
@@ -204,14 +228,22 @@ async function startSignIn(target: SignInTarget): Promise<ActionResult> {
     if ((await runningIds()).includes(card.id)) return result(store.current, 'running');
     account = { id: card.id, label: card.label ?? card.id, profileDir: card.profileDir, isNew: false };
   }
+  let error: ActionError | null;
   try {
-    const error = await flow.start(slot, account);
-    return result(store.current, error ? START_ERRORS[error] : null);
+    const startError = await flow.start(slot, account);
+    error = startError ? START_ERRORS[startError] : null;
   } catch (err) {
     // E.g. the process query failed: we cannot prove the default Claude is closed, so nothing was touched.
     console.warn(`Sign-in not started: ${(err as Error).message}`);
-    return result(store.current, 'defaultRunning');
+    error = 'defaultRunning';
   }
+  // The step statuses reach the window before this reply; a failed start leaves no "starting" status behind.
+  await statusWork;
+  if (error) {
+    signInStatus = null;
+    logTiming(`start: stopped (${error}): ${Date.now() - t0} ms`);
+  }
+  return result(store.current, error);
 }
 
 /** Runs before the window and before anything touches Claude: finishes or undoes an interrupted sign-in. */

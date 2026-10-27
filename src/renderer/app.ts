@@ -1,4 +1,7 @@
-import type { ActionResult, LauncherApi, LauncherState, SignInStatus } from '../core/api.js';
+import {
+  START_STEPS, type ActionResult, type LauncherApi, type LauncherState, type SignInStatus, type SignInTarget, type StartStep,
+} from '../core/api.js';
+import { cardBadge } from '../core/card.js';
 import type { Account } from '../core/config.js';
 import { greetingFor } from '../core/greeting.js';
 import { strings } from './strings.js';
@@ -92,12 +95,14 @@ function renderCards(): void {
     open.addEventListener('click', () => void (isSignedOut(account) ? signIn(account) : openAccount(account, open)));
     const status = h('span', { class: 'running', 'data-id': account.id }, strings.running);
     status.hidden = !running.has(account.id);
+    const badge = cardBadge(account);
+    const extra = badge ? [h('span', { class: 'badge' }, strings.badges[badge])] : [];
     const more = h('button', {
       class: 'card-menu', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
       'aria-label': strings.accountOptions(name), title: strings.accountOptions(name),
     }, '⋯');
     more.addEventListener('click', () => openMenu(account, more));
-    return h('div', { class: 'card' }, open, status, more);
+    return h('div', { class: 'card' }, open, status, ...extra, more);
   });
   byId('cards').replaceChildren(...cards);
 }
@@ -284,19 +289,36 @@ async function addNew(): Promise<void> {
   if (await explainSignInOff()) return;
   const label = await ask({ title: strings.add.title, body: strings.add.body, value: '', confirm: strings.add.confirm });
   if (label === null || !label.trim()) return;
-  await startSignIn(await api.startSignIn({ label }));
+  await startSignIn({ label });
 }
 
 async function signIn(account: Account): Promise<void> {
   if (await explainSignInOff()) return;
   const ok = await ask({ title: strings.signIn.title(cardName(account)), body: strings.signIn.body, confirm: strings.signIn.start });
   if (ok === null) return;
-  await startSignIn(await api.startSignIn({ accountId: account.id }));
+  await startSignIn({ accountId: account.id });
 }
 
-async function startSignIn(result: ActionResult): Promise<void> {
+/** True between the click and the reply: "starting" steps are shown only then (never a stale one later). */
+let starting = false;
+
+/** The dialog shows at once with its steps; the main process moves them on while it works. */
+async function startSignIn(target: SignInTarget): Promise<void> {
+  starting = true;
+  showSignIn({ phase: 'starting', step: 'closing' });
+  let result: ActionResult;
+  try {
+    result = await api.startSignIn(target);
+  } finally {
+    starting = false;
+  }
+  if (result.error && signInDialog.open) {
+    signInDialog.close();
+    shownPhase = null;
+  }
+  // The "waiting" status normally arrived already; this only covers a missed one.
+  if (!result.error && shownPhase === 'starting') showSignIn({ phase: 'waiting' });
   await showResult(result);
-  if (!result.error) showSignIn({ phase: 'waiting' });
 }
 
 const signInDialog = byId<HTMLDialogElement>('signin');
@@ -308,8 +330,29 @@ signInDialog.addEventListener('cancel', (e) => e.preventDefault()); // Esc does 
 const lockSignIn = (): void => { signInConfirm.disabled = true; signInCancel.disabled = true; };
 signInConfirm.addEventListener('click', () => { lockSignIn(); void api.confirmSignIn(); });
 signInCancel.addEventListener('click', () => { lockSignIn(); void api.cancelSignIn(); });
+const signInSteps = byId<HTMLOListElement>('signin-steps');
+let shownPhase: SignInStatus['phase'] | null = null;
+
+/** The start steps: done ✓, the current one, the next ones dimmed. */
+function renderSteps(current: StartStep): void {
+  const at = START_STEPS.indexOf(current);
+  signInSteps.replaceChildren(...START_STEPS.map((step, i) =>
+    h('li', { class: i < at ? 'done' : i === at ? 'current' : 'next' }, strings.signIn.starting.steps[step])));
+}
 
 function showSignIn(status: SignInStatus): void {
+  if (status.phase === 'starting' && !starting) return; // a step that arrived after the reply
+  shownPhase = status.phase;
+  signInSteps.hidden = status.phase !== 'starting';
+  signInConfirm.hidden = status.phase === 'starting'; // nothing to confirm before the sign-in window is up
+  if (status.phase === 'starting') {
+    byId('signin-title').textContent = strings.signIn.starting.title;
+    byId('signin-body').textContent = '';
+    renderSteps(status.step);
+    lockSignIn(); // nothing to confirm or cancel until the sign-in window is up
+    if (!signInDialog.open) signInDialog.showModal();
+    return;
+  }
   if (status.phase === 'checking' || status.phase === 'notFound') {
     // "I've signed in": countdown, then the hint. Cancel stays available; nothing was moved.
     byId('signin-title').textContent = strings.signIn.waiting.title;
@@ -320,7 +363,7 @@ function showSignIn(status: SignInStatus): void {
     if (!signInDialog.open) signInDialog.showModal();
     return;
   }
-  if (status.phase === 'waiting' || status.phase === 'detected' || status.phase === 'saving') {
+  if (status.phase === 'waiting' || status.phase === 'saving') {
     const text = strings.signIn[status.phase];
     byId('signin-title').textContent = text.title;
     byId('signin-body').textContent = text.body;
@@ -331,6 +374,7 @@ function showSignIn(status: SignInStatus): void {
     return;
   }
   if (signInDialog.open) signInDialog.close();
+  shownPhase = null;
   void signInFinished(status);
 }
 
@@ -375,6 +419,7 @@ add.textContent = `+ ${strings.addAccount}`;
 add.addEventListener('click', () => void addNew());
 
 state = await api.getState();
+byId('version').textContent = strings.version(state.version);
 renderGreetingText();
 renderName();
 renderCards();
