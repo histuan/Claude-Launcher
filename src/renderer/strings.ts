@@ -1,6 +1,6 @@
 // Every user-facing text lives here, so other languages can be added later.
 import type { ActionError, StartStep } from '../core/api.js';
-import type { CardBadge } from '../core/card.js';
+import type { CardBadge, CardStatus } from '../core/card.js';
 import type { GreetingPeriod } from '../core/greeting.js';
 
 export const strings = {
@@ -160,5 +160,9 @@ export const strings = {
   cancel: 'Cancel',
   addAccount: 'Add account',
   signInOff: 'Adding accounts is turned off: the main Claude profile was not found.',
-  running: 'Running',
+  status: {
+    running: 'Running',
+    runningSignedOut: 'Running · Not signed in',
+    checking: 'Checking…',
+  } satisfies Record<CardStatus, string>,
 } as const;

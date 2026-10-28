@@ -22,10 +22,10 @@ import {
   resolveClaudeExe,
 } from './system/claudeApp.js';
 import {
-  closeProcessesGracefully, describeProfileLookup, freeBytes, isProcessAlive, isSignedIn, killProcesses, markerFileFor,
+  closeProcessesGracefully, describeProfileLookup, freeBytes, isProcessAlive, killProcesses, markerFileFor,
   resolveDefaultProfile,
 } from './system/claudeProfile.js';
-import { hasSessionCookie } from './system/cookies.js';
+import { readSessionCookie } from './system/cookies.js';
 import { createProfileDir, deleteProfileDir } from './system/profileFolders.js';
 import { runPowerShell, windowsDisplayName } from './system/windowsUser.js';
 
@@ -47,15 +47,23 @@ const defaultName: Promise<string> = onWindows
 
 let win: BrowserWindow | null = null;
 
-/** "Not signed in": sessionKey cookie first, config.json keys only when the cookie database cannot be read. */
-const signedInTracker = new SignedInTracker({ sessionCookie: (dir) => hasSessionCookie(dir), configOauth: isSignedIn });
+/**
+ * "Not signed in": only a valid sessionKey cookie decides (never the config.json keys). Running accounts are not read
+ * (their cookie database is locked); a closed one is retried for ~10 s while still locked, then the window redraws.
+ * Each final decision goes to sign-in-timings.log ("card check <id>: cookie not found"), never cookie data.
+ */
+const signedInTracker = new SignedInTracker({
+  sessionCookie: (dir) => readSessionCookie(dir),
+  log: (line) => logTiming(line),
+  onChange: () => win?.webContents.send('launcher:cardsChanged'),
+});
 
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
   return {
     defaultName: await defaultName,
     greetingName: cfg.greetingName,
     accounts: cfg.accounts,
-    signedOut: await signedInTracker.signedOut(cfg.accounts, await runningIds()),
+    ...(await signedInTracker.cards(cfg.accounts, await runningIds())),
     signInAvailable: (await signInSlot) !== null,
     signInLog,
     timingsLog,

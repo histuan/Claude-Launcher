@@ -22,6 +22,7 @@ Windows adaptation of the macOS guide "Run a Separate Claude Desktop App for Eac
 | `<profile>\config.json` after sign-in (0.4.1 test, 2026-10-27) | Holds **both** `oauth:tokenCache` and `oauth:tokenCacheV2`, plus `lastKnownAccountUuid`. These keys can **stay after signing out**, so they are not a signed-in signal: the launcher uses the claude.ai `sessionKey` cookie row (names and hosts only, from a temporary copy of `Network\Cookies`) and falls back to these keys only when the cookie database cannot be read |
 | `config.json` as a sign-in signal (0.4.2 test, 2026-10-27) | A **fresh** profile has no `oauth:tokenCache*` keys; right after signing in, `config.json` gets `oauth:tokenCache` and `oauth:tokenCacheV2`. `config.json` is a plain file, readable while Claude runs, so the key **names** appearing are the fast sign-in signal (values are never read). Signing **out** does not change these keys |
 | Cookie database while running | `Network\Cookies` is locked while Claude runs and Chromium writes new cookies lazily (about every 30 s, and when it exits normally); a forced end loses cookies not written yet |
+| Cookie database lock (0.4.5 test, 2026-10-28) | Every copy fails with `EBUSY` while Claude runs, so a sign-out inside Claude **cannot be detected while the account runs**; only after it is closed. Right after "Close this account" the file stays locked for a few seconds, and the `oauth:tokenCache*` keys (still there after the sign-out) wrongly said "signed in": the keys no longer decide anything |
 | Force-end before the cookie commit (0.4.4 build tests, 2026-10-28) | Force-ending ~2 s after the keys, or once the profile folder had been quiet for ~5 s (10–17 s), opened the new account on the **sign-in screen**; the files changed after the keys never included `Network\` (no `Cookies` write yet). With 0.4.3 (force-end after ~35–43 s) it was signed in. **Chromium commits the cookie database about every 30 s, and the desktop sign-in needs that write**: the `oauth:tokenCache*` keys alone are not enough |
 | Launcher logs (0.4.4 build test) | `%APPDATA%\claude-launcher\` (`sign-in-timings.log`, `sign-in-check.log`), not `%APPDATA%\Multi-Account Launcher for Claude` |
 | Close request (0.4.3 test, 2026-10-28) | `taskkill /PID <pid> /T` (no `/F`) **never** closes Claude: it hides in the tray. `sign-in-timings.log` showed "close main Claude: forced" every time (~8 s with the old ~5 s wait) |
@@ -119,8 +120,15 @@ Flow rules:
 - **Finish (0.4.4):** the keys are only the start of the sign-in (§1). Step 6 waits for Chromium's cookie commit
   (about every 30 s) before the force-end, logging `finish: wait for the cookie write: written|cap: N ms`. Without
   a write within ~45 s nothing moves and the person chooses Wait longer or Cancel.
-- **Card signed-in check:** the claude.ai `sessionKey` cookie row (temporary copy, profile closed), as in 0.4.2;
-  the `oauth:tokenCache*` keys only when the cookie database cannot be read (they stay after a sign-out).
+- **Card signed-in check (0.4.5):** only a claude.ai `sessionKey` row that is not expired (`expires_utc` in the
+  past; 0 = session cookie) and not empty (`length(value)` and `length(encrypted_value)` both 0; lengths only,
+  values never read), from a temporary copy of `Network\Cookies` plus its `-journal` / `-wal`. The
+  `oauth:tokenCache*` keys **never** decide (they stay after a sign-out). A running account is not read (locked,
+  §1): it keeps its last known state. When an account stops running (or the launcher starts), it is read at once;
+  if the copy fails, the card keeps its last state with **Checking…**, and the copy is retried every ~1 s for up to
+  ~10 s; then the window redraws. Each final decision goes to `sign-in-timings.log`: `card check <id>: cookie found |
+  cookie not found | cookie expired | cookie empty | cookie DB unreadable (<reason>) for ~10 s -> kept: signed
+  in|not signed in|unknown`. Nothing is ever closed because of this check.
 - **Window to the front (0.4.4):** after opening an account or the sign-in window, the launcher (still the foreground
   app) runs PowerShell with `AllowSetForegroundWindow` / `SetForegroundWindow` on that process's main window
   (restored first if minimised). Best effort: a refusal never fails the action.
