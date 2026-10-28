@@ -73,15 +73,11 @@ export const strings = {
     },
     saving: {
       title: 'Saving the session',
-      body: 'Closing that window and putting your main Claude back. This can take up to a minute.',
+      body: 'Closing that window and putting your main Claude back. This takes a few seconds.',
     },
     confirm: 'I\'ve signed in',
     checking: (seconds: number) => `Checking… (${seconds} s)`,
     notFound: 'No sign-in found. Sign in in the Claude window, then press I\'ve signed in again.',
-    noSession: {
-      title: 'The sign-in was not saved',
-      body: 'Claude had not saved the session yet, so nothing was kept. Try again and wait a few seconds after signing in.',
-    },
     failed: {
       title: 'Could not finish the sign-in',
       body: (stashPath: string | null) => (stashPath
@@ -132,6 +128,10 @@ export const strings = {
     defaultRunning: {
       title: 'Could not close your main Claude',
       body: 'Nothing was changed. Close Claude yourself, then try again.',
+    },
+    reopened: {
+      title: 'Claude was opened again',
+      body: 'Close it and try again.',
     },
     noWindow: {
       title: 'Claude is starting in the background',

@@ -10,7 +10,7 @@ import {
 } from '../core/config.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
-import { pidsForProfile, pidsInsideFolder, profileHasWindow, runningAccountIds } from '../core/processes.js';
+import { pidsForProfile, pidsInsideFolder, runningAccountIds, windowPid } from '../core/processes.js';
 import type { Marker, MarkerAccount } from '../core/signIn.js';
 import { strings } from '../renderer/strings.js';
 import { closeProfile, removeProfile, type AccountProcessDeps } from './accountActions.js';
@@ -18,7 +18,7 @@ import { ConfigStore } from './configStore.js';
 import { SignedInTracker } from './signedIn.js';
 import { SignInFlow, type StartError } from './signInFlow.js';
 import {
-  launchClaude, listClaudeProcesses, queryAllProcesses, queryClaudeProcesses, queryClaudeProcessList, queryClaudeWindows,
+  bringToFront, launchClaude, listClaudeProcesses, queryAllProcesses, queryClaudeProcesses, queryClaudeProcessList, queryClaudeWindows,
   resolveClaudeExe,
 } from './system/claudeApp.js';
 import {
@@ -47,7 +47,7 @@ const defaultName: Promise<string> = onWindows
 
 let win: BrowserWindow | null = null;
 
-/** "Not signed in": sessionKey cookie first, config.json keys only when the cookie database cannot be read. */
+/** "Not signed in" = neither the sessionKey cookie nor the oauth:tokenCache keys in config.json (names only). */
 const signedInTracker = new SignedInTracker({ sessionCookie: (dir) => hasSessionCookie(dir), configOauth: isSignedIn });
 
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
@@ -88,11 +88,14 @@ async function openAccount(id: string): Promise<ActionResult> {
   if (!exe) return result(store.current, 'notInstalled');
   try {
     if (account.profileDir !== null) await createProfileDir(account.profileDir, userProfile);
+    let pid: number | null = null;
     const shown = await launchUntilWindow({
       launch: () => launchClaude(exe, account.profileDir),
-      hasWindow: async () => profileHasWindow(await queryClaudeWindows(runPowerShell), account.profileDir),
+      hasWindow: async () => (pid = windowPid(await queryClaudeWindows(runPowerShell), account.profileDir)) !== null,
     });
-    if (!shown) return result(store.current, 'noWindow');
+    if (!shown || pid === null) return result(store.current, 'noWindow');
+    // While the launcher is still the foreground app (it quits right after). Best effort.
+    await bringToFront(runPowerShell, pid);
   } catch (err) {
     console.warn(`Could not open Claude: ${(err as Error).message}`);
     return result(store.current, 'launchFailed');
@@ -128,6 +131,22 @@ async function openDefaultClaude(): Promise<void> {
   const exe = await resolveClaudeExe(runPowerShell, process.env, existsSync);
   if (!exe) throw new Error('Claude is not installed');
   await launchClaude(exe, null);
+}
+
+/**
+ * Sign-in window: waits (up to ~8 s) for the default Claude's window, then brings it to the front while the
+ * launcher is still the foreground app. Best effort: errors only warn.
+ */
+async function focusDefaultClaude(): Promise<void> {
+  const deadline = Date.now() + 8000;
+  while (Date.now() < deadline) {
+    const pid = windowPid(await queryClaudeWindows(runPowerShell).catch(() => []), null);
+    if (pid !== null) {
+      logTiming(`start: bring the sign-in window to the front: ${await bringToFront(runPowerShell, pid) ? 'done' : 'refused'}`);
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
 }
 
 /** Timing lines are written in order, never block the flow, and a failed write only warns. */
@@ -190,6 +209,7 @@ const flow = onWindows && markerFile ? new SignInFlow({
   isAlive: (pid) => isProcessAlive(pid),
   listPidsInside: async (dir) => pidsInsideFolder(await queryAllProcesses(runPowerShell), dir),
   launchDefault: openDefaultClaude,
+  focusDefault: focusDefaultClaude,
   freeBytes,
   log: logTiming,
   onStatus: (status) => {
@@ -201,7 +221,7 @@ const flow = onWindows && markerFile ? new SignInFlow({
 setInterval(() => { if (flow?.active) void flow.poll(); }, 1000);
 
 const START_ERRORS: Record<StartError, ActionError> = {
-  pending: 'pending', defaultRunning: 'defaultRunning', profileInUse: 'profileInUse', disk: 'disk', folder: 'folder',
+  pending: 'pending', defaultRunning: 'defaultRunning', reopened: 'reopened', profileInUse: 'profileInUse', disk: 'disk', folder: 'folder',
   launchFailed: 'launchFailed',
 };
 

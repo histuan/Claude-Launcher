@@ -83,6 +83,33 @@ export async function listClaudeProcesses(run: RunPowerShell): Promise<ClaudePro
   }
 }
 
+// user32 calls to bring a window to the front (restored first if minimised). Windows lets a process started by the
+// foreground app take the foreground: this PowerShell is started by the launcher, which is the foreground app when
+// the person clicks. AllowSetForegroundWindow also lets Claude's own process raise its window.
+const USER32 = '[DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h); '
+  + '[DllImport("user32.dll")] public static extern bool AllowSetForegroundWindow(int pid); '
+  + '[DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr h, int cmd); '
+  + '[DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);';
+
+/** The script for one pid (an integer, checked by the caller). Prints True when Windows accepted. */
+function frontScript(pid: number): string {
+  return `$u = Add-Type -Name Front -Namespace ClaudeLauncher -PassThru -MemberDefinition '${USER32}'; `
+    + `$h = (Get-Process -Id ${pid} -ErrorAction Stop).MainWindowHandle; `
+    + 'if ($h -eq [IntPtr]::Zero) { $false } else { if ($u::IsIconic($h)) { [void]$u::ShowWindowAsync($h, 9) }; '
+    + `[void]$u::AllowSetForegroundWindow(${pid}); $u::SetForegroundWindow($h) }`;
+}
+
+/** Brings that Claude process's main window to the front. Best effort: false when refused or on any error, never throws. */
+export async function bringToFront(run: RunPowerShell, pid: number): Promise<boolean> {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+  try {
+    return (await run(frontScript(pid))).trim() === 'True';
+  } catch (err) {
+    console.warn(`Could not bring Claude to the front: ${(err as Error).message}`);
+    return false;
+  }
+}
+
 interface Child {
   once(event: 'spawn', listener: () => void): unknown;
   once(event: 'error', listener: (err: Error) => void): unknown;

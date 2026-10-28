@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { launchClaude, listClaudeProcesses, resolveClaudeExe, type SpawnFn } from '../src/main/system/claudeApp.js';
+import { bringToFront, launchClaude, listClaudeProcesses, resolveClaudeExe, type SpawnFn } from '../src/main/system/claudeApp.js';
 
 const LOC = 'C:\\Program Files\\WindowsApps\\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc';
 const EXE = `${LOC}\\app\\Claude.exe`;
@@ -62,4 +62,17 @@ test('launch: Main without flag, others with --user-data-dir; detached, hidden, 
 
 test('launch: a spawn error rejects instead of crashing', async () => {
   await assert.rejects(launchClaude(EXE, null, fakeSpawn('error').spawn), /ENOENT/);
+});
+
+test('bring to front: that pid only, True from Windows → true; refused or failing → false, never throws', async () => {
+  const scripts: string[] = [];
+  assert.equal(await bringToFront(async (s) => { scripts.push(s); return 'True\r\n'; }, 4242), true);
+  assert.match(scripts[0], /Get-Process -Id 4242 /);
+  assert.match(scripts[0], /AllowSetForegroundWindow\(4242\)/);
+  assert.match(scripts[0], /SetForegroundWindow\(\$h\)/);
+  assert.equal(await bringToFront(async () => 'False', 4242), false);
+  assert.equal(await bringToFront(async () => { throw new Error('timeout'); }, 4242), false);
+  let ran = false;
+  assert.equal(await bringToFront(async () => { ran = true; return 'True'; }, 1.5), false);
+  assert.equal(ran, false, 'a non-integer pid never reaches PowerShell');
 });

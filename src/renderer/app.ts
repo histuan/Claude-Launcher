@@ -386,8 +386,6 @@ async function signInFinished(status: SignInStatus): Promise<void> {
     // The main Claude was already put back (and reopened if it was open); now open the new account so the person
     // lands in it. The launcher closes once its window is visible.
     await showResult(await api.openAccount(status.account.id));
-  } else if (status.phase === 'noSession') {
-    await ask({ title: strings.signIn.noSession.title, body: strings.signIn.noSession.body, confirm: strings.ok, cancel: false });
   } else if (status.phase === 'failed') {
     await ask({
       title: strings.signIn.failed.title, body: strings.signIn.failed.body(status.stashPath), confirm: strings.ok, cancel: false,

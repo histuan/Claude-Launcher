@@ -8,6 +8,31 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-28
+
+Phase 4.3: speed fixes after testing 0.4.3 on a real PC (0.4.3 was not released on its own: its changes ship here).
+
+### Changed
+
+- **Add account** / **Sign in** close the main Claude in ~1 s instead of ~5 s: a close request never works (Claude
+  only hides in the tray), so after ~1 s only the default-profile processes are force-ended; the closing step gives up
+  after ~10 s in all.
+- If Claude is opened again while the launcher is closing it, the sign-in stops at once with "Claude was opened
+  again. Close it and try again." Nothing is moved and the reopened Claude is left alone (before, the launcher kept
+  trying for ~47 s).
+- Finishing a sign-in no longer waits up to ~35 s for the cookie: once the `oauth:tokenCache` keys are in
+  `config.json`, the launcher waits ~2 s for writes to settle and force-ends the sign-in Claude. The session is
+  always moved; the "The sign-in was not saved" dialog is gone.
+- A card counts as signed in when it has the `sessionKey` cookie **or** the `oauth:tokenCache` keys (names only,
+  never values); with neither it shows **Not signed in** and offers **Sign in**. Because these keys stay after
+  signing out inside Claude, such a card keeps looking signed in.
+- The version label moved to the bottom-right corner.
+
+### Added
+
+- Claude's window is brought to the front when the launcher opens an account or the sign-in window (best effort:
+  if Windows refuses, nothing fails).
+
 ## [0.4.3] - 2026-10-27
 
 Phase 4.2: sign-in speed and small UI follow-ups after testing 0.4.2 on a real PC.

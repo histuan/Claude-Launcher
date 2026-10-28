@@ -15,7 +15,7 @@ export type SignInStatus =
   | { phase: 'checking'; secondsLeft: number }
   | { phase: 'notFound' }
   | { phase: 'done'; account: MarkerAccount }
-  | { phase: 'cancelled' | 'noSession' }
+  | { phase: 'cancelled' }
   /** stashPath: where the main profile is kept when it could not be put back (null = it is back in place). */
   | { phase: 'failed'; stashPath: string | null };
 
@@ -33,7 +33,7 @@ export interface LauncherState {
   signInLog: string;
   /** Sign-in in progress (e.g. resumed on startup), or null. */
   signIn: SignInStatus | null;
-  /** The launcher's own version (app.getVersion()), shown in the bottom-left corner. */
+  /** The launcher's own version (app.getVersion()), shown in the bottom-right corner. */
   version: string;
 }
 
@@ -46,7 +46,7 @@ export type ActionError =
   // Phase 4.1: Claude started without a window; an account that would not close
   | 'noWindow' | 'closeFailed'
   // sign-in
-  | 'noProfile' | 'pending' | 'defaultRunning' | 'profileInUse' | 'disk';
+  | 'noProfile' | 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk';
 
 export interface ActionResult {
   state: LauncherState;

@@ -9,7 +9,9 @@ import {
   containsSessionKey, hasOauth, MARKER_VERSION, parseMarker, STASH_SUFFIX, type Marker, type MarkerAccount,
 } from '../core/signIn.js';
 
-export type StartError = 'pending' | 'defaultRunning' | 'profileInUse' | 'disk' | 'folder' | 'launchFailed';
+export type StartError = 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk' | 'folder' | 'launchFailed';
+
+type CloseResult = 'not running' | 'graceful' | 'forced' | 'reopened' | false;
 
 export interface SignInDeps {
   userProfile: string;
@@ -27,24 +29,27 @@ export interface SignInDeps {
   listPidsInside(dir: string): Promise<number[]>;
   /** Opens Claude without flag (default profile). */
   launchDefault(): Promise<void>;
+  /** Best effort, not awaited: brings the sign-in window to the front once it shows. Never fails the sign-in. */
+  focusDefault?(): Promise<void>;
   freeBytes(dir: string): Promise<number>;
   onStatus(status: SignInStatus): void;
   /** Step timings for sign-in-timings.log: paths and durations only, never cookies, tokens or config values. */
   log?(line: string): void;
   minFreeBytes?: number;
   sleep?: (ms: number) => Promise<void>;
-  /** Graceful close: how long to wait for Claude to exit before force-ending it (~5 s). */
+  /**
+   * Start and cancel: how long a close request gets before the force-end (~1 s). Claude only hides to the tray on a
+   * close request (0.4.3 test), so this is kept short.
+   */
   gracefulMs?: number;
   /** Process exit poll interval during the graceful close (~250 ms). */
   exitPollMs?: number;
-  /**
-   * Finishing only: when the sign-in Claude does not exit gracefully, how long to wait for its cookie flush before
-   * force-ending it (Chromium writes new cookies about every 30 s; a forced end does not write them).
-   */
-  flushWaitMs?: number;
+  /** Finishing: once the sign-in is seen, how long to let Claude's writes settle before force-ending it (~2 s). */
+  settleMs?: number;
   /** "I've signed in": how long to keep checking for a saved session before saying none was found. */
   checkMs?: number;
   now?: () => number;
+  /** Closing in all (close request + force-end): give up after ~10 s. */
   closeTimeoutMs?: number;
   pollMs?: number;
 }
@@ -85,8 +90,10 @@ export class SignInFlow {
     this.step('closing');
     const pids = await this.deps.listDefaultPids();
     const mainWasRunning = pids.length > 0;
-    const closed = await this.closeDefault();
+    // A default Claude that was not there before (the person opened it again) stops the start at once.
+    const closed = await this.closeDefault({ pids, stopOnNew: true });
     this.log(`start: close main Claude: ${closed || 'still running'}`, t0);
+    if (closed === 'reopened') return 'reopened';
     if (!closed) return 'defaultRunning';
     // Something else still runs from the profile folder (e.g. Claude Code in a terminal): it would lock files or
     // break when its folder moves. Do not touch it; give the person their main Claude back.
@@ -124,6 +131,7 @@ export class SignInFlow {
       return 'launchFailed';
     }
     this.log('start: open the sign-in window', t2);
+    void this.deps.focusDefault?.().catch(() => undefined);
     this.log('start: total', t0);
     this.deps.onStatus({ phase: 'waiting' });
     return null;
@@ -133,7 +141,8 @@ export class SignInFlow {
 
   /**
    * One detection tick (every ~1 s from the main process while the dialog is open). The fast signal is the oauth key
-   * NAMES appearing in config.json (a plain file, readable while Claude runs); the finish then verifies the cookie.
+   * NAMES appearing in config.json (a plain file, readable while Claude runs). They are what the desktop app's sign-in
+   * needs (0.4.3 test: an account force-ended before its cookie write still opened signed in).
    */
   async poll(): Promise<void> {
     const marker = this.marker;
@@ -179,16 +188,13 @@ export class SignInFlow {
     try {
       this.deps.onStatus({ phase: 'saving' });
       const t0 = this.now();
-      // A graceful close makes Claude write its cookies. If it only hides to the tray, wait for the periodic cookie
-      // write before force-ending it: a forced end loses cookies not written yet.
-      const closed = await this.closeDefault(() => this.waitForCookie(marker.slot));
+      // A close request never works (Claude hides to the tray), and the sign-in lives in config.json: let the
+      // writes settle for a moment, then force-end it. No cookie wait. Whether the moved profile counts as signed
+      // in (cookie OR oauth keys) is the card's check: if neither, the card shows "Not signed in".
+      await this.sleep(this.deps.settleMs ?? 2000);
+      const closed = await this.closeDefault({ gracefulMs: 0 });
       this.log(`finish: close the sign-in Claude: ${closed || 'still running'}`, t0);
       if (!closed) return this.failed(marker);
-      if (!(await this.sessionSaved(marker.slot))) {
-        this.log('finish: no sessionKey cookie on disk: nothing moved');
-        // Never keep a partial session: it would be a broken profile.
-        return await this.restore(marker, { phase: 'noSession' });
-      }
       try {
         await rm(marker.account.profileDir, { recursive: true, force: true, maxRetries: 3 }); // never-signed-in card
         await mkdir(path.dirname(marker.account.profileDir), { recursive: true });
@@ -275,42 +281,36 @@ export class SignInFlow {
     return hasOauth(await readFile(path.join(slot, 'config.json'), 'utf8').catch(() => ''));
   }
 
-  /** Waits (up to flushWaitMs) for the sessionKey cookie to be written, then a moment more so the write completes. */
-  private async waitForCookie(slot: string): Promise<void> {
-    const t0 = this.now();
-    const tries = Math.ceil((this.deps.flushWaitMs ?? 35_000) / 1000);
-    for (let i = 0; i < tries; i++) {
-      if (await this.sessionSaved(slot)) {
-        await this.sleep(1000);
-        this.log('finish: cookie written while Claude ran', t0);
-        return;
-      }
-      await this.sleep(1000);
-    }
-    this.log('finish: cookie not written before the force-end', t0);
-  }
-
   /**
-   * Closes every default Claude instance: asks it to close, polls its exit every ~250 ms, and after ~5 s force-ends
-   * what is left. Only processes from listDefaultPids (the default profile) are ever closed. `beforeForce` runs just
-   * before the force-end. Returns how it closed, or false if it is still running.
+   * Closes the default Claude instance: a close request for ~1 s (gracefulMs; 0 = none), then a force-end of the
+   * default-profile processes only, ~10 s in all (closeTimeoutMs). stopOnNew: a default-profile process that was not
+   * in `pids` (the person opened Claude again) stops it at once with 'reopened', and is never ended.
+   * Returns how it closed, or false if it is still running.
    */
-  private async closeDefault(beforeForce?: () => Promise<void>): Promise<'not running' | 'graceful' | 'forced' | false> {
-    const pids = await this.deps.listDefaultPids();
+  private async closeDefault(opts: { pids?: number[]; gracefulMs?: number; stopOnNew?: boolean } = {}): Promise<CloseResult> {
+    const pids = opts.pids ?? (await this.deps.listDefaultPids());
     if (pids.length === 0) return 'not running';
-    await this.deps.closeGracefully(pids);
-    const exitPoll = this.deps.exitPollMs ?? 250;
-    const tries = Math.ceil((this.deps.gracefulMs ?? 5000) / exitPoll);
-    for (let i = 0; i < tries && pids.some((pid) => this.deps.isAlive(pid)); i++) await this.sleep(exitPoll);
+    const reopened = (now: number[]): boolean => opts.stopOnNew === true && now.some((pid) => !pids.includes(pid));
+    const gracefulMs = opts.gracefulMs ?? this.deps.gracefulMs ?? 1000;
+    if (gracefulMs > 0) {
+      await this.deps.closeGracefully(pids);
+      const exitPoll = this.deps.exitPollMs ?? 250;
+      const tries = Math.ceil(gracefulMs / exitPoll);
+      for (let i = 0; i < tries && pids.some((pid) => this.deps.isAlive(pid)); i++) await this.sleep(exitPoll);
+    }
     // The process list is the authority (e.g. a new instance started meanwhile).
-    if ((await this.deps.listDefaultPids()).length === 0) return 'graceful';
-    if (beforeForce) await beforeForce();
-    const forceTries = Math.ceil((this.deps.closeTimeoutMs ?? 20_000) / this.pollMs);
+    const forceTries = Math.ceil(Math.max(0, (this.deps.closeTimeoutMs ?? 10_000) - gracefulMs) / this.pollMs);
+    let killed = false;
     for (let i = 0; i <= forceTries; i++) {
       const left = await this.deps.listDefaultPids();
-      if (left.length === 0) return 'forced';
-      if (i === 0) await this.deps.kill(left);
-      else await this.sleep(this.pollMs);
+      if (reopened(left)) return 'reopened';
+      if (left.length === 0) return killed ? 'forced' : 'graceful';
+      if (killed) {
+        await this.sleep(this.pollMs);
+      } else {
+        await this.deps.kill(left);
+        killed = true;
+      }
     }
     return false;
   }

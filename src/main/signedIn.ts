@@ -1,10 +1,12 @@
-// "Not signed in" label for extra accounts (Phase 4.1): the claude.ai sessionKey cookie is the signal.
+// "Not signed in" label for extra accounts. Signed in = the claude.ai sessionKey cookie OR the oauth:tokenCache keys
+// in config.json (0.4.4: the desktop app's sign-in lives in config.json; a sign-in force-ended before Chromium's lazy
+// cookie write still opens signed in). Names only, never values. The keys stay after a sign-out inside Claude.
 import type { Account } from '../core/config.js';
 
 export interface SignedInDeps {
   /** From the cookie database; null = it cannot be read. */
   sessionCookie(profileDir: string): Promise<boolean | null>;
-  /** Fallback only: the oauth:tokenCache* keys in config.json (they can stay after a sign-out). */
+  /** The oauth:tokenCache* key names in config.json. */
   configOauth(profileDir: string): Promise<boolean>;
 }
 
@@ -22,7 +24,7 @@ export class SignedInTracker {
     const signedIn = await Promise.all(extra.map(async (a) => {
       const last = this.known.get(a.id);
       if (last !== undefined && runningIds.includes(a.id)) return last;
-      const now = (await this.deps.sessionCookie(a.profileDir)) ?? (await this.deps.configOauth(a.profileDir));
+      const now = (await this.deps.sessionCookie(a.profileDir)) === true || (await this.deps.configOauth(a.profileDir));
       this.known.set(a.id, now);
       return now;
     }));
