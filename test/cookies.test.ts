@@ -71,39 +71,19 @@ const files = (cookie: Map<string, boolean | null>, keys: Map<string, boolean>) 
   sessionCookie: async (dir: string) => cookie.get(path.win32.basename(dir)) ?? null,
   configOauth: async (dir: string) => keys.get(path.win32.basename(dir)) ?? false,
 });
-const pending = (id: string): Account => ({ ...account(id), cookiePending: true });
 
-test('tracker: just signed in (cookiePending) + keys, no cookie yet → signed in; the flag stays', async () => {
-  const cleared: string[] = [];
-  const tracker = new SignedInTracker({
-    ...files(new Map([['work', false]]), new Map([['work', true]])),
-    cookieWritten: (id) => cleared.push(id),
-  });
-  assert.deepEqual(await tracker.signedOut([main, pending('work')], []), []);
-  assert.deepEqual(cleared, [], 'no cookie yet: still pending');
-  // Pending but the keys are gone too → Not signed in.
-  const none = new SignedInTracker(files(new Map([['work', false]]), new Map([['work', false]])));
-  assert.deepEqual(await none.signedOut([main, pending('work')], []), ['work']);
+test('tracker: the sessionKey cookie decides; the keys alone never count (they stay after a sign-out)', async () => {
+  const tracker = new SignedInTracker(files(
+    new Map([['work', true], ['gone', false], ['fresh', false]]),
+    new Map([['work', false], ['gone', true], ['fresh', false]]),
+  ));
+  // work: cookie → signed in; gone: signed out inside Claude (keys stay) → Not signed in; fresh: nothing → Not signed in.
+  assert.deepEqual(await tracker.signedOut([main, account('work'), account('gone'), account('fresh')], []), ['gone', 'fresh']);
 });
 
-test('tracker: the sessionKey cookie → signed in, and a pending flag is cleared', async () => {
-  const cleared: string[] = [];
-  const tracker = new SignedInTracker({
-    ...files(new Map([['work', true], ['home', true]]), new Map()),
-    cookieWritten: (id) => cleared.push(id),
-  });
-  assert.deepEqual(await tracker.signedOut([main, pending('work'), account('home')], []), []);
-  assert.deepEqual(cleared, ['work'], 'only the pending account is cleared');
-});
-
-test('tracker: no flag and no cookie → Not signed in, even with the keys (signed out inside Claude)', async () => {
-  const tracker = new SignedInTracker(files(new Map([['work', false]]), new Map([['work', true]])));
-  assert.deepEqual(await tracker.signedOut([main, account('work')], []), ['work']);
-});
-
-test('tracker: cookie database unreadable → the keys decide, with or without the flag', async () => {
+test('tracker: cookie database unreadable → the config.json keys decide', async () => {
   const tracker = new SignedInTracker(files(new Map(), new Map([['work', true], ['home', false]])));
-  assert.deepEqual(await tracker.signedOut([main, account('work'), pending('home')], []), ['home']);
+  assert.deepEqual(await tracker.signedOut([main, account('work'), account('home')], []), ['home']);
 });
 
 test('tracker: a running profile keeps its last known state until forgotten', async () => {

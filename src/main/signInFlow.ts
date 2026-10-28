@@ -1,13 +1,12 @@
 // Sign-in by snapshot (WINDOWS.md §4). The only code that writes to the default Claude profile.
 // Rules: marker before the stash; the stash is only ever renamed back, never deleted; a live default
 // Claude aborts; a failed restore keeps the marker and reports the exact stash path.
-import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { SignInStatus, StartStep } from '../core/api.js';
 import { isLauncherProfileDir } from '../core/config.js';
 import {
-  changedPaths, containsSessionKey, describeChanges, hasOauth, MARKER_VERSION, parseMarker, sameSnapshot, STASH_SUFFIX,
-  type FolderSnapshot, type Marker, type MarkerAccount,
+  containsSessionKey, hasOauth, MARKER_VERSION, parseMarker, STASH_SUFFIX, type Marker, type MarkerAccount,
 } from '../core/signIn.js';
 
 export type StartError = 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk' | 'folder' | 'launchFailed';
@@ -46,13 +45,14 @@ export interface SignInDeps {
   /** Process exit poll interval during the graceful close (~250 ms). */
   exitPollMs?: number;
   /**
-   * Finishing: once the sign-in is seen, the profile folder must be quiet (no file changed, by mtime or size) for
-   * quietMs (~5 s) before the force-end, polled every quietPollMs (~500 ms), at most quietMaxMs (~40 s).
-   * The oauth keys alone are not the whole sign-in (0.4.4 test: a force-end ~2 s after them opened signed out).
+   * Finishing: after the oauth keys, wait for Chromium's cookie database write (Network\Cookies or its -journal /
+   * -wal gets a newer mtime or another size; stat only), polled every cookiePollMs (~500 ms), at most cookieWaitMs
+   * (~45 s) per wait; then cookieSettleMs (~1 s) before the force-end. Chromium commits cookies about every 30 s and
+   * the sign-in needs that write (0.4.4 tests: a force-end before it opened the account signed out).
    */
-  quietMs?: number;
-  quietPollMs?: number;
-  quietMaxMs?: number;
+  cookieWaitMs?: number;
+  cookiePollMs?: number;
+  cookieSettleMs?: number;
   /** "I've signed in": how long to keep checking for a saved session before saying none was found. */
   checkMs?: number;
   now?: () => number;
@@ -61,6 +61,8 @@ export interface SignInDeps {
   pollMs?: number;
 }
 
+// The cookie database files whose write the finish waits for (stat only: never opened while Claude runs).
+const COOKIE_DB = ['Cookies', 'Cookies-journal', 'Cookies-wal'].map((f) => path.join('Network', f));
 // The login cookie lives in <profile>\Network\Cookies; plain <profile>\Cookies only in old layouts.
 // Partitions\*\Network\Cookies (launch previews) are not looked at.
 const COOKIE_FILES = ['Cookies', 'Cookies-journal', 'Cookies-wal'].flatMap((f) => [path.join('Network', f), f]);
@@ -70,6 +72,10 @@ export class SignInFlow {
   private marker: Marker | null = null;
   private busy = false;
   private checking = false;
+  /** After a cap without a cookie write: waiting for the person (Wait longer / Cancel); detection paused. */
+  private notSaved = false;
+  /** Cookie database stats when the keys appeared (kept across "Wait longer"). */
+  private cookieBase: string | null = null;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly pollMs: number;
 
@@ -148,12 +154,12 @@ export class SignInFlow {
 
   /**
    * One detection tick (every ~1 s from the main process while the dialog is open). The fast signal is the oauth key
-   * NAMES appearing in config.json (a plain file, readable while Claude runs). They are what the desktop app's sign-in
-   * needs (0.4.3 test: an account force-ended before its cookie write still opened signed in).
+   * NAMES appearing in config.json (a plain file, readable while Claude runs); the finish then waits for the cookie
+   * database write, which the sign-in needs.
    */
   async poll(): Promise<void> {
     const marker = this.marker;
-    if (!marker || this.busy) return;
+    if (!marker || this.busy || this.notSaved) return;
     if (await this.oauthKeys(marker.slot)) await this.finish();
   }
 
@@ -164,7 +170,7 @@ export class SignInFlow {
    */
   async confirm(): Promise<void> {
     const marker = this.marker;
-    if (!marker || this.busy || this.checking) return;
+    if (!marker || this.busy || this.checking || this.notSaved) return;
     this.checking = true;
     const now = this.deps.now ?? Date.now;
     const deadline = now() + (this.deps.checkMs ?? 15_000);
@@ -195,9 +201,16 @@ export class SignInFlow {
     try {
       this.deps.onStatus({ phase: 'saving' });
       const t0 = this.now();
-      // A close request never works (Claude hides to the tray), so Claude is force-ended, but only once it stopped
-      // writing to the profile: a forced end loses what is not written yet. Never quiet = an unsure save.
-      const quiet = await this.waitForQuiet(marker.slot);
+      // A close request never works (Claude hides to the tray), so Claude is force-ended, but only after its cookie
+      // database write: a forced end loses what is not committed yet. No write within the cap: nothing moves.
+      const written = await this.waitForCookieWrite(marker.slot);
+      this.log(`finish: wait for the cookie write: ${written ? 'written' : 'cap'}`, t0);
+      if (!written) {
+        this.notSaved = true;
+        this.deps.onStatus({ phase: 'notSaved' });
+        return;
+      }
+      await this.sleep(this.deps.cookieSettleMs ?? 1000);
       const closed = await this.closeDefault({ gracefulMs: 0 });
       this.log(`finish: close the sign-in Claude: ${closed || 'still running'}`, t0);
       if (!closed) return this.failed(marker);
@@ -209,10 +222,10 @@ export class SignInFlow {
         console.warn(`Could not move the new session: ${(err as Error).message}`);
         return await this.restore(marker, { phase: 'failed', stashPath: null });
       }
-      const adopted: Marker = { ...marker, state: 'adopted', ...(quiet ? {} : { unsure: true as const }) };
+      const adopted: Marker = { ...marker, state: 'adopted' };
       await this.writeMarker(adopted);
       this.log('finish: move the session to the account folder', t0);
-      await this.restore(adopted, doneStatus(adopted));
+      await this.restore(adopted, { phase: 'done', account: marker.account });
       this.log('finish: total (main profile restored)', t0);
     } catch (err) {
       // E.g. the process query failed: keep the marker, the next start offers the restore.
@@ -221,6 +234,13 @@ export class SignInFlow {
     } finally {
       this.busy = false;
     }
+  }
+
+  /** "Wait longer" after notSaved: another ~45 s wait for the cookie write (same starting point). */
+  async waitLonger(): Promise<void> {
+    if (!this.marker || this.busy || !this.notSaved) return;
+    this.notSaved = false;
+    await this.finish();
   }
 
   // ---------- Cancel ----------
@@ -268,7 +288,7 @@ export class SignInFlow {
     }
     if (!(await this.closeDefault())) return this.failed(marker);
     const done: SignInStatus = marker.state === 'adopted'
-      ? doneStatus(marker)
+      ? { phase: 'done', account: marker.account }
       : { phase: 'cancelled' };
     await this.restore(marker, done);
   }
@@ -288,28 +308,20 @@ export class SignInFlow {
   }
 
   /**
-   * Waits until no file under the profile changed for ~5 s in a row (max ~40 s). Logs how long it took and the
-   * relative paths changed after the keys appeared (names only, never contents). true = it got quiet.
+   * Waits for the cookie database write: true once Network\Cookies (or its -journal / -wal) has another mtime or size
+   * than when the keys appeared, or at once when the sessionKey is already on disk (the commit happened before, e.g.
+   * "I've signed in" pressed late). false after ~45 s without a write. Stat only while Claude runs.
    */
-  private async waitForQuiet(slot: string): Promise<boolean> {
-    const t0 = this.now();
-    const poll = this.deps.quietPollMs ?? 500;
-    const needed = Math.ceil((this.deps.quietMs ?? 5000) / poll);
-    const maxPolls = Math.ceil((this.deps.quietMaxMs ?? 40_000) / poll);
-    const base = await snapshot(slot);
-    let last = base;
-    let still = 0;
-    let quiet = false;
-    for (let i = 0; i < maxPolls && !quiet; i++) {
+  private async waitForCookieWrite(slot: string): Promise<boolean> {
+    if (await this.sessionSaved(slot)) return true;
+    this.cookieBase ??= await cookieDbStats(slot);
+    const poll = this.deps.cookiePollMs ?? 500;
+    const tries = Math.ceil((this.deps.cookieWaitMs ?? 45_000) / poll);
+    for (let i = 0; i < tries; i++) {
       await this.sleep(poll);
-      const now = await snapshot(slot);
-      still = sameSnapshot(last, now) ? still + 1 : 0;
-      last = now;
-      quiet = still >= needed;
+      if ((await cookieDbStats(slot)) !== this.cookieBase) return true;
     }
-    this.log(`finish: wait for a quiet profile: ${quiet ? 'quiet' : 'still changing at the cap'}`, t0);
-    this.log(`finish: changed after the keys: ${describeChanges(changedPaths(base, last))}`);
-    return quiet;
+    return false;
   }
 
   /**
@@ -365,6 +377,8 @@ export class SignInFlow {
     }
     await rm(this.deps.markerFile, { force: true });
     this.marker = null;
+    this.notSaved = false;
+    this.cookieBase = null;
     if (marker.mainWasRunning) await this.deps.launchDefault().catch(() => undefined);
     this.deps.onStatus(outcome);
   }
@@ -372,6 +386,8 @@ export class SignInFlow {
   /** The marker stays, so the next start offers the restore again. */
   private failed(marker: Marker): void {
     this.marker = null;
+    this.notSaved = false;
+    this.cookieBase = null;
     this.deps.onStatus({ phase: 'failed', stashPath: marker.stashed ? marker.stash : null });
   }
 
@@ -417,17 +433,8 @@ export class SignInFlow {
   }
 }
 
-const doneStatus = (marker: Marker): SignInStatus =>
-  (marker.unsure ? { phase: 'done', account: marker.account, unsure: true } : { phase: 'done', account: marker.account });
-
-/** Every file under `dir` with its mtime and size (relative paths). Files that vanish meanwhile are skipped. */
-async function snapshot(dir: string): Promise<FolderSnapshot> {
-  const result: FolderSnapshot = new Map();
-  const entries = await readdir(dir, { recursive: true, withFileTypes: true }).catch(() => []);
-  await Promise.all(entries.filter((e) => e.isFile()).map(async (e) => {
-    const full = path.join(e.parentPath, e.name);
-    const s = await stat(full).catch(() => null);
-    if (s) result.set(path.relative(dir, full), `${s.mtimeMs}:${s.size}`);
-  }));
-  return result;
+/** mtime and size of each cookie database file ("-" when missing), as one comparable string. */
+async function cookieDbStats(slot: string): Promise<string> {
+  const stats = await Promise.all(COOKIE_DB.map((f) => stat(path.join(slot, f)).then((s) => `${s.mtimeMs}:${s.size}`, () => '-')));
+  return stats.join('|');
 }

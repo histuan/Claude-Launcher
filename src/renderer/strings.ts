@@ -75,17 +75,17 @@ export const strings = {
     },
     saving: {
       title: 'Saving the session',
-      body: 'Closing that window and putting your main Claude back. This takes a few seconds.',
+      body: 'Waiting for Claude to save the sign-in (up to about 45 seconds), then putting your main Claude back.',
     },
     confirm: 'I\'ve signed in',
     checking: (seconds: number) => `Checking… (${seconds} s)`,
     notFound: 'No sign-in found. Sign in in the Claude window, then press I\'ve signed in again.',
-    /** The profile never got quiet within ~40 s before Claude was ended. */
-    unsure: {
-      title: 'The sign-in may not have been saved',
-      body: 'Claude was still writing to the new profile after 40 s, so it was closed before it may have finished '
-        + 'saving. If this account opens on the sign-in screen, sign in again.',
-      again: 'Sign in again',
+    /** No cookie database write within ~45 s: nothing moved yet. */
+    notSaved: {
+      title: 'The sign-in was not saved yet',
+      body: 'Claude has not saved the sign-in to disk yet (it does so about every 30 seconds). Wait longer, or '
+        + 'cancel to put your main Claude back.',
+      waitLonger: 'Wait longer',
     },
     failed: {
       title: 'Could not finish the sign-in',

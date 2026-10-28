@@ -46,11 +46,11 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
 
 - Phase 4.3 (0.4.4): closing the main Claude = close request for ~1 s, then force-end of the default profile only
   (~10 s in all); a NEW default-profile process meanwhile stops the start with "Claude was opened again" (nothing
-  stashed); finishing = keys seen → wait for a quiet profile (no change for ~5 s, max ~40 s; changed files logged)
-  → force-end → move; a card is signed in with the cookie, or with the keys while `cookiePending` (set only when the
-  profile got quiet, cleared once the cookie shows up); cap hit = "may not have been saved" + Sign in again; Claude's
-  window brought to the front (best effort); version label bottom-right with the log path as tooltip.
-  A first build with a fixed ~2 s finish opened the new account signed out (PC test): the keys are not enough.
+  stashed); finishing = keys seen → wait for the `Network\Cookies` write (stat only, ~500 ms polls, max ~45 s) →
+  ~1 s → force-end → move; no write = nothing moves, "The sign-in was not saved yet" with Wait longer / Cancel;
+  card signed in = `sessionKey` cookie (keys only if the cookie DB can't be read); Claude's window brought to the
+  front (best effort); version label bottom-right with the log path as tooltip. Earlier builds that ended Claude
+  after ~2 s or a ~5 s quiet folder opened the account signed out: the sign-in needs Chromium's ~30 s cookie commit.
 
 ## Missing
 
@@ -99,17 +99,16 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
 - Sign-in (0.4.4): the default Claude is asked to close (`taskkill /PID <pid> /T`, no `/F`), its exit is checked every
   ~250 ms (`process.kill(pid, 0)`), and after ~1 s what is left of the default profile is force-ended
   (`taskkill /T /F`, as ai-multi-instance does); a default-profile pid that was not there at the start = "reopened",
-  stop at once and never end it. Finishing: after the keys appear, the launcher waits until no file in the profile
-  changed for ~5 s (max ~40 s), then force-ends the sign-in Claude (the close request never works). A failed
+  stop at once and never end it. Finishing: after the keys appear, the launcher waits for the `Network\Cookies`
+  write (stat only, max ~45 s, then Wait longer / Cancel), ~1 s more, then force-ends the sign-in Claude (the close
+  request never works). A failed
   process query counts as "still running" (abort), never as "closed". The main Claude is reopened at the end only if it
   was open before (cancel and success alike); after a success the new account opens too.
   "Session saved" (inside the sign-in, blank profile) = the text `sessionKey` in the cookie database files.
-- "Signed in" for a card (0.4.4) = a claude.ai `sessionKey` row in `<profile>\Network\Cookies` (queried with the
-  built-in `node:sqlite` on a temporary copy; names and hosts only, never values; copy deleted). Without the cookie,
-  the `oauth:tokenCache*` key names in `config.json` count only while the account has `cookiePending: true` in the
-  launcher config (set at the end of its sign-in, cleared when the cookie shows up), or when the cookie database
-  cannot be read. The keys alone are not enough: they stay after a sign-out. A running account keeps its last known
-  state. A plain cookie text search is not enough: SQLite keeps a deleted row's text in free pages after a sign-out.
+- "Signed in" for a card (0.4.2, kept) = a claude.ai `sessionKey` row in `<profile>\Network\Cookies` (queried with
+  the built-in `node:sqlite` on a temporary copy; names and hosts only, never values; copy deleted). The
+  `oauth:tokenCache*` keys only when the cookie database cannot be read (they stay after a sign-out). A running
+  account keeps its last known state. A plain cookie text search is not enough: SQLite keeps a deleted row's text in free pages after a sign-out.
 - Opening an account waits up to ~8 s for that profile's visible window (spawns once more after ~3 s); the launcher
   closes only then. "Close this account" / "Close and remove" end only that profile's main processes
   (`taskkill /T /F`): Main = no `--user-data-dir`, extra = its own `--user-data-dir`.
@@ -133,18 +132,18 @@ Phase 4.3 (0.4.4). Sign-in still moves your main Claude profile for a moment: ke
    itself. Also click any account card: its Claude window comes to the front. If either one stays behind, tell me
    (and send `sign-in-timings.log`: it says `bring the sign-in window to the front: done` or `refused`).
 5. **(b) Finish:** sign in in the blank window. Within a few seconds the dialog shows "Saving the session"; it now
-   waits until Claude stops writing (at least ~5 s, at most ~40 s). Your main Claude reopens (if it was open) and
-   the new account must open **signed in** (not on the sign-in screen); its card does **not** say "Not signed in".
-   If instead the dialog says **"The sign-in may not have been saved"**, press **Sign in again** and send me the log.
-   Either way, send me the two `finish:` lines (`wait for a quiet profile: … ms` and `changed after the keys: …`).
-6. **(b) Card check:** close the launcher and reopen it: the new card still has no "Not signed in". Open that
-   account, use it for a minute (Claude writes its cookie), close it (⋯ → Close this account). Then open it again,
-   **sign out inside Claude**, wait about a minute (Claude writes cookie changes about every 30 s, and "Close this
-   account" force-ends it), close it the same way and reopen the launcher: the card now says **Not signed in**, as
-   in 0.4.2.
-7. **Cancel** and **I've signed in** work as in 0.4.3.
-8. **Send me the timings:** `%APPDATA%\claude-launcher\sign-in-timings.log` (hover the version label in the
+   waits for Claude to write its cookies (usually up to ~30 s, at most ~45 s). Your main Claude reopens (if it was
+   open) and the new account must open **signed in** (not on the sign-in screen); its card does **not** say "Not
+   signed in". Send me the line `finish: wait for the cookie write: written: … ms`.
+6. **(b) Not saved yet:** if the dialog says **"The sign-in was not saved yet"**, press **Wait longer** once: it
+   should finish within another ~45 s. **Cancel** there must put your main Claude back with nothing moved. Tell me
+   which one you saw (and the `cap` line from the log).
+7. **(b) Card check:** open the new account, **sign out inside Claude**, wait about a minute (cookie changes are
+   written about every 30 s, and "Close this account" force-ends it), close it (⋯ → Close this account) and reopen
+   the launcher: the card says **Not signed in**, as in 0.4.2.
+8. **Cancel** and **I've signed in** work as in 0.4.3.
+9. **Send me the timings:** `%APPDATA%\claude-launcher\sign-in-timings.log` (hover the version label in the
    launcher: it shows this path). Only step names, file paths and milliseconds, never file contents. Expected:
-   `start: close main Claude: forced: ~1500 ms`, then the quiet wait and the list of changed files.
-9. If anything stops halfway, send me `login-pending.json` (`%LOCALAPPDATA%\ClaudeLauncher`, no secrets in it) and the
+   `start: close main Claude: forced: ~1500 ms`, then `finish: wait for the cookie write: written: … ms`.
+10. If anything stops halfway, send me `login-pending.json` (`%LOCALAPPDATA%\ClaudeLauncher`, no secrets in it) and the
    names of the folders in `%LOCALAPPDATA%\Claude-Data`.

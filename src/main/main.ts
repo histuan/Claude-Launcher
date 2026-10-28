@@ -6,8 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
 import {
-  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setCookiePending, setGreetingName,
-  type LauncherConfig,
+  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setGreetingName, type LauncherConfig,
 } from '../core/config.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
@@ -48,15 +47,8 @@ const defaultName: Promise<string> = onWindows
 
 let win: BrowserWindow | null = null;
 
-/** "Not signed in": see signedIn.ts (cookie; keys only while cookiePending or when the cookie DB is unreadable). */
-const signedInTracker = new SignedInTracker({
-  sessionCookie: (dir) => hasSessionCookie(dir),
-  configOauth: isSignedIn,
-  cookieWritten: (id) => {
-    store.update((c) => setCookiePending(c, id, false)).catch((err: unknown) =>
-      console.warn(`Could not clear cookiePending: ${(err as Error).message}`));
-  },
-});
+/** "Not signed in": sessionKey cookie first, config.json keys only when the cookie database cannot be read. */
+const signedInTracker = new SignedInTracker({ sessionCookie: (dir) => hasSessionCookie(dir), configOauth: isSignedIn });
 
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
   return {
@@ -172,15 +164,13 @@ function logTiming(line: string): void {
 }
 
 async function onSignInStatus(status: SignInStatus): Promise<void> {
-  const final = !['starting', 'waiting', 'saving', 'checking', 'notFound'].includes(status.phase);
+  const final = !['starting', 'waiting', 'saving', 'checking', 'notFound', 'notSaved'].includes(status.phase);
   signInStatus = final ? null : status;
   if (final) lastSignInOutcome = status;
   if (status.phase === 'done') signedInTracker.forget(status.account.id);
   if (status.phase === 'done') {
-    // Force-ended maybe before its cookie write: cookiePending until the cookie shows up, but only when the profile
-    // got quiet first. An unsure save gets no flag, so the card says "Not signed in" unless the cookie is there.
     const { account } = status;
-    await store.update((c) => afterSignIn(c, account, status.unsure !== true));
+    await store.update((c) => afterSignIn(c, account));
   }
   win?.webContents.send('launcher:signIn', status);
 }
@@ -352,6 +342,7 @@ function registerIpc(): void {
   });
   ipcMain.handle('launcher:confirmSignIn', () => flow?.confirm());
   ipcMain.handle('launcher:cancelSignIn', () => flow?.cancel());
+  ipcMain.handle('launcher:waitLongerSignIn', () => flow?.waitLonger());
   ipcMain.handle('launcher:closeAccount', (_e, id: unknown) => {
     if (!isText(id)) throw new Error('Invalid arguments');
     return closeAccount(id);

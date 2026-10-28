@@ -251,8 +251,12 @@ test('"I\'ve signed in": Cancel during the countdown cancels; no notFound afterw
 
 test('Cancel while the sign-in is finishing is ignored: the main profile is never moved to the account', async (t) => {
   const w = await world(t);
-  // Real (short) waits, as on a slow disk: the quiet wait takes a while before the force-end starts.
-  w.deps.sleep = () => new Promise((r) => setTimeout(r, 2));
+  // Real (short) waits, as on a slow disk; Claude commits its cookie database on the 3rd poll after the keys.
+  let polls = -1;
+  w.deps.sleep = async (ms) => {
+    if (ms === 500 && polls >= 0 && ++polls === 3) await writeFile(cookieFile(w), 'claude.ai sessionKey committed');
+    await new Promise((r) => setTimeout(r, 2));
+  };
   const flow = new SignInFlow(w.deps);
   assert.equal(await flow.start(w.slot, w.account), null);
   // The finish pauses in its force-end of the sign-in Claude.
@@ -260,6 +264,7 @@ test('Cancel while the sign-in is finishing is ignored: the main profile is neve
   w.deps.kill = () => new Promise<void>((r) => { release = () => { w.pids = []; r(); }; });
   await blankClaude(w);
   await writeKeys(w);
+  polls = 0;
   const finishing = flow.poll();
   // Wait until the finish really is in its force-end (after the quiet wait), not just showing "saving".
   for (let i = 0; i < 2000 && !release; i++) await new Promise((r) => setTimeout(r, 5));
@@ -487,58 +492,93 @@ test('timings are logged per step, without config values', async (t) => {
 
 // ---------- 0.4.3 (b): oauth keys in config.json as the fast signal ----------
 
-// ---------- 0.4.4: wait until the profile folder is quiet before the force-end ----------
+// ---------- 0.4.4: wait for Chromium's cookie database write before the force-end ----------
 
-/** After the keys: Claude keeps writing for `busyPolls` polls of 500 ms (Infinity = never stops), then goes quiet. */
-async function finishWithWrites(t: Parameters<typeof world>[0], busyPolls: number) {
+/**
+ * After the keys: Claude commits its cookie database (Network\\<file>) on the `commitAt`-th poll of 500 ms
+ * (Infinity = never). Returns the world, the flow and the sleeps made after the keys.
+ */
+async function finishWithCommit(t: Parameters<typeof world>[0], commitAt: number, file = 'Cookies') {
   const w = await world(t);
   let sleeps: number[] = [];
-  let writing = false;
-  let n = 0;
+  let polls = -1;
   w.deps.sleep = async (ms) => {
     sleeps.push(ms);
-    if (writing && ms === 500 && n < busyPolls) {
-      n++;
-      await mkdir(path.join(w.slot, 'Local Storage', 'leveldb'), { recursive: true });
-      await writeFile(path.join(w.slot, 'Local Storage', 'leveldb', '000003.log'), 'secret-token-value'.repeat(n));
+    if (ms === 500 && polls >= 0 && ++polls === commitAt) {
+      await writeFile(path.join(w.slot, 'Network', file), 'claude.ai sessionKey committed');
     }
   };
   const flow = new SignInFlow(w.deps);
   assert.equal(await flow.start(w.slot, w.account), null);
   w.calls = [];
-  sleeps = [];
   await blankClaude(w);
-  await writeKeys(w); // the sessionKey cookie is not on disk (Claude writes it lazily)
-  writing = true;
+  await writeFile(cookieFile(w), 'startup'); // the blank profile's database, no session yet
+  await writeKeys(w);
+  sleeps = [];
+  polls = 0;
   await flow.poll();
-  return { w, polls: sleeps.filter((ms) => ms === 500).length };
+  return { w, flow, sleeps: () => sleeps, polls: () => sleeps.filter((ms) => ms === 500).length };
 }
 
-test('finish: waits until no file changed for ~5 s (10 polls of 500 ms), then force-ends', async (t) => {
-  const { w, polls } = await finishWithWrites(t, 3);
-  assert.equal(polls, 3 + 10, '3 busy polls, then 10 quiet ones');
-  assert.deepEqual(w.calls, ['kill:22'], 'force-end only after the quiet wait, no close request');
+test('finish: waits for the Network\\Cookies write after the keys, then ~1 s, then force-ends', async (t) => {
+  const { w, sleeps, polls } = await finishWithCommit(t, 3);
+  assert.equal(polls(), 3);
+  assert.equal(sleeps()[3], 1000, '~1 s after the write');
+  assert.deepEqual(w.calls, ['kill:22'], 'force-end only after the write, no close request');
   assert.deepEqual(last(w), { phase: 'done', account: w.account });
-  assert.match(await read(path.join(w.target, 'Local Storage', 'leveldb', '000003.log')), /secret/);
-  assert.ok(w.logs.some((l) => /^finish: wait for a quiet profile: quiet: \d+ ms$/.test(l)), w.logs.join('\n'));
+  assert.match(await read(path.join(w.target, 'Network', 'Cookies')), /sessionKey committed/);
+  assert.ok(w.logs.some((l) => /^finish: wait for the cookie write: written: \d+ ms$/.test(l)), w.logs.join('\n'));
+  assert.equal(w.logs.some((l) => /committed|encrypted/.test(l)), false, 'never file contents');
 });
 
-test('finish: the files changed after the keys are logged by relative path, never their contents', async (t) => {
-  const { w } = await finishWithWrites(t, 3);
-  const line = w.logs.find((l) => l.startsWith('finish: changed after the keys:'));
-  assert.ok(line, w.logs.join('\n'));
-  assert.match(line, /Local Storage[\\/]leveldb[\\/]000003\.log/);
-  assert.doesNotMatch(line, /config\.json/, 'written before the keys were seen: not a change after them');
-  assert.equal(w.logs.some((l) => /secret|encrypted/.test(l)), false);
+test('finish: a -journal or -wal write counts as the cookie write', async (t) => {
+  for (const file of ['Cookies-journal', 'Cookies-wal']) {
+    const { w, polls } = await finishWithCommit(t, 2, file);
+    assert.equal(polls(), 2, file);
+    assert.deepEqual(last(w), { phase: 'done', account: w.account }, file);
+  }
 });
 
-test('finish: never quiet within ~40 s → still moved, but unsure (no cookiePending, "may not have been saved")', async (t) => {
-  const { w, polls } = await finishWithWrites(t, Infinity);
-  assert.equal(polls, 80, 'capped at 40 s');
+test('finish: the sessionKey already on disk ("I\'ve signed in" after the commit) → no wait', async (t) => {
+  const w = await world(t);
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await signInInClaude(w, flow); // cookie with sessionKey written before the keys
+  assert.deepEqual(last(w), { phase: 'done', account: w.account });
+});
+
+test('finish: no cookie write within ~45 s → "not saved yet": nothing moved, Claude left running', async (t) => {
+  const { w, flow, polls } = await finishWithCommit(t, Infinity);
+  assert.equal(polls(), 90, 'capped at 45 s');
+  assert.deepEqual(last(w), { phase: 'notSaved' });
+  assert.deepEqual(w.calls, [], 'not force-ended');
+  assert.equal(flow.active, true);
+  assert.equal(existsSync(w.target), false, 'nothing moved');
+  assert.equal(await read(path.join(w.stash, 'main.txt')), 'MAIN', 'main profile still stashed');
+  assert.ok(w.logs.some((l) => /^finish: wait for the cookie write: cap: \d+ ms$/.test(l)));
+  await flow.poll(); // the detection tick keeps running: it must not start another wait on its own
+  await flow.confirm();
+  assert.deepEqual(last(w), { phase: 'notSaved' });
+});
+
+test('"not saved yet" → Wait longer: another ~45 s wait; the write then finishes the sign-in', async (t) => {
+  const { w, flow, polls } = await finishWithCommit(t, 120); // the write comes 30 polls into the second wait
+  assert.deepEqual(last(w), { phase: 'notSaved' });
+  await flow.waitLonger();
+  assert.equal(polls(), 120);
   assert.deepEqual(w.calls, ['kill:22']);
-  assert.deepEqual(last(w), { phase: 'done', account: w.account, unsure: true });
-  assert.equal(existsSync(path.join(w.target, 'config.json')), true);
-  assert.ok(w.logs.some((l) => l.startsWith('finish: wait for a quiet profile: still changing at the cap')));
+  assert.deepEqual(last(w), { phase: 'done', account: w.account });
+  assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN');
+});
+
+test('"not saved yet" → Cancel: the main profile is restored as today', async (t) => {
+  const { w, flow } = await finishWithCommit(t, Infinity);
+  await flow.cancel();
+  assert.deepEqual(last(w), { phase: 'cancelled' });
+  assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN');
+  assert.equal(existsSync(w.stash), false);
+  assert.equal(existsSync(w.target), false);
+  assert.equal(flow.active, false);
 });
 
 test('keys never present → the detection never closes or moves anything', async (t) => {
@@ -554,15 +594,4 @@ test('keys never present → the detection never closes or moves anything', asyn
   assert.equal(flow.active, true);
   assert.equal(existsSync(w.target), false);
   assert.equal(await read(path.join(w.stash, 'main.txt')), 'MAIN');
-});
-
-test('keys present but the sessionKey cookie never written → still moved; the card check decides', async (t) => {
-  const w = await world(t);
-  const flow = new SignInFlow(w.deps);
-  assert.equal(await flow.start(w.slot, w.account), null);
-  await signInInClaude(w, flow, false);
-  assert.deepEqual(last(w), { phase: 'done', account: w.account });
-  assert.equal(existsSync(path.join(w.target, 'config.json')), true);
-  assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN');
-  assert.equal(existsSync(w.markerFile), false);
 });

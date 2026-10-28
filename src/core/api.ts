@@ -14,8 +14,9 @@ export type SignInStatus =
   /** "I've signed in" is checking for a saved session (countdown), then found none (the sign-in stays open). */
   | { phase: 'checking'; secondsLeft: number }
   | { phase: 'notFound' }
-  /** unsure: the profile never got quiet before the force-end; the sign-in may not have been saved. */
-  | { phase: 'done'; account: MarkerAccount; unsure?: true }
+  | { phase: 'done'; account: MarkerAccount }
+  /** No cookie database write within ~45 s: nothing moved yet; the person picks Wait longer or Cancel. */
+  | { phase: 'notSaved' }
   | { phase: 'cancelled' }
   /** stashPath: where the main profile is kept when it could not be put back (null = it is back in place). */
   | { phase: 'failed'; stashPath: string | null };
@@ -69,6 +70,8 @@ export interface LauncherApi {
   /** "I've signed in": read-only check, then finishes or reports notFound (fallback for the automatic detection). */
   confirmSignIn(): Promise<void>;
   cancelSignIn(): Promise<void>;
+  /** "Wait longer" after notSaved: another ~45 s wait for the cookie write. */
+  waitLongerSignIn(): Promise<void>;
   onSignIn(listener: (status: SignInStatus) => void): void;
   /** closeFirst: "Close and remove" on a running account; without it a running account gives error running. */
   removeAccount(id: string, closeFirst?: boolean): Promise<ActionResult>;

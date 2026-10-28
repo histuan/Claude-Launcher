@@ -328,7 +328,10 @@ signInConfirm.textContent = strings.signIn.confirm;
 signInCancel.textContent = strings.cancel;
 signInDialog.addEventListener('cancel', (e) => e.preventDefault()); // Esc does nothing: the buttons decide
 const lockSignIn = (): void => { signInConfirm.disabled = true; signInCancel.disabled = true; };
-signInConfirm.addEventListener('click', () => { lockSignIn(); void api.confirmSignIn(); });
+signInConfirm.addEventListener('click', () => {
+  lockSignIn();
+  void (shownPhase === 'notSaved' ? api.waitLongerSignIn() : api.confirmSignIn());
+});
 signInCancel.addEventListener('click', () => { lockSignIn(); void api.cancelSignIn(); });
 const signInSteps = byId<HTMLOListElement>('signin-steps');
 let shownPhase: SignInStatus['phase'] | null = null;
@@ -343,6 +346,7 @@ function renderSteps(current: StartStep): void {
 function showSignIn(status: SignInStatus): void {
   if (status.phase === 'starting' && !starting) return; // a step that arrived after the reply
   shownPhase = status.phase;
+  signInConfirm.textContent = status.phase === 'notSaved' ? strings.signIn.notSaved.waitLonger : strings.signIn.confirm;
   signInSteps.hidden = status.phase !== 'starting';
   signInConfirm.hidden = status.phase === 'starting'; // nothing to confirm before the sign-in window is up
   if (status.phase === 'starting') {
@@ -359,6 +363,15 @@ function showSignIn(status: SignInStatus): void {
     byId('signin-body').textContent = status.phase === 'checking'
       ? strings.signIn.checking(status.secondsLeft) : strings.signIn.notFound;
     signInConfirm.disabled = status.phase === 'checking';
+    signInCancel.disabled = false;
+    if (!signInDialog.open) signInDialog.showModal();
+    return;
+  }
+  if (status.phase === 'notSaved') {
+    // Nothing moved yet: Wait longer (another ~45 s) or Cancel (puts the main profile back).
+    byId('signin-title').textContent = strings.signIn.notSaved.title;
+    byId('signin-body').textContent = strings.signIn.notSaved.body;
+    signInConfirm.disabled = false;
     signInCancel.disabled = false;
     if (!signInDialog.open) signInDialog.showModal();
     return;
@@ -382,11 +395,7 @@ async function signInFinished(status: SignInStatus): Promise<void> {
   state = await api.getState();
   renderCards();
   renderSignInAvailability();
-  if (status.phase === 'done' && status.unsure) {
-    // Never quiet before the force-end: say so instead of opening an account that may be signed out.
-    const again = await ask({ title: strings.signIn.unsure.title, body: strings.signIn.unsure.body, confirm: strings.signIn.unsure.again });
-    if (again !== null) await startSignIn({ accountId: status.account.id });
-  } else if (status.phase === 'done') {
+  if (status.phase === 'done') {
     // The main Claude was already put back (and reopened if it was open); now open the new account so the person
     // lands in it. The launcher closes once its window is visible.
     await showResult(await api.openAccount(status.account.id));

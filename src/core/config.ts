@@ -14,11 +14,6 @@ export interface Account {
   photo: string | null;
   /** Claude --user-data-dir. null = Main (default profile, no flag). */
   profileDir: string | null;
-  /**
-   * Set at the end of a sign-in: Claude was force-ended before writing its sessionKey cookie, so the oauth keys in
-   * config.json count as signed in until the cookie shows up (then it is cleared). Absent = false.
-   */
-  cookiePending?: true;
 }
 
 export interface LauncherConfig {
@@ -88,7 +83,6 @@ export function parseConfig(raw: unknown): LauncherConfig {
       realName: text(a.realName),
       photo: text(a.photo),
       profileDir: text(a.profileDir),
-      ...(a.cookiePending === true && text(a.profileDir) !== null ? { cookiePending: true as const } : {}),
     };
     if (isMain(account)) {
       if (main) continue; // only one account may use the default profile
@@ -119,31 +113,14 @@ export function renameAccount(cfg: LauncherConfig, id: string, label: string): L
   return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? { ...a, label: name } : a)) };
 }
 
-/** Sets or clears cookiePending on an extra account. Unchanged config (same object) when nothing changes. */
-export function setCookiePending(cfg: LauncherConfig, id: string, pending: boolean): LauncherConfig {
-  const target = cfg.accounts.find((a) => a.id === id);
-  if (!target || isMain(target) || (target.cookiePending === true) === pending) return cfg;
-  const changed: Account = { ...target };
-  if (pending) changed.cookiePending = true;
-  else delete changed.cookiePending;
-  return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? changed : a)) };
-}
-
-/**
- * After a successful sign-in: adds the new card (once) and sets cookiePending only when the save looked complete
- * (`saved` = the profile got quiet before the force-end). An unsure save clears the flag, so the card's check shows
- * "Not signed in" unless the cookie is really there.
- */
+/** After a successful sign-in: adds the new card (once); an existing card stays as it is. */
 export function afterSignIn(
   cfg: LauncherConfig,
   account: { id: string; label: string; profileDir: string; isNew: boolean },
-  saved: boolean,
 ): LauncherConfig {
   const { id, label, profileDir, isNew } = account;
-  const withCard = isNew && !cfg.accounts.some((a) => a.id === id)
-    ? { ...cfg, accounts: [...cfg.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] }
-    : cfg;
-  return setCookiePending(withCard, id, saved);
+  if (!isNew || cfg.accounts.some((a) => a.id === id)) return cfg;
+  return { ...cfg, accounts: [...cfg.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] };
 }
 
 export function removeAccount(cfg: LauncherConfig, id: string): LauncherConfig {

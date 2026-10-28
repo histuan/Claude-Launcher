@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  afterSignIn, removeAccount, renameAccount, setCookiePending, setGreetingName, type Account,
+  afterSignIn, removeAccount, renameAccount, setGreetingName, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
@@ -118,31 +118,16 @@ test('only direct children of %USERPROFILE%\\ClaudeProfiles count as launcher pr
   assert.equal(isLauncherProfileDir('', HOME), false);
 });
 
-test('cookiePending: kept only when true, set and cleared per account, never on Main', () => {
-  const raw = {
-    accounts: [acc('main', null), { ...acc('work', 'C:\\P\\work'), cookiePending: true }, { ...acc('home', 'C:\\P\\home'), cookiePending: 'yes' }],
-  };
-  const cfg = parseConfig(raw);
-  assert.equal(cfg.accounts[1].cookiePending, true);
-  assert.equal('cookiePending' in cfg.accounts[2], false);
-  const set = setCookiePending(cfg, 'home', true);
-  assert.equal(set.accounts[2].cookiePending, true);
-  const cleared = setCookiePending(set, 'work', false);
-  assert.equal('cookiePending' in cleared.accounts[1], false);
-  assert.equal(setCookiePending(cfg, 'main', true), cfg, 'Main is never flagged');
-  assert.equal(setCookiePending(cfg, 'home', false), cfg, 'no change → same object');
-  assert.equal(cfg.accounts[1].cookiePending, true, 'input not mutated');
-});
-
-test('after a sign-in: new card added once; cookiePending only when the save looked complete', () => {
+test('after a sign-in: the new card is added once; an existing card is left as it is', () => {
   const work = { id: 'work', label: 'Work', profileDir: 'C:\\P\\work', isNew: true };
   const base = parseConfig({ accounts: [acc('main', null)] });
-  const saved = afterSignIn(base, work, true);
-  assert.deepEqual(saved.accounts[1], { ...acc('work', 'C:\\P\\work', 'Work'), cookiePending: true });
-  assert.equal(afterSignIn(saved, work, true).accounts.length, 2, 'never added twice');
-  const unsure = afterSignIn(base, work, false);
-  assert.deepEqual(unsure.accounts[1], acc('work', 'C:\\P\\work', 'Work'), 'unsure: no flag');
-  // Sign in again on an existing card: an unsure save clears an old flag.
-  const again = afterSignIn(saved, { ...work, isNew: false }, false);
-  assert.equal('cookiePending' in again.accounts[1], false);
+  const added = afterSignIn(base, work);
+  assert.deepEqual(added.accounts[1], acc('work', 'C:\\P\\work', 'Work'));
+  assert.equal(afterSignIn(added, work).accounts.length, 2, 'never added twice');
+  assert.equal(afterSignIn(added, { ...work, isNew: false }), added);
+});
+
+test('parseConfig drops an old cookiePending flag (a build of 0.4.4 wrote it)', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null), { ...acc('work', 'C:\\P\\work'), cookiePending: true }] });
+  assert.equal('cookiePending' in cfg.accounts[1], false);
 });

@@ -20,20 +20,17 @@ Phase 4.3: speed fixes after testing 0.4.3 on a real PC (0.4.3 was not released 
 - If Claude is opened again while the launcher is closing it, the sign-in stops at once with "Claude was opened
   again. Close it and try again." Nothing is moved and the reopened Claude is left alone (before, the launcher kept
   trying for ~47 s).
-- Finishing a sign-in no longer waits a fixed ~35 s for the cookie. Once the `oauth:tokenCache` keys are in
-  `config.json`, the launcher waits until the profile folder is quiet (no file changed, by date or size, for ~5 s
-  in a row; checked every ~500 ms; at most ~40 s), then force-ends the sign-in Claude. A fixed ~2 s wait (an
-  earlier build of this PR) was too short: the account opened on the sign-in screen. The session is always moved.
-- If the folder never gets quiet within ~40 s, the dialog says **"The sign-in may not have been saved"** and offers
-  **Sign in again**; that card gets no `cookiePending` flag, so it shows **Not signed in** unless the cookie is there.
-- `sign-in-timings.log` now records how long the quiet wait took and which files changed after the keys appeared
-  (relative paths only, never contents), to learn where the desktop sign-in really lives.
-- "Not signed in" stays right after a forced finish: the account gets a `cookiePending` flag in the launcher
-  config at the end of a sign-in whose profile got quiet. With the profile closed, the `sessionKey` cookie means signed in (and clears the
-  flag). Without the cookie, the card is signed in only while `cookiePending` is set **and** the `oauth:tokenCache`
-  keys are in `config.json` (names only, never values). With neither, it shows **Not signed in** and offers
-  **Sign in**. If the cookie database cannot be read, the keys decide, as before. So a sign-out inside Claude still
-  shows **Not signed in** once the cookie was written, as in 0.4.2.
+- Finishing a sign-in waits for the real cookie write instead of a fixed time. Once the `oauth:tokenCache` keys are
+  in `config.json`, the launcher waits until `Network\Cookies` (or its `-journal` / `-wal`) changes on disk (newer
+  date or another size; the file is never opened while Claude runs), checked every ~500 ms for up to ~45 s. It then
+  waits ~1 s more and force-ends the sign-in Claude. Chromium commits cookies about every 30 s, and the sign-in
+  needs that write: earlier builds of this PR that ended Claude sooner (after ~2 s, or once the folder was quiet
+  for ~5 s) opened the new account on the sign-in screen.
+- If no cookie write comes within ~45 s, nothing is moved: the dialog says **"The sign-in was not saved yet"** with
+  **Wait longer** (another ~45 s) and **Cancel** (puts the main profile back, as before).
+- `sign-in-timings.log` records `finish: wait for the cookie write: written|cap: N ms`.
+- A card counts as signed in only with the claude.ai `sessionKey` cookie, as in 0.4.2 (read from a temporary copy
+  while the profile is closed). The `oauth:tokenCache` keys count only when the cookie database cannot be read.
 - The version label moved to the bottom-right corner.
 
 ### Added
