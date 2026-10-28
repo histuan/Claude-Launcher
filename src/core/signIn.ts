@@ -52,11 +52,15 @@ export function parseMarker(raw: unknown): Marker | null {
   };
 }
 
-/** Claude writes its OAuth token into config.json once signed in. Only the key is checked, never the value. */
+/**
+ * Claude writes "oauth:tokenCache" / "oauth:tokenCacheV2" into config.json once signed in (a fresh profile has
+ * neither). Only the key NAMES are looked at, never their values. Signing out does not remove them.
+ */
 export function hasOauth(configJson: string): boolean {
   try {
-    const cfg = JSON.parse(configJson) as Record<string, unknown>;
-    return Boolean(cfg['oauth:tokenCacheV2'] || cfg['oauth:tokenCache']);
+    const cfg: unknown = JSON.parse(configJson);
+    if (typeof cfg !== 'object' || cfg === null) return false;
+    return Object.keys(cfg).some((key) => key === 'oauth:tokenCache' || key === 'oauth:tokenCacheV2');
   } catch {
     return false;
   }
@@ -65,29 +69,4 @@ export function hasOauth(configJson: string): boolean {
 /** "Signed in" = the sessionKey cookie exists. Cookie names are plain text in the SQLite files; values are not read. */
 export function containsSessionKey(files: Buffer[]): boolean {
   return files.some((f) => f.includes('sessionKey'));
-}
-
-/**
- * Automatic sign-in detection (same idea as ai-multi-instance): Chromium writes a new cookie only on its periodic
- * flush, and a killed app does not flush. Ready = the token is in config.json AND the cookie store changed after it
- * (or at most `leadMs` before it). Older changes (app startup) are ignored.
- */
-export class LoginWatch {
-  private cookieChangedAt: number | null = null;
-  private tokenAt: number | null = null;
-
-  constructor(private cookieRef: string, private readonly leadMs = 2000) {}
-
-  get detected(): boolean {
-    return this.tokenAt !== null;
-  }
-
-  sample(now: number, cookieSignature: string, oauth: boolean): boolean {
-    if (cookieSignature !== this.cookieRef) {
-      this.cookieRef = cookieSignature;
-      this.cookieChangedAt = now;
-    }
-    if (this.tokenAt === null && oauth) this.tokenAt = now;
-    return this.tokenAt !== null && this.cookieChangedAt !== null && this.cookieChangedAt >= this.tokenAt - this.leadMs;
-  }
 }

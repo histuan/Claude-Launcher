@@ -144,6 +144,19 @@ After testing 0.4.1 on the PC (email and Google sign-in, cancel and crash recove
   remove". **I've signed in**: immediate, read-only check with a ~15 s countdown.
 - Docs: `config.json` keys in `WINDOWS.md` §1; `lastKnownAccountUuid` as a Phase 5 candidate in §5.
 
+## Phase 4.2 — sign-in speed and small UI ✅ (2026-10-27, version 0.4.3)
+
+After testing 0.4.2 on the PC (all 7 tests passed).
+
+- Add account / Sign in: the dialog opens at once with live steps ("Closing Claude…", "Preparing a clean profile…",
+  "Opening sign-in window…"). Claude is asked to close and its exit polled every ~250 ms; after ~5 s only the
+  default-profile processes are force-ended. Step timings in `sign-in-timings.log` (no secrets).
+- Detection: the `oauth:tokenCache*` key names in `config.json` (polled every ~1 s) → graceful close → `sessionKey`
+  cookie check → move. "I've signed in" stays as fallback with the same logic.
+- Main card: fixed "Main" badge. Version label (`v0.4.3`) in the bottom-left corner.
+- Docs: "Close this account" keeps the launcher open; "Running" = process open; signed-out state only known once
+  the profile is closed (`SCOPE.md` §2.2–2.3).
+
 ## Phase 5 — Account details and photo
 
 Read: `WINDOWS.md` §5, `SCOPE.md` §2.2–2.3.
@@ -152,6 +165,26 @@ Read: `WINDOWS.md` §5, `SCOPE.md` §2.2–2.3.
   Stop the phase here if the output does not exist yet.
 - Then: detection in the order of section 5, with manual fallback. Also update the Main card.
 - Change photo: pick an image, save a resized copy to `userData/photos/<id>.png`; "back to the initial".
+
+## Phase 5.1 — Receive memories from…
+
+A **guided assistant**, not an automatic transfer: memories live on Anthropic's servers and there is no official API,
+so the launcher only walks the person through copying the text from one account and importing it into another.
+
+- Entry: card ⋯ → **Receive memories from…** → list of the other **signed-in** accounts (the card that opens the
+  menu is the target).
+- Warning dialog first (buttons **Cancel** in red, **Proceed** in orange): imported memories are **added** to the
+  target's existing ones; they may duplicate or conflict; the import is experimental; for work accounts, check the
+  organization's rules before moving memories between accounts.
+- **Step 1 — copy from the source account:** the launcher opens the source account. Instructions: Settings → Your
+  Claude → Manage → copy the memories. The person pastes the text into the assistant, or drops a `.txt`/`.md` file.
+  Tip shown: if Manage does not offer a copy, ask Claude "Write out all my memories verbatim." and copy the answer.
+- **Step 2 — import into the target account:** the launcher opens the target account and puts the text on the
+  clipboard. Instructions: Settings → Your Claude → Start import → paste → **Add to memory**. Buttons: **Copy again**
+  (puts the text back on the clipboard) and **Done**.
+- Privacy: the text is kept **only in memory**, never written to disk or logs, and cleared on **Done** or **Cancel**.
+- Tests: the warning comes first; the text never reaches a file or a log; Done and Cancel clear it; only signed-in
+  accounts are offered as the source.
 
 ## Phase 6 — Polish and release
 

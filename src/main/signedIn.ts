@@ -1,10 +1,11 @@
-// "Not signed in" label for extra accounts (Phase 4.1): the claude.ai sessionKey cookie is the signal.
+// "Not signed in" label for extra accounts: the claude.ai sessionKey cookie is the signal (names only, never values).
+// The oauth:tokenCache keys in config.json only when the cookie database cannot be read: they stay after a sign-out.
 import type { Account } from '../core/config.js';
 
 export interface SignedInDeps {
   /** From the cookie database; null = it cannot be read. */
   sessionCookie(profileDir: string): Promise<boolean | null>;
-  /** Fallback only: the oauth:tokenCache* keys in config.json (they can stay after a sign-out). */
+  /** Fallback only: the oauth:tokenCache* key names in config.json. */
   configOauth(profileDir: string): Promise<boolean>;
 }
 

@@ -1,5 +1,6 @@
 // Every user-facing text lives here, so other languages can be added later.
-import type { ActionError } from '../core/api.js';
+import type { ActionError, StartStep } from '../core/api.js';
+import type { CardBadge } from '../core/card.js';
 import type { GreetingPeriod } from '../core/greeting.js';
 
 export const strings = {
@@ -15,6 +16,14 @@ export const strings = {
   yourName: 'Your name',
   accounts: 'Accounts',
   mainAccount: 'Main',
+  /** Small fixed badge on a card; Main keeps it when renamed. */
+  badges: {
+    main: 'Main',
+  } satisfies Record<CardBadge, string>,
+  /** Bottom-left corner, e.g. "v0.4.3". */
+  version: (version: string) => `v${version}`,
+  /** Tooltip of the version label. */
+  logs: (file: string) => `Logs: ${file}`,
   openAccount: (name: string) => `Open ${name}`,
   accountOptions: (name: string) => `Options for ${name}`,
   menu: {
@@ -55,20 +64,28 @@ export const strings = {
       body: 'A blank Claude window opened. Sign in there with the account for this card (email or Google). '
         + 'The launcher notices it by itself.',
     },
-    detected: {
-      title: 'Signed in',
-      body: 'Waiting for Claude to save the session. This can take up to a minute.',
+    /** Shown at once after the click, until the sign-in window is up. */
+    starting: {
+      title: 'Getting a sign-in window ready',
+      steps: {
+        closing: 'Closing Claude…',
+        preparing: 'Preparing a clean profile…',
+        opening: 'Opening sign-in window…',
+      } satisfies Record<StartStep, string>,
     },
     saving: {
       title: 'Saving the session',
-      body: 'Closing that window and putting your main Claude back…',
+      body: 'Waiting for Claude to save the sign-in (up to about 45 seconds), then putting your main Claude back.',
     },
     confirm: 'I\'ve signed in',
     checking: (seconds: number) => `Checking… (${seconds} s)`,
     notFound: 'No sign-in found. Sign in in the Claude window, then press I\'ve signed in again.',
-    noSession: {
-      title: 'The sign-in was not saved',
-      body: 'Claude had not saved the session yet, so nothing was kept. Try again and wait a few seconds after signing in.',
+    /** No cookie database write within ~45 s: nothing moved yet. */
+    notSaved: {
+      title: 'The sign-in was not saved yet',
+      body: 'Claude has not saved the sign-in to disk yet (it does so about every 30 seconds). Wait longer, or '
+        + 'cancel to put your main Claude back.',
+      waitLonger: 'Wait longer',
     },
     failed: {
       title: 'Could not finish the sign-in',
@@ -120,6 +137,10 @@ export const strings = {
     defaultRunning: {
       title: 'Could not close your main Claude',
       body: 'Nothing was changed. Close Claude yourself, then try again.',
+    },
+    reopened: {
+      title: 'Claude was opened again',
+      body: 'Close it and try again.',
     },
     noWindow: {
       title: 'Claude is starting in the background',

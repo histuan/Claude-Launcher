@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  removeAccount, renameAccount, setGreetingName, type Account,
+  afterSignIn, removeAccount, renameAccount, setGreetingName, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
@@ -116,4 +116,18 @@ test('only direct children of %USERPROFILE%\\ClaudeProfiles count as launcher pr
   assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\a\\b', HOME), false);
   assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\AppData\\Roaming\\Claude', HOME), false);
   assert.equal(isLauncherProfileDir('', HOME), false);
+});
+
+test('after a sign-in: the new card is added once; an existing card is left as it is', () => {
+  const work = { id: 'work', label: 'Work', profileDir: 'C:\\P\\work', isNew: true };
+  const base = parseConfig({ accounts: [acc('main', null)] });
+  const added = afterSignIn(base, work);
+  assert.deepEqual(added.accounts[1], acc('work', 'C:\\P\\work', 'Work'));
+  assert.equal(afterSignIn(added, work).accounts.length, 2, 'never added twice');
+  assert.equal(afterSignIn(added, { ...work, isNew: false }), added);
+});
+
+test('parseConfig drops an old cookiePending flag (a build of 0.4.4 wrote it)', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null), { ...acc('work', 'C:\\P\\work'), cookiePending: true }] });
+  assert.equal('cookiePending' in cfg.accounts[1], false);
 });

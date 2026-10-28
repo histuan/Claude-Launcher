@@ -67,24 +67,39 @@ const account = (id: string): Account => ({
 });
 const main: Account = { ...account('main'), label: null, profileDir: null };
 
-test('tracker: cookie first, config.json only as fallback; a running profile keeps its last known state', async () => {
-  const cookie = new Map<string, boolean | null>([['work', true], ['home', null]]);
-  const config = new Map<string, boolean>([['work', true], ['home', true]]);
+const files = (cookie: Map<string, boolean | null>, keys: Map<string, boolean>) => ({
+  sessionCookie: async (dir: string) => cookie.get(path.win32.basename(dir)) ?? null,
+  configOauth: async (dir: string) => keys.get(path.win32.basename(dir)) ?? false,
+});
+
+test('tracker: the sessionKey cookie decides; the keys alone never count (they stay after a sign-out)', async () => {
+  const tracker = new SignedInTracker(files(
+    new Map([['work', true], ['gone', false], ['fresh', false]]),
+    new Map([['work', false], ['gone', true], ['fresh', false]]),
+  ));
+  // work: cookie → signed in; gone: signed out inside Claude (keys stay) → Not signed in; fresh: nothing → Not signed in.
+  assert.deepEqual(await tracker.signedOut([main, account('work'), account('gone'), account('fresh')], []), ['gone', 'fresh']);
+});
+
+test('tracker: cookie database unreadable → the config.json keys decide', async () => {
+  const tracker = new SignedInTracker(files(new Map(), new Map([['work', true], ['home', false]])));
+  assert.deepEqual(await tracker.signedOut([main, account('work'), account('home')], []), ['home']);
+});
+
+test('tracker: a running profile keeps its last known state until forgotten', async () => {
+  let signedIn = true;
   const reads: string[] = [];
   const tracker = new SignedInTracker({
-    sessionCookie: async (dir) => { reads.push(dir); return cookie.get(path.win32.basename(dir)) ?? null; },
-    configOauth: async (dir) => config.get(path.win32.basename(dir)) ?? false,
+    sessionCookie: async (dir) => { reads.push(dir); return signedIn; },
+    configOauth: async () => false,
   });
-  const accounts = [main, account('work'), account('home')];
-  assert.deepEqual(await tracker.signedOut(accounts, []), [], 'home: cookie DB unreadable → config.json');
-
-  // Signed out inside Claude: the cookie row is gone, but config.json still has the oauth keys.
-  cookie.set('work', false);
+  const accounts = [main, account('work')];
+  assert.deepEqual(await tracker.signedOut(accounts, []), []);
+  signedIn = false;
   assert.deepEqual(await tracker.signedOut(accounts, ['work']), [], 'running: last known state, file not read');
-  assert.equal(reads.filter((d) => d.endsWith('work')).length, 1);
-  assert.deepEqual(await tracker.signedOut(accounts, []), ['work'], 'closed: the cookie decides');
-
+  assert.equal(reads.length, 1);
+  assert.deepEqual(await tracker.signedOut(accounts, []), ['work'], 'closed: read again');
   tracker.forget('work');
-  cookie.set('work', true);
+  signedIn = true;
   assert.deepEqual(await tracker.signedOut(accounts, ['work']), [], 'forgotten: read even while running');
 });

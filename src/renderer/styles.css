@@ -106,6 +106,12 @@ main {
 }
 .running::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--running); }
 .running[hidden] { display: none; }
+/* Fixed badge (Main), at the bottom of the card so it never meets "Running" or the ⋯ button. */
+.badge {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); padding: 1px 8px;
+  border: 1px solid var(--border); border-radius: 999px; font-size: 10px; letter-spacing: .02em;
+  color: var(--text-email); pointer-events: none;
+}
 
 .add {
   padding: 10px 22px; border: 0; border-radius: 10px;
@@ -115,6 +121,23 @@ main {
 .add[aria-disabled="true"] { opacity: .45; cursor: default; }
 .add[aria-disabled="true"]:hover { background: var(--accent); }
 .note { margin: -24px 0 0; font-size: 12px; color: var(--text-real-name); text-align: center; }
+.version {
+  position: fixed; right: 12px; bottom: 8px; margin: 0; font-size: 11px; color: var(--text-real-name);
+  cursor: default; user-select: none; /* hover shows the log path (title) */
+}
+
+/* Sign-in start steps: done ✓, current, next (dimmed) */
+.steps { margin: 4px 0 16px; padding: 0; list-style: none; font-size: 14px; }
+.steps li { display: flex; gap: 8px; padding: 3px 0; }
+.steps li::before { content: ''; flex: none; width: 1.1em; text-align: center; }
+.steps .done { color: var(--text-email); }
+.steps .done::before { content: '✓'; color: var(--running); }
+.steps .current { color: var(--text); }
+.steps .current::before { content: '•'; color: var(--accent); animation: pulse 1s ease-in-out infinite alternate; }
+.steps .next { color: var(--text-real-name); opacity: .6; }
+.steps[hidden] { display: none; }
+@keyframes pulse { from { opacity: .35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .steps .current::before { animation: none; } }
 
 /* Card ⋯ menu */
 .menu {

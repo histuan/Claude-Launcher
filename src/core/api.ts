@@ -1,15 +1,23 @@
-// Shape of the API the preload exposes as window.launcher (types only).
+// Shape of the API the preload exposes as window.launcher (types, plus the list of start steps).
 import type { Account } from './config.js';
 import type { MarkerAccount } from './signIn.js';
 
+/** Steps of Add account / Sign in before the sign-in window is up, in order. */
+export const START_STEPS = ['closing', 'preparing', 'opening'] as const;
+export type StartStep = typeof START_STEPS[number];
+
 /** Progress of the sign-in flow, sent from the main process to the window. */
 export type SignInStatus =
-  | { phase: 'waiting' | 'detected' | 'saving' }
+  /** Before the sign-in window opens (shown at once, so the click never feels frozen). */
+  | { phase: 'starting'; step: StartStep }
+  | { phase: 'waiting' | 'saving' }
   /** "I've signed in" is checking for a saved session (countdown), then found none (the sign-in stays open). */
   | { phase: 'checking'; secondsLeft: number }
   | { phase: 'notFound' }
   | { phase: 'done'; account: MarkerAccount }
-  | { phase: 'cancelled' | 'noSession' }
+  /** No cookie database write within ~45 s: nothing moved yet; the person picks Wait longer or Cancel. */
+  | { phase: 'notSaved' }
+  | { phase: 'cancelled' }
   /** stashPath: where the main profile is kept when it could not be put back (null = it is back in place). */
   | { phase: 'failed'; stashPath: string | null };
 
@@ -25,8 +33,12 @@ export interface LauncherState {
   signInAvailable: boolean;
   /** Diagnostics file listing the folders checked (paths only). */
   signInLog: string;
+  /** sign-in-timings.log (step names, paths and durations only), shown as the version label's tooltip. */
+  timingsLog: string;
   /** Sign-in in progress (e.g. resumed on startup), or null. */
   signIn: SignInStatus | null;
+  /** The launcher's own version (app.getVersion()), shown in the bottom-right corner. */
+  version: string;
 }
 
 /** Add account (new card, created when the sign-in succeeds) or Sign in on an existing card. */
@@ -38,7 +50,7 @@ export type ActionError =
   // Phase 4.1: Claude started without a window; an account that would not close
   | 'noWindow' | 'closeFailed'
   // sign-in
-  | 'noProfile' | 'pending' | 'defaultRunning' | 'profileInUse' | 'disk';
+  | 'noProfile' | 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk';
 
 export interface ActionResult {
   state: LauncherState;
@@ -58,6 +70,8 @@ export interface LauncherApi {
   /** "I've signed in": read-only check, then finishes or reports notFound (fallback for the automatic detection). */
   confirmSignIn(): Promise<void>;
   cancelSignIn(): Promise<void>;
+  /** "Wait longer" after notSaved: another ~45 s wait for the cookie write. */
+  waitLongerSignIn(): Promise<void>;
   onSignIn(listener: (status: SignInStatus) => void): void;
   /** closeFirst: "Close and remove" on a running account; without it a running account gives error running. */
   removeAccount(id: string, closeFirst?: boolean): Promise<ActionResult>;

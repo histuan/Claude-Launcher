@@ -128,6 +128,24 @@ const execQuiet: ExecFn = (file, args) => new Promise((resolve) => {
   execFile(file, args, { windowsHide: true, timeout: 10_000 }, () => resolve());
 });
 
+/**
+ * Asks the given processes and their children to close (taskkill /T without /F: a close message, like clicking ×).
+ * Claude may only hide to the tray; callers force-end what is still running after a few seconds.
+ */
+export async function closeProcessesGracefully(pids: number[], exec: ExecFn = execQuiet): Promise<void> {
+  for (const pid of pids) await exec('taskkill', ['/PID', String(pid), '/T']);
+}
+
+/** Whether a process still runs: signal 0 only checks, it never ends anything. EPERM = it exists but is not ours. */
+export function isProcessAlive(pid: number, kill: (pid: number, signal: number) => void = process.kill): boolean {
+  try {
+    kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
 /** Force-closes the given processes and their children (taskkill /T /F), like ai-multi-instance. */
 export async function killProcesses(pids: number[], exec: ExecFn = execQuiet): Promise<void> {
   for (const pid of pids) await exec('taskkill', ['/PID', String(pid), '/T', '/F']);

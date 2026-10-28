@@ -8,6 +8,65 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-28
+
+Phase 4.3: speed fixes after testing 0.4.3 on a real PC (0.4.3 was not released on its own: its changes ship here).
+
+### Changed
+
+- **Add account** / **Sign in** close the main Claude in ~1 s instead of ~5 s: a close request never works (Claude
+  only hides in the tray), so after ~1 s only the default-profile processes are force-ended; the closing step gives up
+  after ~10 s in all.
+- If Claude is opened again while the launcher is closing it, the sign-in stops at once with "Claude was opened
+  again. Close it and try again." Nothing is moved and the reopened Claude is left alone (before, the launcher kept
+  trying for ~47 s).
+- Finishing a sign-in waits for the real cookie write instead of a fixed time. Once the `oauth:tokenCache` keys are
+  in `config.json`, the launcher waits until `Network\Cookies` (or its `-journal` / `-wal`) changes on disk (newer
+  date or another size; the file is never opened while Claude runs), checked every ~500 ms for up to ~45 s. It then
+  waits ~1 s more and force-ends the sign-in Claude. Chromium commits cookies about every 30 s, and the sign-in
+  needs that write: earlier builds of this PR that ended Claude sooner (after ~2 s, or once the folder was quiet
+  for ~5 s) opened the new account on the sign-in screen.
+- If no cookie write comes within ~45 s, nothing is moved: the dialog says **"The sign-in was not saved yet"** with
+  **Wait longer** (another ~45 s) and **Cancel** (puts the main profile back, as before).
+- `sign-in-timings.log` records `finish: wait for the cookie write: written|cap: N ms`.
+- A card counts as signed in only with the claude.ai `sessionKey` cookie, as in 0.4.2 (read from a temporary copy
+  while the profile is closed). The `oauth:tokenCache` keys count only when the cookie database cannot be read.
+- The version label moved to the bottom-right corner.
+
+### Added
+
+- Hovering the version label shows where the log is (`Logs: %APPDATA%\claude-launcher\sign-in-timings.log`).
+- Claude's window is brought to the front when the launcher opens an account or the sign-in window (best effort:
+  if Windows refuses, nothing fails).
+
+## [0.4.3] - 2026-10-27
+
+Phase 4.2: sign-in speed and small UI follow-ups after testing 0.4.2 on a real PC.
+
+### Changed
+
+- **Add account** / **Sign in** no longer look frozen: the dialog opens at once with live steps ("Closing Claude…",
+  "Preparing a clean profile…", "Opening sign-in window…"). Claude is first asked to close and its exit is checked
+  every ~250 ms; after ~5 s only the default-profile processes are force-ended. The two lookups before it (main
+  profile and `Claude.exe`) now run in parallel.
+- Sign-in detection is much faster: the signal is now the `oauth:tokenCache` / `oauth:tokenCacheV2` key names
+  appearing in `config.json` (checked every ~1 s; values are never read or logged), instead of waiting for Claude's
+  lazy cookie write. The sign-in Claude is then closed gracefully so it writes its cookies, and nothing moves unless
+  the `sessionKey` cookie is on disk, as before. If Claude only hides to the tray, the launcher waits for the cookie
+  (up to ~35 s) before force-ending it. **I've signed in** uses the same logic.
+
+### Added
+
+- A small fixed **Main** badge on the Main card; it stays when the card is renamed.
+- The launcher's version (e.g. `v0.4.3`) in the bottom-left corner.
+- `sign-in-timings.log` in the launcher's data folder: how long each sign-in step took (paths and durations only).
+
+### Documentation
+
+- `SCOPE.md`: **Close this account** keeps the launcher open; "Running" means the Claude process is open; a
+  signed-out account is only known once its profile is closed.
+- `PHASES.md`: Phase 5.1 — Receive memories from… (guided assistant).
+
 ## [0.4.2] - 2026-10-27
 
 Phase 4.1: fixes and account controls after testing 0.4.1 on a real PC.
@@ -174,7 +233,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.3...HEAD
+[0.4.3]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...launcher-v0.4.3
 [0.4.2]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.1...launcher-v0.4.2
 [0.4.1]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.0...launcher-v0.4.1
 [0.4.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.3.0...launcher-v0.4.0

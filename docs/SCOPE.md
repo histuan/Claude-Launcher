@@ -48,6 +48,9 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
 - "● Running" indicator when that account's instance is running.
 - Hover: subtle highlight (border or background in the accent colour). Visible keyboard focus (Tab; Enter opens).
 - The **first card is always the "Main" account**: the default Claude profile (no `--user-data-dir`). It cannot be removed.
+  It shows a small fixed **"Main"** badge that stays even if the card is renamed (0.4.3).
+- "● Running" means the account's **Claude process is open**, not that the account is signed in.
+- The launcher's version (e.g. `v0.4.3`) is shown as small muted text in the bottom-left corner of the window.
 - Single row of cards. Horizontal scrolling only when they do not fit in the window.
 
 ### 2.3 Card ⋯ menu
@@ -55,6 +58,12 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
 - **Rename** — changes the card name.
 - **Change photo** — picks an image from the PC (png/jpg/webp), cropped to a circle; option "back to the initial".
 - **Remove** — with confirmation. Deletes that account's profile folder. Not available on the Main card.
+- **Close this account** — ends that account's Claude. The launcher **stays open** afterwards (intended: the person
+  usually closes one account to do something else in the launcher).
+
+**Signed-out state (tested on Thiago's PC, 0.4.2):** signing out inside Claude does **not** change the `config.json`
+keys, and the cookie database is locked while Claude runs, so a signed-out account is only known once its profile is
+closed ("Not signed in" then appears on the card). The launcher does not try to detect it while the account runs.
 
 ## 3. Look
 

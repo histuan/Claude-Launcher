@@ -70,9 +70,12 @@ export function pidsForProfile(processes: ClaudeProcess[], profileDir: string | 
   return processes.filter((p) => sameProfile(p.profileDir, profileDir)).map((p) => p.pid);
 }
 
-/** Whether that profile's main process shows a window (Claude hides in the tray when its window is closed). */
-export function profileHasWindow(processes: ClaudeProcess[], profileDir: string | null): boolean {
-  return processes.some((p) => p.hasWindow === true && sameProfile(p.profileDir, profileDir));
+/**
+ * Pid of that profile's main process when it shows a window, else null (Claude hides in the tray when its window is
+ * closed). The pid is used to bring that window to the front.
+ */
+export function windowPid(processes: ClaudeProcess[], profileDir: string | null): number | null {
+  return processes.find((p) => p.hasWindow === true && sameProfile(p.profileDir, profileDir))?.pid ?? null;
 }
 
 export function runningAccountIds(accounts: Account[], processes: ClaudeProcess[]): string[] {

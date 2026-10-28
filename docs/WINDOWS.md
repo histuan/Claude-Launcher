@@ -20,6 +20,13 @@ Windows adaptation of the macOS guide "Run a Separate Claude Desktop App for Eac
 | Login cookie | `<profile>\Network\Cookies` (not at the root). `Partitions\launch-preview-*\Network\Cookies` also exist: ignored |
 | Claude Code CLI | Its binaries live in the same folder (`<profile>\claude-code\…`) and run from there while desktop sessions are open |
 | `<profile>\config.json` after sign-in (0.4.1 test, 2026-10-27) | Holds **both** `oauth:tokenCache` and `oauth:tokenCacheV2`, plus `lastKnownAccountUuid`. These keys can **stay after signing out**, so they are not a signed-in signal: the launcher uses the claude.ai `sessionKey` cookie row (names and hosts only, from a temporary copy of `Network\Cookies`) and falls back to these keys only when the cookie database cannot be read |
+| `config.json` as a sign-in signal (0.4.2 test, 2026-10-27) | A **fresh** profile has no `oauth:tokenCache*` keys; right after signing in, `config.json` gets `oauth:tokenCache` and `oauth:tokenCacheV2`. `config.json` is a plain file, readable while Claude runs, so the key **names** appearing are the fast sign-in signal (values are never read). Signing **out** does not change these keys |
+| Cookie database while running | `Network\Cookies` is locked while Claude runs and Chromium writes new cookies lazily (about every 30 s, and when it exits normally); a forced end loses cookies not written yet |
+| Force-end before the cookie commit (0.4.4 build tests, 2026-10-28) | Force-ending ~2 s after the keys, or once the profile folder had been quiet for ~5 s (10–17 s), opened the new account on the **sign-in screen**; the files changed after the keys never included `Network\` (no `Cookies` write yet). With 0.4.3 (force-end after ~35–43 s) it was signed in. **Chromium commits the cookie database about every 30 s, and the desktop sign-in needs that write**: the `oauth:tokenCache*` keys alone are not enough |
+| Launcher logs (0.4.4 build test) | `%APPDATA%\claude-launcher\` (`sign-in-timings.log`, `sign-in-check.log`), not `%APPDATA%\Multi-Account Launcher for Claude` |
+| Close request (0.4.3 test, 2026-10-28) | `taskkill /PID <pid> /T` (no `/F`) **never** closes Claude: it hides in the tray. `sign-in-timings.log` showed "close main Claude: forced" every time (~8 s with the old ~5 s wait) |
+| Reopening Claude while it is being closed (0.4.3 test) | A new default-profile process appears; the 0.4.3 launcher kept trying to close for ~47 s ("still running") and then stopped |
+| Desktop sign-in without the cookie (0.4.3 test) | "cookie not written before the force-end: 35260 ms", then a forced end and the move: the account still opened **signed in** and its card did not say "Not signed in". The desktop app's sign-in lives in `config.json` (`oauth:tokenCache*`); waiting for the cookie flush is not needed |
 | Closing the window | Claude keeps running in the tray: the process remains until it is ended ("Close this account" in the launcher) |
 | First open of a freshly signed-in profile | Claude may start in the tray without a window; spawning the same command again shows it (single-instance re-activation) |
 
@@ -78,7 +85,9 @@ per profile is not possible on current Windows. Source: README of `Zoltak-Dev/ai
 
 ```
 0. Resolve the default profile folder (§2); none found with confidence → do not start
-1. Confirm with the person → close all DEFAULT Claude instances
+1. Confirm with the person → close all DEFAULT Claude instances (close request, exit polled every ~250 ms,
+   force-end of the default-profile processes only after ~1 s; ~10 s in all)
+   → stop at once if a NEW default-profile process appears meanwhile (the person reopened Claude): nothing stashed
    → abort if any process whose exe is inside the profile folder still runs (e.g. Claude Code CLI)
 2. Write marker  %LOCALAPPDATA%\ClaudeLauncher\login-pending.json  (state + paths)
 3. STASH: rename the default profile folder → "<folder>.launcher-stash"   (same parent: atomic rename)
@@ -86,7 +95,11 @@ per profile is not possible on current Windows. Source: README of `Zoltak-Dev/ai
 4. Open the default Claude (no flag) → starts clean → the person signs in
 5. Detect sign-in (automatic) or "I've signed in" button (fallback, read-only: it checks for the saved session for
    ~15 s and, if none, says so and leaves everything as it is) or "Cancel"
-6. Close the default Claude → move the signed-in folder → %USERPROFILE%\ClaudeProfiles\<id>
+6. Wait for the cookie database write: Network\Cookies (or -journal / -wal) gets a newer mtime or another size than
+   when the keys appeared (stat only), polled every ~500 ms, max ~45 s; already done if sessionKey is on disk
+   → written: wait ~1 s → force-end the default Claude (no close request)
+     → move the signed-in folder → %USERPROFILE%\ClaudeProfiles\<id>
+   → cap: nothing moves; "The sign-in was not saved yet" → Wait longer (another ~45 s) or Cancel (restore)
 7. Undo the stash (rename back) → delete marker → reopen the main Claude
 ```
 
@@ -98,11 +111,19 @@ Flow rules:
   or "continue sign-in".
 - Cancel at any point = close the default Claude, delete the new folder (it is disposable) and undo the stash.
 - The profile folder also holds the Claude Code CLI (`claude-code\…`): the stash moves it too, so nothing may run from it.
-- **Sign-in detection:** the app is signed in when the `sessionKey` cookie exists, in `<profile>\Network\Cookies`
-  (plus its `-journal`/`-wal`; `Partitions\*` are ignored). The cookie database is locked while the app
-  is open, so watch for changes in the cookie database and its `-journal`/`-wal`, together with the profile's `config.json`
-  (a plain file, readable while the app is open), ignoring writes at app startup. See how ai-multi-instance does it
-  (`engine.py`) before inventing anything. Always keep the manual button.
+- **Sign-in detection (0.4.3):** the fast signal is the `oauth:tokenCache` / `oauth:tokenCacheV2` key **names**
+  appearing in the blank profile's `config.json`, polled every ~1 s while the dialog is open (values never read or
+  logged). "I've signed in" is the manual fallback (keys, or the `sessionKey` text in `<profile>\Network\Cookies`
+  plus its `-journal`/`-wal`; `Partitions\*` are ignored). Before 0.4.3 the launcher waited for the lazy cookie
+  write, which could take up to a minute. Step timings go to `%APPDATA%\claude-launcher\sign-in-timings.log`.
+- **Finish (0.4.4):** the keys are only the start of the sign-in (§1). Step 6 waits for Chromium's cookie commit
+  (about every 30 s) before the force-end, logging `finish: wait for the cookie write: written|cap: N ms`. Without
+  a write within ~45 s nothing moves and the person chooses Wait longer or Cancel.
+- **Card signed-in check:** the claude.ai `sessionKey` cookie row (temporary copy, profile closed), as in 0.4.2;
+  the `oauth:tokenCache*` keys only when the cookie database cannot be read (they stay after a sign-out).
+- **Window to the front (0.4.4):** after opening an account or the sign-in window, the launcher (still the foreground
+  app) runs PowerShell with `AllowSetForegroundWindow` / `SetForegroundWindow` on that process's main window
+  (restored first if minimised). Best effort: a refusal never fails the action.
 - Moving the session to another folder works: DPAPI encryption is per Windows user, not per folder.
 
 ## 5. Account details (email and real name)

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultConfig, type Account } from '../src/core/config.js';
 import {
-  defaultProfileFromProcesses, parseClaudeProcesses, parseProcessList, pidsForProfile, pidsInsideFolder, profileHasWindow,
+  defaultProfileFromProcesses, parseClaudeProcesses, parseProcessList, pidsForProfile, pidsInsideFolder, windowPid,
   runningAccountIds,
 } from '../src/core/processes.js';
 
@@ -91,9 +91,9 @@ test('window query: MainWindowHandle 0 or null = no window (Claude in the tray)'
   ]);
   const list = parseClaudeProcesses(json);
   assert.deepEqual(list.map((p) => p.hasWindow), [false, true, false]);
-  assert.equal(profileHasWindow(list, null), false);
-  assert.equal(profileHasWindow(list, 'C:\\P\\work'), true);
-  assert.equal(profileHasWindow(list, 'C:\\P\\home'), false);
-  assert.equal(profileHasWindow(parseClaudeProcesses(SAMPLE), 'C:\\Users\\thiag\\ClaudeProfiles\\work'), false,
+  assert.equal(windowPid(list, null), null);
+  assert.equal(windowPid(list, 'C:\\P\\work'), 200);
+  assert.equal(windowPid(list, 'C:\\P\\home'), null);
+  assert.equal(windowPid(parseClaudeProcesses(SAMPLE), 'C:\\Users\\thiag\\ClaudeProfiles\\work'), null,
     'the plain process query has no window information');
 });

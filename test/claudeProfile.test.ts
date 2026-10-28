@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { RawProcess } from '../src/core/processes.js';
 import {
-  describeProfileLookup, killProcesses, markerFileFor, resolveDefaultProfile, type ProfileLookupDeps,
+  closeProcessesGracefully, describeProfileLookup, isProcessAlive, killProcesses, markerFileFor, resolveDefaultProfile, type ProfileLookupDeps,
 } from '../src/main/system/claudeProfile.js';
 
 const LOCAL = 'C:\\Users\\u\\AppData\\Local';
@@ -89,4 +89,17 @@ test('marker path and kill arguments', async () => {
   const calls: string[][] = [];
   await killProcesses([10, 20], async (file, args) => { calls.push([file, ...args]); });
   assert.deepEqual(calls, [['taskkill', '/PID', '10', '/T', '/F'], ['taskkill', '/PID', '20', '/T', '/F']]);
+  calls.length = 0;
+  await closeProcessesGracefully([10], async (file, args) => { calls.push([file, ...args]); });
+  assert.deepEqual(calls, [['taskkill', '/PID', '10', '/T']], 'graceful: no /F');
+});
+
+test('process exit check: signal 0 only; gone → false, not ours (EPERM) → still alive', () => {
+  const signals: number[] = [];
+  assert.equal(isProcessAlive(1, (_pid, sig) => { signals.push(sig); }), true);
+  const fail = (code: string) => () => { throw Object.assign(new Error(code), { code }); };
+  assert.equal(isProcessAlive(1, fail('ESRCH')), false);
+  assert.equal(isProcessAlive(1, fail('EPERM')), true);
+  assert.deepEqual(signals, [0]);
+  assert.equal(isProcessAlive(process.pid), true);
 });

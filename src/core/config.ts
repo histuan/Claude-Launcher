@@ -113,6 +113,16 @@ export function renameAccount(cfg: LauncherConfig, id: string, label: string): L
   return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? { ...a, label: name } : a)) };
 }
 
+/** After a successful sign-in: adds the new card (once); an existing card stays as it is. */
+export function afterSignIn(
+  cfg: LauncherConfig,
+  account: { id: string; label: string; profileDir: string; isNew: boolean },
+): LauncherConfig {
+  const { id, label, profileDir, isNew } = account;
+  if (!isNew || cfg.accounts.some((a) => a.id === id)) return cfg;
+  return { ...cfg, accounts: [...cfg.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] };
+}
+
 export function removeAccount(cfg: LauncherConfig, id: string): LauncherConfig {
   const target = cfg.accounts.find((a) => a.id === id);
   if (!target || isMain(target)) return cfg;
