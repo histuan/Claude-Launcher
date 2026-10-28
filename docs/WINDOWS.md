@@ -95,7 +95,7 @@ per profile is not possible on current Windows. Source: README of `Zoltak-Dev/ai
    ~15 s and, if none, says so and leaves everything as it is) or "Cancel"
 6. Wait ~2 s for Claude's writes to settle → force-end the default Claude (no close request, no cookie wait)
    → move the signed-in folder → %USERPROFILE%\ClaudeProfiles\<id>
-   (the card then counts as signed in with the sessionKey cookie OR the oauth:tokenCache keys; neither = "Not signed in")
+   → mark the account cookiePending in the launcher config (Claude may not have written its cookie yet)
 7. Undo the stash (rename back) → delete marker → reopen the main Claude
 ```
 
@@ -113,8 +113,12 @@ Flow rules:
   plus its `-journal`/`-wal`; `Partitions\*` are ignored). Before 0.4.3 the launcher waited for the lazy cookie
   write, which could take up to a minute. Step timings go to `sign-in-timings.log` in the launcher's data folder.
 - **Finish (0.4.4):** the keys are enough (§1, 0.4.3 test), so step 6 no longer waits for the cookie and always moves
-  the session. A card is "signed in" with the `sessionKey` cookie OR the keys. Trade-off: the keys stay after a
-  sign-out inside Claude, so such a card keeps looking signed in.
+  the session, then sets `cookiePending: true` on that account in the launcher config.
+- **Card signed-in check (0.4.4, profile closed):** `sessionKey` cookie → signed in, and `cookiePending` is cleared.
+  No cookie → signed in only if `cookiePending` **and** the `oauth:tokenCache*` keys are present, else "Not signed
+  in". Cookie database unreadable → the keys decide. The keys alone are never enough: they stay after a sign-out
+  inside Claude (§1). So a just-added account shows signed in, its first real run writes the cookie and clears the
+  flag, and a later sign-out + close shows "Not signed in" again, as in 0.4.2.
 - **Window to the front (0.4.4):** after opening an account or the sign-in window, the launcher (still the foreground
   app) runs PowerShell with `AllowSetForegroundWindow` / `SetForegroundWindow` on that process's main window
   (restored first if minimised). Best effort: a refusal never fails the action.

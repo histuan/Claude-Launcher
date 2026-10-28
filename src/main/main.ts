@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
 import {
-  addAccount, defaultConfig, isMain, removeAccount, renameAccount, setGreetingName, type LauncherConfig,
+  addAccount, defaultConfig, isMain, removeAccount, renameAccount, setCookiePending, setGreetingName, type LauncherConfig,
 } from '../core/config.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
@@ -47,8 +47,15 @@ const defaultName: Promise<string> = onWindows
 
 let win: BrowserWindow | null = null;
 
-/** "Not signed in" = neither the sessionKey cookie nor the oauth:tokenCache keys in config.json (names only). */
-const signedInTracker = new SignedInTracker({ sessionCookie: (dir) => hasSessionCookie(dir), configOauth: isSignedIn });
+/** "Not signed in": see signedIn.ts (cookie; keys only while cookiePending or when the cookie DB is unreadable). */
+const signedInTracker = new SignedInTracker({
+  sessionCookie: (dir) => hasSessionCookie(dir),
+  configOauth: isSignedIn,
+  cookieWritten: (id) => {
+    store.update((c) => setCookiePending(c, id, false)).catch((err: unknown) =>
+      console.warn(`Could not clear cookiePending: ${(err as Error).message}`));
+  },
+});
 
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
   return {
@@ -167,10 +174,12 @@ async function onSignInStatus(status: SignInStatus): Promise<void> {
   signInStatus = final ? null : status;
   if (final) lastSignInOutcome = status;
   if (status.phase === 'done') signedInTracker.forget(status.account.id);
-  if (status.phase === 'done' && status.account.isNew) {
-    const { id, label, profileDir } = status.account;
-    await store.update((c) => (c.accounts.some((a) => a.id === id) ? c
-      : { ...c, accounts: [...c.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] }));
+  if (status.phase === 'done') {
+    // The sign-in Claude was force-ended, maybe before writing its cookie: cookiePending until the cookie shows up.
+    const { id, label, profileDir, isNew } = status.account;
+    await store.update((c) => setCookiePending(isNew && !c.accounts.some((a) => a.id === id)
+      ? { ...c, accounts: [...c.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] }
+      : c, id, true));
   }
   win?.webContents.send('launcher:signIn', status);
 }

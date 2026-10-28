@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  removeAccount, renameAccount, setGreetingName, type Account,
+  removeAccount, renameAccount, setCookiePending, setGreetingName, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
@@ -116,4 +116,20 @@ test('only direct children of %USERPROFILE%\\ClaudeProfiles count as launcher pr
   assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\a\\b', HOME), false);
   assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\AppData\\Roaming\\Claude', HOME), false);
   assert.equal(isLauncherProfileDir('', HOME), false);
+});
+
+test('cookiePending: kept only when true, set and cleared per account, never on Main', () => {
+  const raw = {
+    accounts: [acc('main', null), { ...acc('work', 'C:\\P\\work'), cookiePending: true }, { ...acc('home', 'C:\\P\\home'), cookiePending: 'yes' }],
+  };
+  const cfg = parseConfig(raw);
+  assert.equal(cfg.accounts[1].cookiePending, true);
+  assert.equal('cookiePending' in cfg.accounts[2], false);
+  const set = setCookiePending(cfg, 'home', true);
+  assert.equal(set.accounts[2].cookiePending, true);
+  const cleared = setCookiePending(set, 'work', false);
+  assert.equal('cookiePending' in cleared.accounts[1], false);
+  assert.equal(setCookiePending(cfg, 'main', true), cfg, 'Main is never flagged');
+  assert.equal(setCookiePending(cfg, 'home', false), cfg, 'no change → same object');
+  assert.equal(cfg.accounts[1].cookiePending, true, 'input not mutated');
 });

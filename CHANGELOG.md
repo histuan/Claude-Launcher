@@ -23,9 +23,12 @@ Phase 4.3: speed fixes after testing 0.4.3 on a real PC (0.4.3 was not released 
 - Finishing a sign-in no longer waits up to ~35 s for the cookie: once the `oauth:tokenCache` keys are in
   `config.json`, the launcher waits ~2 s for writes to settle and force-ends the sign-in Claude. The session is
   always moved; the "The sign-in was not saved" dialog is gone.
-- A card counts as signed in when it has the `sessionKey` cookie **or** the `oauth:tokenCache` keys (names only,
-  never values); with neither it shows **Not signed in** and offers **Sign in**. Because these keys stay after
-  signing out inside Claude, such a card keeps looking signed in.
+- "Not signed in" stays right after a forced finish: the account gets a `cookiePending` flag in the launcher
+  config at the end of its sign-in. With the profile closed, the `sessionKey` cookie means signed in (and clears the
+  flag). Without the cookie, the card is signed in only while `cookiePending` is set **and** the `oauth:tokenCache`
+  keys are in `config.json` (names only, never values). With neither, it shows **Not signed in** and offers
+  **Sign in**. If the cookie database cannot be read, the keys decide, as before. So a sign-out inside Claude still
+  shows **Not signed in** once the cookie was written, as in 0.4.2.
 - The version label moved to the bottom-right corner.
 
 ### Added

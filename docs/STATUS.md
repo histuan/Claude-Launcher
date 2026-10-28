@@ -47,7 +47,8 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
 - Phase 4.3 (0.4.4): closing the main Claude = close request for ~1 s, then force-end of the default profile only
   (~10 s in all); a NEW default-profile process meanwhile stops the start with "Claude was opened again" (nothing
   stashed); finishing = keys seen → ~2 s settle → force-end → move (no cookie wait, no "not saved" dialog); a card is
-  signed in with the cookie OR the keys; Claude's window brought to the front (best effort); version label bottom-right.
+  signed in with the cookie, or with the keys while `cookiePending` (set at the end of the sign-in, cleared once the
+  cookie shows up); Claude's window brought to the front (best effort); version label bottom-right.
 
 ## Missing
 
@@ -102,10 +103,11 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
   was open before (cancel and success alike); after a success the new account opens too.
   "Session saved" (inside the sign-in, blank profile) = the text `sessionKey` in the cookie database files.
 - "Signed in" for a card (0.4.4) = a claude.ai `sessionKey` row in `<profile>\Network\Cookies` (queried with the
-  built-in `node:sqlite` on a temporary copy; names and hosts only, never values; copy deleted) **or** the
-  `oauth:tokenCache*` key names in `config.json`. A running account keeps its last known state. Known trade-off: the
-  keys stay after a sign-out inside Claude, so that card keeps looking signed in. A plain cookie text search is not
-  enough: SQLite keeps a deleted row's text in free pages after a sign-out.
+  built-in `node:sqlite` on a temporary copy; names and hosts only, never values; copy deleted). Without the cookie,
+  the `oauth:tokenCache*` key names in `config.json` count only while the account has `cookiePending: true` in the
+  launcher config (set at the end of its sign-in, cleared when the cookie shows up), or when the cookie database
+  cannot be read. The keys alone are not enough: they stay after a sign-out. A running account keeps its last known
+  state. A plain cookie text search is not enough: SQLite keeps a deleted row's text in free pages after a sign-out.
 - Opening an account waits up to ~8 s for that profile's visible window (spawns once more after ~3 s); the launcher
   closes only then. "Close this account" / "Close and remove" end only that profile's main processes
   (`taskkill /T /F`): Main = no `--user-data-dir`, extra = its own `--user-data-dir`.
@@ -130,8 +132,11 @@ Phase 4.3 (0.4.4). Sign-in still moves your main Claude profile for a moment: ke
 5. **(b) Fast finish:** sign in in the blank window. A few seconds after the sign-in completes, the dialog shows
    "Saving the session" and finishes in about 2–4 s (before: up to ~35 s). Your main Claude reopens (if it was
    open) and the new account opens **signed in**; its card does **not** say "Not signed in".
-6. **(b) Card check:** close the launcher and reopen it: the new card still has no "Not signed in". (Known: if you
-   sign out inside that account's Claude, the card keeps looking signed in, because the token keys stay.)
+6. **(b) Card check:** close the launcher and reopen it: the new card still has no "Not signed in". Open that
+   account, use it for a minute (Claude writes its cookie), close it (⋯ → Close this account). Then open it again,
+   **sign out inside Claude**, wait about a minute (Claude writes cookie changes about every 30 s, and "Close this
+   account" force-ends it), close it the same way and reopen the launcher: the card now says **Not signed in**, as
+   in 0.4.2.
 7. **Cancel** and **I've signed in** work as in 0.4.3.
 8. **Send me the timings:** `sign-in-timings.log` (launcher's data folder, next to `sign-in-check.log`:
    `%APPDATA%\Multi-Account Launcher for Claude` or `%APPDATA%\claude-launcher`). Only step names, paths and
