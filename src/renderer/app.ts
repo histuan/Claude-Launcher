@@ -94,8 +94,8 @@ function renderCards(): void {
       h('span', { class: 'real-name clip' }, account.realName ?? ''),
     );
     open.addEventListener('click', () => void (isSignedOut(account) ? signIn(account) : openAccount(account, open)));
-    const shown = cardStatus(running.has(account.id), isSignedOut(account));
-    const status = h('span', { class: 'running' }, shown ? strings.status[shown] : '');
+    const shown = cardStatus(running.has(account.id), isSignedOut(account), state.checking.includes(account.id));
+    const status = h('span', { class: shown === 'checking' ? 'running checking' : 'running' }, shown ? strings.status[shown] : '');
     status.hidden = shown === null;
     const badge = cardBadge(account);
     const extra = badge ? [h('span', { class: 'badge' }, strings.badges[badge])] : [];
@@ -120,9 +120,10 @@ async function openAccount(account: Account, button: HTMLButtonElement): Promise
 }
 
 // ---------- "Running" indicator: every ~3 s while the window is visible ----------
-// When an account starts or stops running, the cards are drawn again with a fresh "Not signed in" check (a closed
-// profile is read at once). Running accounts are re-checked every ~30 s ("Running · Not signed in" after a sign-out
-// inside Claude); the launcher never closes anything because of it.
+// When an account starts or stops running, the cards are drawn again with a fresh "Not signed in" check. A running
+// account is never read (Claude locks its cookie database), so a sign-out inside Claude shows only after it is
+// closed; while the file is still locked right after a close, the card says "Checking…" (main retries for ~10 s and
+// sends cardsChanged when done).
 
 const sameIds = (a: Iterable<string>, b: Iterable<string>): boolean => {
   const x = [...a].sort();
@@ -133,7 +134,8 @@ const sameIds = (a: Iterable<string>, b: Iterable<string>): boolean => {
 /** Draws the cards again with a fresh state when the running set or the signed-out set changed. */
 async function refreshCards(nextRunning: Set<string>): Promise<void> {
   const fresh = await api.getState();
-  if (sameIds(nextRunning, running) && sameIds(fresh.signedOut, state.signedOut)) return;
+  if (sameIds(nextRunning, running) && sameIds(fresh.signedOut, state.signedOut)
+    && sameIds(fresh.checking, state.checking)) return;
   running = nextRunning;
   state = fresh;
   closeMenu(); // its card is about to be replaced
@@ -154,14 +156,8 @@ async function pollRunning(): Promise<void> {
   setTimeout(() => void pollRunning(), 3000);
 }
 
-async function pollSignedIn(): Promise<void> {
-  try {
-    if (!document.hidden && running.size > 0) await refreshCards(running);
-  } catch {
-    // the next poll tries again
-  }
-  setTimeout(() => void pollSignedIn(), 30_000);
-}
+/** A card check that needed retries (cookie database still locked after a close) is final. */
+api.onCardsChanged(() => void refreshCards(running).catch(() => undefined));
 
 // Full text in a tooltip only when it is cut with an ellipsis.
 document.addEventListener('mouseover', (e) => {
@@ -464,5 +460,4 @@ renderCards();
 renderSignInAvailability();
 setInterval(renderGreetingText, 30_000); // follows the morning/afternoon/evening boundary
 void pollRunning();
-setTimeout(() => void pollSignedIn(), 30_000);
 if (state.signIn) showSignIn(state.signIn); // a sign-in resumed on startup

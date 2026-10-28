@@ -19,11 +19,14 @@ test('version label: "v" + the app version', () => {
   assert.equal(strings.version('0.4.3'), 'v0.4.3');
 });
 
-test('(3) card status: Running, Running · Not signed in, or nothing when closed', () => {
+test('card status: Running, Running · Not signed in (last known), Checking… when closed, or nothing', () => {
   assert.equal(cardStatus(false, false), null);
   assert.equal(cardStatus(false, true), null, 'a closed card shows Not signed in in its text line instead');
   assert.equal(cardStatus(true, false), 'running');
   assert.equal(cardStatus(true, true), 'runningSignedOut');
+  assert.equal(cardStatus(false, true, true), 'checking', 'cookie database still locked after a close');
+  assert.equal(cardStatus(true, false, true), 'running', 'running wins: a running account is not read');
+  assert.equal(strings.status.checking, 'Checking…');
   assert.equal(strings.status.running, 'Running');
   assert.equal(strings.status.runningSignedOut, 'Running · Not signed in');
 });

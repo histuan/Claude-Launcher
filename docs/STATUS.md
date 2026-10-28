@@ -2,7 +2,9 @@
 
 **Current phase:** 4.4 — Card check after a sign-out (0.4.5), in a PR to `main`, waiting for Thiago's test and merge.
 0.4.4 (PR #14, merged) tested on the PC: sign-in works (`finish: wait for the cookie write: written: 24965 ms`, the new
-account opens signed in); but after a sign-out inside Claude the card still looked signed in.
+account opens signed in); but after a sign-out inside Claude the card still looked signed in. First 0.4.5 build
+tested too: its log proved the cookie database is locked (`EBUSY`) while Claude runs and for a few seconds after
+"Close this account", and the keys fallback answered "signed in"; this PR now has the fix for that.
 Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Receive memories from… (`docs/PHASES.md`).
 
 ## Done
@@ -53,11 +55,12 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
   front (best effort); version label bottom-right with the log path as tooltip. Earlier builds that ended Claude
   after ~2 s or a ~5 s quiet folder opened the account signed out: the sign-in needs Chromium's ~30 s cookie commit.
 
-- Phase 4.4 (0.4.5): card check = a `sessionKey` row that is not expired and not empty (lengths only); the decision
-  per account goes to `sign-in-timings.log` (`card check <id>: …`, with the reason when the database is unreadable);
-  a closed profile whose copy fails is retried twice before the keys decide; cards are redrawn when an account
-  starts or stops running; running accounts re-checked every ~30 s (**Running · Not signed in**, or only "Running"
-  if the copy fails while Claude runs). Root cause of the 0.4.4 report not proven yet: the new log line will say.
+- Phase 4.4 (0.4.5): card check = a `sessionKey` row that is not expired and not empty (lengths only); the
+  `oauth:tokenCache` keys never decide; running accounts are not read (their cookie database is locked); when an
+  account stops running it is read at once and, while still locked, every ~1 s for up to ~10 s (**Checking…** on the
+  card, then it updates by itself); each final decision goes to `sign-in-timings.log` (`card check <id>: …`).
+  Cause of the 0.4.4 report (from the first 0.4.5 build's log): copy failed with `EBUSY` right after the close, and
+  the keys fallback said "signed in".
 
 ## Missing
 
@@ -112,11 +115,12 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
   process query counts as "still running" (abort), never as "closed". The main Claude is reopened at the end only if it
   was open before (cancel and success alike); after a success the new account opens too.
   "Session saved" (inside the sign-in, blank profile) = the text `sessionKey` in the cookie database files.
-- "Signed in" for a card (0.4.5) = a claude.ai `sessionKey` row not expired and not empty (see `docs/WINDOWS.md` §4),
-  logged per account; earlier rule (0.4.2) = a claude.ai `sessionKey` row in `<profile>\Network\Cookies` (queried with
-  the built-in `node:sqlite` on a temporary copy; names and hosts only, never values; copy deleted). The
-  `oauth:tokenCache*` keys only when the cookie database cannot be read (they stay after a sign-out). A running
-  account keeps its last known state. A plain cookie text search is not enough: SQLite keeps a deleted row's text in free pages after a sign-out.
+- "Signed in" for a card (0.4.5) = a claude.ai `sessionKey` row in `<profile>\Network\Cookies`, not expired and not
+  empty (queried with the built-in `node:sqlite` on a temporary copy with its `-journal` / `-wal`; names, hosts,
+  expiry and value lengths only, never values; copy deleted). The `oauth:tokenCache*` keys never decide (they stay
+  after a sign-out). A running account keeps its last known state: a sign-out inside Claude is only seen after the
+  account is closed (`docs/WINDOWS.md` §1, §4). A plain cookie text search is not enough: SQLite keeps a deleted
+  row's text in free pages after a sign-out.
 - Opening an account waits up to ~8 s for that profile's visible window (spawns once more after ~3 s); the launcher
   closes only then. "Close this account" / "Close and remove" end only that profile's main processes
   (`taskkill /T /F`): Main = no `--user-data-dir`, extra = its own `--user-data-dir`.
@@ -131,18 +135,14 @@ Phase 4.4 (0.4.5). Sign-in still moves your main Claude profile for a moment: ke
    **launcher-installer**); after the merge, from the **Releases** page (tag `launcher-v0.4.5`). Install over 0.4.4.
    The version label (bottom-right) says **v0.4.5**.
 1. **Signed-in card:** use an extra account that is signed in. Open the launcher: its card has no "Not signed in".
-2. **Log out (closed afterwards):** open that account, **Log out inside Claude**, wait about **1 minute**, then open
-   the launcher and use ⋯ → **Close this account**. Within a few seconds after "Running" disappears the card must
-   say **Not signed in** (clicking it starts Sign in).
-3. **Running · Not signed in:** sign that account in again (Sign in on its card). Open it, open the launcher and
-   leave it open; **Log out inside Claude** and wait about **1–2 minutes** (Claude writes cookies about every 30 s,
-   the launcher checks every ~30 s). Expected: the card says **Running · Not signed in**, or only **Running** if
-   Windows does not let the launcher copy the cookie file while Claude runs. Nothing is closed by the launcher.
+2. **Log out, then close:** open that account, **Log out inside Claude**, wait about **1 minute** (Claude writes
+   cookies about every 30 s), then open the launcher. While it runs the card still shows only **Running** (a sign-out
+   cannot be seen while Claude runs). Use ⋯ → **Close this account**. Within ~3 s "Running" goes away; the card may
+   show **Checking…** for a few seconds, then by itself **Not signed in** (clicking it starts Sign in). It must not
+   stay on "Checking…" for more than ~10 s.
+3. **Reopen the launcher** (close it and open it again): the card still says **Not signed in**.
 4. **Send me the log lines:** `%APPDATA%\claude-launcher\sign-in-timings.log` (hover the version label for the
-   path). Copy every line that starts with `card check` (only account ids, decisions and error codes; never cookie
-   data). They tell which case happened:
-   - `cookie not found` / `cookie expired` / `cookie empty` → read fine, Not signed in;
-   - `cookie DB unreadable (copy failed (EBUSY)) -> keys fallback: keys found` → the file was still locked (step 2
-     should not end like this now; tell me if it does);
-   - `… while running -> kept: …` → the copy does not work while Claude runs (step 3 then shows only Running).
-5. Sign-in (Add account) works as in 0.4.4.
+   path). Copy the lines that start with `card check` (only account ids, decisions and error codes; never cookie
+   data). Expected after step 2: `card check <id>: cookie not found`. If you see `cookie DB unreadable (…) for ~10 s
+   -> kept: …`, the file stayed locked longer than ~10 s: tell me.
+5. Sign-in (Add account) works as in 0.4.4: the new account's card has no "Not signed in".

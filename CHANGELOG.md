@@ -14,27 +14,29 @@ Phase 4.4: the card check after a sign-out inside Claude (0.4.4 showed the card 
 
 ### Fixed
 
+- The `config.json` `oauth:tokenCache` keys no longer decide whether a card is signed in (they stay after a
+  sign-out). Only a valid claude.ai `sessionKey` cookie does. When the cookie database cannot be read, the card
+  keeps its last known state and shows **Checking…**.
+- Right after **Close this account** (and whenever an account stops running), the cookie database can stay locked
+  for a few seconds: it is read again every ~1 s for up to ~10 s, then the card updates by itself.
 - A `sessionKey` cookie that is expired (`expires_utc` in the past) or empty (value length 0, checked by length only)
   no longer counts as signed in.
-- Right after **Close this account**, a cookie database that cannot be copied yet (a Chromium child may still hold
-  it) is retried twice (~0.7 s apart) before the `config.json` keys decide. The keys never count when the database
-  is readable but has no valid `sessionKey`.
-- When an account starts or stops running, the cards are drawn again with a fresh check (before, the "Not signed
-  in" label only changed when the launcher was reopened).
+- Cards are drawn again when an account starts or stops running (before, "Not signed in" only changed when the
+  launcher was reopened).
 
 ### Added
 
-- `sign-in-timings.log` records the card decision per account when it changes (no cookie data): `card check <id>:
-  cookie found | cookie not found | cookie expired | cookie empty | cookie DB unreadable (<reason>) -> keys
-  fallback: keys found|no keys`.
-- While the launcher window is visible, running accounts are re-checked every ~30 s and show **Running · Not signed
-  in** after a sign-out inside Claude. If the cookie database cannot be copied while Claude runs, the card keeps its
-  last state (only "Running"). Nothing is closed because of it.
+- `sign-in-timings.log` records each final card decision per account (no cookie data): `card check <id>: cookie
+  found | cookie not found | cookie expired | cookie empty | cookie DB unreadable (<reason>) for ~10 s -> kept: …`.
+- A card shows **Running · Not signed in** when it runs and its last known state is signed out.
 
-### Changed
+### Notes
 
-- The temporary cookie copy still includes `Cookies-journal` / `Cookies-wal` (already the case since 0.4.2); now
-  covered by a test.
+- A sign-out inside Claude is only detected after the account is closed: Claude locks its cookie database while it
+  runs (every copy fails with `EBUSY`, PC test). An earlier build of this PR re-checked running accounts every ~30 s;
+  that was removed.
+- The temporary cookie copy includes `Cookies-journal` / `Cookies-wal` (already the case since 0.4.2); now covered
+  by a test.
 
 ## [0.4.4] - 2026-10-28
 

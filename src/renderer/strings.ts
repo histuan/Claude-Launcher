@@ -163,5 +163,6 @@ export const strings = {
   status: {
     running: 'Running',
     runningSignedOut: 'Running · Not signed in',
+    checking: 'Checking…',
   } satisfies Record<CardStatus, string>,
 } as const;

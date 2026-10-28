@@ -1,23 +1,28 @@
-// "Not signed in" label for extra accounts: a valid claude.ai sessionKey cookie is the signal (names, expiry and
-// value lengths only, never values). The oauth:tokenCache keys in config.json only when the cookie database cannot be
-// read: they stay after a sign-out. Each decision is logged per account, without secrets.
+// "Not signed in" label for extra accounts. Only a valid claude.ai sessionKey cookie decides (names, expiry and value
+// lengths, never values); the oauth:tokenCache keys never do (they stay after a sign-out). Claude locks its cookie
+// database while it runs (PC test of 0.4.5), so a running account is not read: it keeps its last known state. When an
+// account stops running, the file can stay locked for a few seconds: it is read again every ~1 s for up to ~10 s
+// ("Checking…" on the card meanwhile), then the window is told to redraw. Each final decision is logged.
 import type { Account } from '../core/config.js';
 import type { CookieCheck } from './system/cookies.js';
 
 export interface SignedInDeps {
   /** From a temporary copy of the cookie database. */
   sessionCookie(profileDir: string): Promise<CookieCheck>;
-  /** Fallback only: the oauth:tokenCache* key names in config.json. */
-  configOauth(profileDir: string): Promise<boolean>;
-  /** One line per account when its decision changes (e.g. "card check work: cookie not found"). */
+  /** One line per final decision (e.g. "card check work: cookie not found"). No cookie data. */
   log?(line: string): void;
-  now?(): number;
+  /** Called when a decision that needed retries is final (the cards must be drawn again). */
+  onChange?(): void;
   sleep?(ms: number): Promise<void>;
-  /** A running account is read again after this long (default ~30 s). */
-  recheckMs?: number;
-  /** A closed profile whose copy failed (a child process may still hold the file) is retried this often. */
-  retries?: number;
   retryMs?: number;
+  retryForMs?: number;
+}
+
+export interface CardChecks {
+  /** Extra accounts whose last known state is "not signed in". */
+  signedOut: string[];
+  /** Closed extra accounts whose cookie database is being read again ("Checking…"). */
+  checking: string[];
 }
 
 const LABELS: Record<Exclude<CookieCheck['state'], 'unreadable'>, string> = {
@@ -25,59 +30,79 @@ const LABELS: Record<Exclude<CookieCheck['state'], 'unreadable'>, string> = {
 };
 
 export class SignedInTracker {
-  private readonly known = new Map<string, { signedIn: boolean; at: number }>();
-  private readonly logged = new Map<string, string>();
+  /** Last known state; missing = unknown (never read successfully). */
+  private readonly known = new Map<string, boolean>();
+  /** Closed accounts already decided since they last ran. */
+  private readonly done = new Set<string>();
+  /** Reads in progress: `first` resolves after the first read, `loop` when the decision is final. */
+  private readonly loops = new Map<string, { first: Promise<void>; loop: Promise<void> }>();
+  /** Closed accounts whose first copy failed and are being retried ("Checking…"). */
+  private readonly retrying = new Set<string>();
 
   constructor(private readonly deps: SignedInDeps) {}
 
-  private now(): number {
-    return this.deps.now?.() ?? Date.now();
-  }
-
-  /**
-   * Ids of the extra accounts that are not signed in. A running profile keeps its last known state for ~30 s (Claude
-   * writes its cookie file only from time to time); then it is read again. A failed copy while running never turns a
-   * card into "Not signed in": the last known state stays.
-   */
-  async signedOut(accounts: Account[], runningIds: string[]): Promise<string[]> {
+  async cards(accounts: Account[], runningIds: string[]): Promise<CardChecks> {
     const extra = accounts.filter((a): a is Account & { profileDir: string } => a.profileDir !== null);
-    const signedIn = await Promise.all(extra.map((a) => this.check(a.id, a.profileDir, runningIds.includes(a.id))));
-    return extra.filter((_a, i) => !signedIn[i]).map((a) => a.id);
+    await Promise.all(extra.map(async (a) => {
+      if (runningIds.includes(a.id)) {
+        this.done.delete(a.id); // read again once it stops running
+      } else if (this.loops.has(a.id)) {
+        await this.loops.get(a.id)?.first; // a read already started (e.g. by a concurrent call)
+      } else if (!this.done.has(a.id)) {
+        await this.start(a.id, a.profileDir);
+      }
+    }));
+    return {
+      signedOut: extra.filter((a) => this.known.get(a.id) === false).map((a) => a.id),
+      checking: extra.filter((a) => this.retrying.has(a.id) && !runningIds.includes(a.id)).map((a) => a.id),
+    };
   }
 
-  private async check(id: string, profileDir: string, running: boolean): Promise<boolean> {
-    const last = this.known.get(id);
-    if (running && last && this.now() - last.at < (this.deps.recheckMs ?? 30_000)) return last.signedIn;
-    let cookie = await this.deps.sessionCookie(profileDir);
-    if (!running) {
-      const sleep = this.deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-      for (let i = 0; cookie.state === 'unreadable' && i < (this.deps.retries ?? 2); i++) {
-        await sleep(this.deps.retryMs ?? 700);
-        cookie = await this.deps.sessionCookie(profileDir);
-      }
-    }
-    let signedIn: boolean;
-    let decision: string;
-    if (cookie.state !== 'unreadable') {
-      signedIn = cookie.state === 'found';
-      decision = LABELS[cookie.state];
-    } else if (running && last) {
-      signedIn = last.signedIn;
-      decision = `cookie DB unreadable (${cookie.reason}) while running -> kept: ${signedIn ? 'signed in' : 'not signed in'}`;
-    } else {
-      signedIn = await this.deps.configOauth(profileDir);
-      decision = `cookie DB unreadable (${cookie.reason}) -> keys fallback: ${signedIn ? 'keys found' : 'no keys'}`;
-    }
-    this.known.set(id, { signedIn, at: this.now() });
-    if (this.logged.get(id) !== decision) {
-      this.logged.set(id, decision);
-      this.deps.log?.(`card check ${id}: ${decision}`);
-    }
-    return signedIn;
+  /** Resolves once the account's current retry loop (if any) has finished. */
+  async settled(id: string): Promise<void> {
+    await this.loops.get(id)?.loop;
   }
 
   /** Drops the remembered state (after a sign-in or a remove), so the next check reads the profile again. */
   forget(id: string): void {
     this.known.delete(id);
+    this.done.delete(id);
+  }
+
+  /** First read now; if the copy fails, keeps retrying in the background. Resolves after the first read. */
+  private start(id: string, profileDir: string): Promise<void> {
+    let firstDone!: () => void;
+    const first = new Promise<void>((r) => { firstDone = r; });
+    const retryMs = this.deps.retryMs ?? 1000;
+    const retryForMs = this.deps.retryForMs ?? 10_000;
+    const sleep = this.deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+    const loop = (async () => {
+      for (let attempt = 0; ; attempt++) {
+        const cookie = await this.deps.sessionCookie(profileDir);
+        if (cookie.state !== 'unreadable') {
+          this.known.set(id, cookie.state === 'found');
+          return this.decide(id, LABELS[cookie.state]);
+        }
+        if (attempt >= Math.round(retryForMs / retryMs)) {
+          const last = this.known.get(id);
+          const kept = last === undefined ? 'unknown' : last ? 'signed in' : 'not signed in';
+          return this.decide(id, `cookie DB unreadable (${cookie.reason}) for ~${Math.round(retryForMs / 1000)} s -> kept: ${kept}`);
+        }
+        this.retrying.add(id);
+        firstDone(); // the card shows "Checking…" from here
+        await sleep(retryMs);
+      }
+    })().catch((err: unknown) => this.decide(id, `check failed (${(err as Error).message})`)).finally(() => {
+      this.loops.delete(id);
+      firstDone();
+      if (this.retrying.delete(id)) this.deps.onChange?.();
+    });
+    this.loops.set(id, { first, loop });
+    return first;
+  }
+
+  private decide(id: string, decision: string): void {
+    this.done.add(id);
+    this.deps.log?.(`card check ${id}: ${decision}`);
   }
 }

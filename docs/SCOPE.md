@@ -64,6 +64,8 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
 **Signed-out state (tested on Thiago's PC, 0.4.2):** signing out inside Claude does **not** change the `config.json`
 keys, and the cookie database is locked while Claude runs, so a signed-out account is only known once its profile is
 closed ("Not signed in" then appears on the card). The launcher does not try to detect it while the account runs.
+Confirmed again in the 0.4.5 test: every copy of the cookie database fails with `EBUSY` while Claude runs, and for a
+few seconds after "Close this account"; the card says "Checking…" meanwhile (up to ~10 s), then updates.
 
 ## 3. Look
 
