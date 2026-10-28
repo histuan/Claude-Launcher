@@ -8,6 +8,34 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-28
+
+Phase 4.4: the card check after a sign-out inside Claude (0.4.4 showed the card as signed in).
+
+### Fixed
+
+- A `sessionKey` cookie that is expired (`expires_utc` in the past) or empty (value length 0, checked by length only)
+  no longer counts as signed in.
+- Right after **Close this account**, a cookie database that cannot be copied yet (a Chromium child may still hold
+  it) is retried twice (~0.7 s apart) before the `config.json` keys decide. The keys never count when the database
+  is readable but has no valid `sessionKey`.
+- When an account starts or stops running, the cards are drawn again with a fresh check (before, the "Not signed
+  in" label only changed when the launcher was reopened).
+
+### Added
+
+- `sign-in-timings.log` records the card decision per account when it changes (no cookie data): `card check <id>:
+  cookie found | cookie not found | cookie expired | cookie empty | cookie DB unreadable (<reason>) -> keys
+  fallback: keys found|no keys`.
+- While the launcher window is visible, running accounts are re-checked every ~30 s and show **Running · Not signed
+  in** after a sign-out inside Claude. If the cookie database cannot be copied while Claude runs, the card keeps its
+  last state (only "Running"). Nothing is closed because of it.
+
+### Changed
+
+- The temporary cookie copy still includes `Cookies-journal` / `Cookies-wal` (already the case since 0.4.2); now
+  covered by a test.
+
 ## [0.4.4] - 2026-10-28
 
 Phase 4.3: speed fixes after testing 0.4.3 on a real PC (0.4.3 was not released on its own: its changes ship here).
@@ -233,7 +261,9 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.3...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.5...HEAD
+[0.4.5]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.4...launcher-v0.4.5
+[0.4.4]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...launcher-v0.4.4
 [0.4.3]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...launcher-v0.4.3
 [0.4.2]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.1...launcher-v0.4.2
 [0.4.1]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.0...launcher-v0.4.1

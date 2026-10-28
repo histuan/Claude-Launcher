@@ -119,8 +119,17 @@ Flow rules:
 - **Finish (0.4.4):** the keys are only the start of the sign-in (§1). Step 6 waits for Chromium's cookie commit
   (about every 30 s) before the force-end, logging `finish: wait for the cookie write: written|cap: N ms`. Without
   a write within ~45 s nothing moves and the person chooses Wait longer or Cancel.
-- **Card signed-in check:** the claude.ai `sessionKey` cookie row (temporary copy, profile closed), as in 0.4.2;
-  the `oauth:tokenCache*` keys only when the cookie database cannot be read (they stay after a sign-out).
+- **Card signed-in check (0.4.5):** a claude.ai `sessionKey` row that is not expired (`expires_utc` in the past,
+  0 = session cookie) and not empty (`length(value)` and `length(encrypted_value)` both 0; lengths only, values never
+  read), from a temporary copy of `Network\Cookies` plus its `-journal` / `-wal`. The `oauth:tokenCache*` keys only
+  when the cookie database cannot be read (they stay after a sign-out). A closed profile whose copy fails is retried
+  twice (~0.7 s apart) first: right after "Close this account" a Chromium child may still hold the file. Every
+  decision goes to `sign-in-timings.log` when it changes: `card check <id>: cookie found | cookie not found |
+  cookie expired | cookie empty | cookie DB unreadable (<reason>) -> keys fallback: keys found|no keys`.
+- **Running accounts (0.4.5):** while the launcher window is visible, running accounts are re-read every ~30 s and
+  show **Running · Not signed in** when the `sessionKey` is gone. If the copy fails while Claude runs (the table
+  above says the file is locked), the card keeps its last state (`… while running -> kept: …` in the log): only
+  "Running". Nothing is ever closed because of this check. **To verify on the PC:** whether that copy works at all.
 - **Window to the front (0.4.4):** after opening an account or the sign-in window, the launcher (still the foreground
   app) runs PowerShell with `AllowSetForegroundWindow` / `SetForegroundWindow` on that process's main window
   (restored first if minimised). Best effort: a refusal never fails the action.
