@@ -251,18 +251,22 @@ test('"I\'ve signed in": Cancel during the countdown cancels; no notFound afterw
 
 test('Cancel while the sign-in is finishing is ignored: the main profile is never moved to the account', async (t) => {
   const w = await world(t);
+  // Real (short) waits, as on a slow disk: the quiet wait takes a while before the force-end starts.
+  w.deps.sleep = () => new Promise((r) => setTimeout(r, 2));
   const flow = new SignInFlow(w.deps);
   assert.equal(await flow.start(w.slot, w.account), null);
   // The finish pauses in its force-end of the sign-in Claude.
-  let release: () => void = () => undefined;
+  let release: (() => void) | null = null;
   w.deps.kill = () => new Promise<void>((r) => { release = () => { w.pids = []; r(); }; });
   await blankClaude(w);
   await writeKeys(w);
   const finishing = flow.poll();
-  for (let i = 0; i < 200 && last(w)?.phase !== 'saving'; i++) await new Promise((r) => setTimeout(r, 5));
+  // Wait until the finish really is in its force-end (after the quiet wait), not just showing "saving".
+  for (let i = 0; i < 2000 && !release; i++) await new Promise((r) => setTimeout(r, 5));
+  assert.ok(release, 'the finish reached the force-end');
   assert.equal(last(w)?.phase, 'saving');
   await flow.cancel(); // e.g. a stale "checking" status re-enabled the Cancel button
-  release();
+  (release as () => void)();
   await finishing;
   assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN', 'the main profile is back in place');
   assert.equal(existsSync(path.join(w.target, 'main.txt')), false, 'the main profile was not moved to the account');
