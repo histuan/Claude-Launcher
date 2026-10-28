@@ -129,6 +129,23 @@ export function setCookiePending(cfg: LauncherConfig, id: string, pending: boole
   return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? changed : a)) };
 }
 
+/**
+ * After a successful sign-in: adds the new card (once) and sets cookiePending only when the save looked complete
+ * (`saved` = the profile got quiet before the force-end). An unsure save clears the flag, so the card's check shows
+ * "Not signed in" unless the cookie is really there.
+ */
+export function afterSignIn(
+  cfg: LauncherConfig,
+  account: { id: string; label: string; profileDir: string; isNew: boolean },
+  saved: boolean,
+): LauncherConfig {
+  const { id, label, profileDir, isNew } = account;
+  const withCard = isNew && !cfg.accounts.some((a) => a.id === id)
+    ? { ...cfg, accounts: [...cfg.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] }
+    : cfg;
+  return setCookiePending(withCard, id, saved);
+}
+
 export function removeAccount(cfg: LauncherConfig, id: string): LauncherConfig {
   const target = cfg.accounts.find((a) => a.id === id);
   if (!target || isMain(target)) return cfg;

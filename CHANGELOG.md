@@ -20,11 +20,16 @@ Phase 4.3: speed fixes after testing 0.4.3 on a real PC (0.4.3 was not released 
 - If Claude is opened again while the launcher is closing it, the sign-in stops at once with "Claude was opened
   again. Close it and try again." Nothing is moved and the reopened Claude is left alone (before, the launcher kept
   trying for ~47 s).
-- Finishing a sign-in no longer waits up to ~35 s for the cookie: once the `oauth:tokenCache` keys are in
-  `config.json`, the launcher waits ~2 s for writes to settle and force-ends the sign-in Claude. The session is
-  always moved; the "The sign-in was not saved" dialog is gone.
+- Finishing a sign-in no longer waits a fixed ~35 s for the cookie. Once the `oauth:tokenCache` keys are in
+  `config.json`, the launcher waits until the profile folder is quiet (no file changed, by date or size, for ~5 s
+  in a row; checked every ~500 ms; at most ~40 s), then force-ends the sign-in Claude. A fixed ~2 s wait (an
+  earlier build of this PR) was too short: the account opened on the sign-in screen. The session is always moved.
+- If the folder never gets quiet within ~40 s, the dialog says **"The sign-in may not have been saved"** and offers
+  **Sign in again**; that card gets no `cookiePending` flag, so it shows **Not signed in** unless the cookie is there.
+- `sign-in-timings.log` now records how long the quiet wait took and which files changed after the keys appeared
+  (relative paths only, never contents), to learn where the desktop sign-in really lives.
 - "Not signed in" stays right after a forced finish: the account gets a `cookiePending` flag in the launcher
-  config at the end of its sign-in. With the profile closed, the `sessionKey` cookie means signed in (and clears the
+  config at the end of a sign-in whose profile got quiet. With the profile closed, the `sessionKey` cookie means signed in (and clears the
   flag). Without the cookie, the card is signed in only while `cookiePending` is set **and** the `oauth:tokenCache`
   keys are in `config.json` (names only, never values). With neither, it shows **Not signed in** and offers
   **Sign in**. If the cookie database cannot be read, the keys decide, as before. So a sign-out inside Claude still
@@ -33,6 +38,7 @@ Phase 4.3: speed fixes after testing 0.4.3 on a real PC (0.4.3 was not released 
 
 ### Added
 
+- Hovering the version label shows where the log is (`Logs: %APPDATA%\claude-launcher\sign-in-timings.log`).
 - Claude's window is brought to the front when the launcher opens an account or the sign-in window (best effort:
   if Windows refuses, nothing fails).
 

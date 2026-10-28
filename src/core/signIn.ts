@@ -24,6 +24,8 @@ export interface Marker {
   mainWasRunning: boolean;
   account: MarkerAccount;
   startedAt: number;
+  /** adopted only: the profile never got quiet before the force-end, so the save may be incomplete. */
+  unsure?: true;
 }
 
 // The default profile is %LOCALAPPDATA%\Claude-Data\claude_<id> (verified on Claude 3.6556.2.0), or the old
@@ -49,6 +51,7 @@ export function parseMarker(raw: unknown): Marker | null {
     mainWasRunning: m.mainWasRunning === true,
     account: { id: a.id, label: a.label, profileDir: a.profileDir, isNew: a.isNew === true },
     startedAt: typeof m.startedAt === 'number' ? m.startedAt : 0,
+    ...(m.unsure === true ? { unsure: true as const } : {}),
   };
 }
 
@@ -69,4 +72,30 @@ export function hasOauth(configJson: string): boolean {
 /** "Signed in" = the sessionKey cookie exists. Cookie names are plain text in the SQLite files; values are not read. */
 export function containsSessionKey(files: Buffer[]): boolean {
   return files.some((f) => f.includes('sessionKey'));
+}
+
+/** Files of a profile folder: relative path → "mtime:size". Names and stats only, never contents. */
+export type FolderSnapshot = Map<string, string>;
+
+/** Relative paths added, removed or changed (mtime or size) between two snapshots, sorted. */
+export function changedPaths(before: FolderSnapshot, after: FolderSnapshot): string[] {
+  const changed = new Set<string>();
+  for (const [file, stat] of after) if (before.get(file) !== stat) changed.add(file);
+  for (const file of before.keys()) if (!after.has(file)) changed.add(file);
+  return [...changed].sort();
+}
+
+export const sameSnapshot = (a: FolderSnapshot, b: FolderSnapshot): boolean => changedPaths(a, b).length === 0;
+
+/** One log line: count, files per top folder, then the first `max` paths. */
+export function describeChanges(paths: string[], max = 80): string {
+  if (paths.length === 0) return 'none';
+  const perTop = new Map<string, number>();
+  for (const p of paths) {
+    const top = p.split(/[\\/]/)[0];
+    perTop.set(top, (perTop.get(top) ?? 0) + 1);
+  }
+  const tops = [...perTop].sort((a, b) => b[1] - a[1]).map(([top, n]) => `${top} ${n}`).join(', ');
+  const more = paths.length > max ? ` (+${paths.length - max} more)` : '';
+  return `${paths.length} files (${tops}): ${paths.slice(0, max).join(', ')}${more}`;
 }

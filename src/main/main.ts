@@ -6,7 +6,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
 import {
-  addAccount, defaultConfig, isMain, removeAccount, renameAccount, setCookiePending, setGreetingName, type LauncherConfig,
+  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setCookiePending, setGreetingName,
+  type LauncherConfig,
 } from '../core/config.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
@@ -65,6 +66,7 @@ async function state(cfg: LauncherConfig): Promise<LauncherState> {
     signedOut: await signedInTracker.signedOut(cfg.accounts, await runningIds()),
     signInAvailable: (await signInSlot) !== null,
     signInLog,
+    timingsLog,
     signIn: signInStatus,
     version: app.getVersion(),
   };
@@ -175,11 +177,10 @@ async function onSignInStatus(status: SignInStatus): Promise<void> {
   if (final) lastSignInOutcome = status;
   if (status.phase === 'done') signedInTracker.forget(status.account.id);
   if (status.phase === 'done') {
-    // The sign-in Claude was force-ended, maybe before writing its cookie: cookiePending until the cookie shows up.
-    const { id, label, profileDir, isNew } = status.account;
-    await store.update((c) => setCookiePending(isNew && !c.accounts.some((a) => a.id === id)
-      ? { ...c, accounts: [...c.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] }
-      : c, id, true));
+    // Force-ended maybe before its cookie write: cookiePending until the cookie shows up, but only when the profile
+    // got quiet first. An unsure save gets no flag, so the card says "Not signed in" unless the cookie is there.
+    const { account } = status;
+    await store.update((c) => afterSignIn(c, account, status.unsure !== true));
   }
   win?.webContents.send('launcher:signIn', status);
 }

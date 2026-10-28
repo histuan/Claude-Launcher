@@ -1,12 +1,13 @@
 // Sign-in by snapshot (WINDOWS.md §4). The only code that writes to the default Claude profile.
 // Rules: marker before the stash; the stash is only ever renamed back, never deleted; a live default
 // Claude aborts; a failed restore keeps the marker and reports the exact stash path.
-import { cp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { SignInStatus, StartStep } from '../core/api.js';
 import { isLauncherProfileDir } from '../core/config.js';
 import {
-  containsSessionKey, hasOauth, MARKER_VERSION, parseMarker, STASH_SUFFIX, type Marker, type MarkerAccount,
+  changedPaths, containsSessionKey, describeChanges, hasOauth, MARKER_VERSION, parseMarker, sameSnapshot, STASH_SUFFIX,
+  type FolderSnapshot, type Marker, type MarkerAccount,
 } from '../core/signIn.js';
 
 export type StartError = 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk' | 'folder' | 'launchFailed';
@@ -44,8 +45,14 @@ export interface SignInDeps {
   gracefulMs?: number;
   /** Process exit poll interval during the graceful close (~250 ms). */
   exitPollMs?: number;
-  /** Finishing: once the sign-in is seen, how long to let Claude's writes settle before force-ending it (~2 s). */
-  settleMs?: number;
+  /**
+   * Finishing: once the sign-in is seen, the profile folder must be quiet (no file changed, by mtime or size) for
+   * quietMs (~5 s) before the force-end, polled every quietPollMs (~500 ms), at most quietMaxMs (~40 s).
+   * The oauth keys alone are not the whole sign-in (0.4.4 test: a force-end ~2 s after them opened signed out).
+   */
+  quietMs?: number;
+  quietPollMs?: number;
+  quietMaxMs?: number;
   /** "I've signed in": how long to keep checking for a saved session before saying none was found. */
   checkMs?: number;
   now?: () => number;
@@ -188,10 +195,9 @@ export class SignInFlow {
     try {
       this.deps.onStatus({ phase: 'saving' });
       const t0 = this.now();
-      // A close request never works (Claude hides to the tray), and the sign-in lives in config.json: let the
-      // writes settle for a moment, then force-end it. No cookie wait. Whether the moved profile counts as signed
-      // in (cookie OR oauth keys) is the card's check: if neither, the card shows "Not signed in".
-      await this.sleep(this.deps.settleMs ?? 2000);
+      // A close request never works (Claude hides to the tray), so Claude is force-ended, but only once it stopped
+      // writing to the profile: a forced end loses what is not written yet. Never quiet = an unsure save.
+      const quiet = await this.waitForQuiet(marker.slot);
       const closed = await this.closeDefault({ gracefulMs: 0 });
       this.log(`finish: close the sign-in Claude: ${closed || 'still running'}`, t0);
       if (!closed) return this.failed(marker);
@@ -203,10 +209,10 @@ export class SignInFlow {
         console.warn(`Could not move the new session: ${(err as Error).message}`);
         return await this.restore(marker, { phase: 'failed', stashPath: null });
       }
-      const adopted: Marker = { ...marker, state: 'adopted' };
+      const adopted: Marker = { ...marker, state: 'adopted', ...(quiet ? {} : { unsure: true as const }) };
       await this.writeMarker(adopted);
       this.log('finish: move the session to the account folder', t0);
-      await this.restore(adopted, { phase: 'done', account: marker.account });
+      await this.restore(adopted, doneStatus(adopted));
       this.log('finish: total (main profile restored)', t0);
     } catch (err) {
       // E.g. the process query failed: keep the marker, the next start offers the restore.
@@ -262,7 +268,7 @@ export class SignInFlow {
     }
     if (!(await this.closeDefault())) return this.failed(marker);
     const done: SignInStatus = marker.state === 'adopted'
-      ? { phase: 'done', account: marker.account }
+      ? doneStatus(marker)
       : { phase: 'cancelled' };
     await this.restore(marker, done);
   }
@@ -279,6 +285,31 @@ export class SignInFlow {
   /** The oauth key names are in config.json (values never read). */
   private async oauthKeys(slot: string): Promise<boolean> {
     return hasOauth(await readFile(path.join(slot, 'config.json'), 'utf8').catch(() => ''));
+  }
+
+  /**
+   * Waits until no file under the profile changed for ~5 s in a row (max ~40 s). Logs how long it took and the
+   * relative paths changed after the keys appeared (names only, never contents). true = it got quiet.
+   */
+  private async waitForQuiet(slot: string): Promise<boolean> {
+    const t0 = this.now();
+    const poll = this.deps.quietPollMs ?? 500;
+    const needed = Math.ceil((this.deps.quietMs ?? 5000) / poll);
+    const maxPolls = Math.ceil((this.deps.quietMaxMs ?? 40_000) / poll);
+    const base = await snapshot(slot);
+    let last = base;
+    let still = 0;
+    let quiet = false;
+    for (let i = 0; i < maxPolls && !quiet; i++) {
+      await this.sleep(poll);
+      const now = await snapshot(slot);
+      still = sameSnapshot(last, now) ? still + 1 : 0;
+      last = now;
+      quiet = still >= needed;
+    }
+    this.log(`finish: wait for a quiet profile: ${quiet ? 'quiet' : 'still changing at the cap'}`, t0);
+    this.log(`finish: changed after the keys: ${describeChanges(changedPaths(base, last))}`);
+    return quiet;
   }
 
   /**
@@ -384,4 +415,19 @@ export class SignInFlow {
       }
     }
   }
+}
+
+const doneStatus = (marker: Marker): SignInStatus =>
+  (marker.unsure ? { phase: 'done', account: marker.account, unsure: true } : { phase: 'done', account: marker.account });
+
+/** Every file under `dir` with its mtime and size (relative paths). Files that vanish meanwhile are skipped. */
+async function snapshot(dir: string): Promise<FolderSnapshot> {
+  const result: FolderSnapshot = new Map();
+  const entries = await readdir(dir, { recursive: true, withFileTypes: true }).catch(() => []);
+  await Promise.all(entries.filter((e) => e.isFile()).map(async (e) => {
+    const full = path.join(e.parentPath, e.name);
+    const s = await stat(full).catch(() => null);
+    if (s) result.set(path.relative(dir, full), `${s.mtimeMs}:${s.size}`);
+  }));
+  return result;
 }

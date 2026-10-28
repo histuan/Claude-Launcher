@@ -382,7 +382,11 @@ async function signInFinished(status: SignInStatus): Promise<void> {
   state = await api.getState();
   renderCards();
   renderSignInAvailability();
-  if (status.phase === 'done') {
+  if (status.phase === 'done' && status.unsure) {
+    // Never quiet before the force-end: say so instead of opening an account that may be signed out.
+    const again = await ask({ title: strings.signIn.unsure.title, body: strings.signIn.unsure.body, confirm: strings.signIn.unsure.again });
+    if (again !== null) await startSignIn({ accountId: status.account.id });
+  } else if (status.phase === 'done') {
     // The main Claude was already put back (and reopened if it was open); now open the new account so the person
     // lands in it. The launcher closes once its window is visible.
     await showResult(await api.openAccount(status.account.id));
@@ -418,6 +422,7 @@ add.addEventListener('click', () => void addNew());
 
 state = await api.getState();
 byId('version').textContent = strings.version(state.version);
+byId('version').title = strings.logs(state.timingsLog);
 renderGreetingText();
 renderName();
 renderCards();

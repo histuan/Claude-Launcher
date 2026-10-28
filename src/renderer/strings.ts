@@ -22,6 +22,8 @@ export const strings = {
   } satisfies Record<CardBadge, string>,
   /** Bottom-left corner, e.g. "v0.4.3". */
   version: (version: string) => `v${version}`,
+  /** Tooltip of the version label. */
+  logs: (file: string) => `Logs: ${file}`,
   openAccount: (name: string) => `Open ${name}`,
   accountOptions: (name: string) => `Options for ${name}`,
   menu: {
@@ -78,6 +80,13 @@ export const strings = {
     confirm: 'I\'ve signed in',
     checking: (seconds: number) => `Checking… (${seconds} s)`,
     notFound: 'No sign-in found. Sign in in the Claude window, then press I\'ve signed in again.',
+    /** The profile never got quiet within ~40 s before Claude was ended. */
+    unsure: {
+      title: 'The sign-in may not have been saved',
+      body: 'Claude was still writing to the new profile after 40 s, so it was closed before it may have finished '
+        + 'saving. If this account opens on the sign-in screen, sign in again.',
+      again: 'Sign in again',
+    },
     failed: {
       title: 'Could not finish the sign-in',
       body: (stashPath: string | null) => (stashPath

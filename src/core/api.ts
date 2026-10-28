@@ -14,7 +14,8 @@ export type SignInStatus =
   /** "I've signed in" is checking for a saved session (countdown), then found none (the sign-in stays open). */
   | { phase: 'checking'; secondsLeft: number }
   | { phase: 'notFound' }
-  | { phase: 'done'; account: MarkerAccount }
+  /** unsure: the profile never got quiet before the force-end; the sign-in may not have been saved. */
+  | { phase: 'done'; account: MarkerAccount; unsure?: true }
   | { phase: 'cancelled' }
   /** stashPath: where the main profile is kept when it could not be put back (null = it is back in place). */
   | { phase: 'failed'; stashPath: string | null };
@@ -31,6 +32,8 @@ export interface LauncherState {
   signInAvailable: boolean;
   /** Diagnostics file listing the folders checked (paths only). */
   signInLog: string;
+  /** sign-in-timings.log (step names, paths and durations only), shown as the version label's tooltip. */
+  timingsLog: string;
   /** Sign-in in progress (e.g. resumed on startup), or null. */
   signIn: SignInStatus | null;
   /** The launcher's own version (app.getVersion()), shown in the bottom-right corner. */
