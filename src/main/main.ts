@@ -25,7 +25,7 @@ import {
   closeProcessesGracefully, describeProfileLookup, freeBytes, isProcessAlive, isSignedIn, killProcesses, markerFileFor,
   resolveDefaultProfile,
 } from './system/claudeProfile.js';
-import { hasSessionCookie } from './system/cookies.js';
+import { readSessionCookie } from './system/cookies.js';
 import { createProfileDir, deleteProfileDir } from './system/profileFolders.js';
 import { runPowerShell, windowsDisplayName } from './system/windowsUser.js';
 
@@ -47,8 +47,15 @@ const defaultName: Promise<string> = onWindows
 
 let win: BrowserWindow | null = null;
 
-/** "Not signed in": sessionKey cookie first, config.json keys only when the cookie database cannot be read. */
-const signedInTracker = new SignedInTracker({ sessionCookie: (dir) => hasSessionCookie(dir), configOauth: isSignedIn });
+/**
+ * "Not signed in": a valid sessionKey cookie first, config.json keys only when the cookie database cannot be read.
+ * Each decision goes to sign-in-timings.log when it changes ("card check <id>: cookie not found"), never cookie data.
+ */
+const signedInTracker = new SignedInTracker({
+  sessionCookie: (dir) => readSessionCookie(dir),
+  configOauth: isSignedIn,
+  log: (line) => logTiming(line),
+});
 
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
   return {

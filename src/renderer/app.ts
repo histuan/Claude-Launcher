@@ -1,7 +1,7 @@
 import {
   START_STEPS, type ActionResult, type LauncherApi, type LauncherState, type SignInStatus, type SignInTarget, type StartStep,
 } from '../core/api.js';
-import { cardBadge } from '../core/card.js';
+import { cardBadge, cardStatus } from '../core/card.js';
 import type { Account } from '../core/config.js';
 import { greetingFor } from '../core/greeting.js';
 import { strings } from './strings.js';
@@ -89,12 +89,14 @@ function renderCards(): void {
     const open = h('button', { class: 'card-open', type: 'button', 'aria-label': strings.openAccount(name) },
       h('span', { class: 'avatar', 'aria-hidden': 'true' }, initial(name)),
       h('span', { class: 'label clip' }, name),
-      h('span', { class: 'email clip' }, account.email ?? (isSignedOut(account) ? strings.signIn.notSignedIn : '')),
+      h('span', { class: 'email clip' },
+        account.email ?? (isSignedOut(account) && !running.has(account.id) ? strings.signIn.notSignedIn : '')),
       h('span', { class: 'real-name clip' }, account.realName ?? ''),
     );
     open.addEventListener('click', () => void (isSignedOut(account) ? signIn(account) : openAccount(account, open)));
-    const status = h('span', { class: 'running', 'data-id': account.id }, strings.running);
-    status.hidden = !running.has(account.id);
+    const shown = cardStatus(running.has(account.id), isSignedOut(account));
+    const status = h('span', { class: 'running' }, shown ? strings.status[shown] : '');
+    status.hidden = shown === null;
     const badge = cardBadge(account);
     const extra = badge ? [h('span', { class: 'badge' }, strings.badges[badge])] : [];
     const more = h('button', {
@@ -118,15 +120,30 @@ async function openAccount(account: Account, button: HTMLButtonElement): Promise
 }
 
 // ---------- "Running" indicator: every ~3 s while the window is visible ----------
+// When an account starts or stops running, the cards are drawn again with a fresh "Not signed in" check (a closed
+// profile is read at once). Running accounts are re-checked every ~30 s ("Running · Not signed in" after a sign-out
+// inside Claude); the launcher never closes anything because of it.
 
-function renderRunning(): void {
-  for (const el of document.querySelectorAll<HTMLElement>('.running')) el.hidden = !running.has(el.dataset.id ?? '');
+const sameIds = (a: Iterable<string>, b: Iterable<string>): boolean => {
+  const x = [...a].sort();
+  const y = [...b].sort();
+  return x.length === y.length && x.every((v, i) => v === y[i]);
+};
+
+/** Draws the cards again with a fresh state when the running set or the signed-out set changed. */
+async function refreshCards(nextRunning: Set<string>): Promise<void> {
+  const fresh = await api.getState();
+  if (sameIds(nextRunning, running) && sameIds(fresh.signedOut, state.signedOut)) return;
+  running = nextRunning;
+  state = fresh;
+  closeMenu(); // its card is about to be replaced
+  renderCards();
 }
 
 async function refreshRunning(): Promise<void> {
   try {
-    running = new Set(await api.runningAccounts());
-    renderRunning();
+    const next = new Set(await api.runningAccounts());
+    if (!sameIds(next, running)) await refreshCards(next);
   } catch {
     // keep the last known state; the next poll tries again
   }
@@ -135,6 +152,15 @@ async function refreshRunning(): Promise<void> {
 async function pollRunning(): Promise<void> {
   if (!document.hidden) await refreshRunning();
   setTimeout(() => void pollRunning(), 3000);
+}
+
+async function pollSignedIn(): Promise<void> {
+  try {
+    if (!document.hidden && running.size > 0) await refreshCards(running);
+  } catch {
+    // the next poll tries again
+  }
+  setTimeout(() => void pollSignedIn(), 30_000);
 }
 
 // Full text in a tooltip only when it is cut with an ellipsis.
@@ -438,4 +464,5 @@ renderCards();
 renderSignInAvailability();
 setInterval(renderGreetingText, 30_000); // follows the morning/afternoon/evening boundary
 void pollRunning();
+setTimeout(() => void pollSignedIn(), 30_000);
 if (state.signIn) showSignIn(state.signIn); // a sign-in resumed on startup
