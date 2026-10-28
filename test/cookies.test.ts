@@ -12,7 +12,8 @@ import { readSessionCookie, type CookieCheck } from '../src/main/system/cookies.
 
 async function tempDir(t: { after: (fn: () => Promise<void>) => void }, name: string): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), name));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+  // Short retry: on Windows a just-closed SQLite file can stay busy for a moment.
+  t.after(() => rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }));
   return dir;
 }
 
@@ -99,11 +100,15 @@ test('(c) -wal / -journal are copied with the database, so rows not yet merged i
   const file = path.join(profile, 'Network', 'Cookies');
   cookieDb(file, []);
   // Like a running Chromium: the new row sits in Cookies-wal while the writer keeps the database open.
+  // Closed in finally, before the folders are deleted: Windows cannot delete an open file (EBUSY).
   const db = new DatabaseSync(file);
-  t.after(() => db.close());
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0');
-  db.prepare("INSERT INTO cookies VALUES (0, '.claude.ai', 'sessionKey', '', x'00', ?)").run(FUTURE);
-  assert.ok((await readFile(`${file}-wal`)).length > 0, 'the row is only in the -wal file');
-  assert.equal(await read(profile, temp), 'found');
-  assert.deepEqual(await readdir(temp), [], 'the temporary copy and its -wal / -shm are deleted');
+  try {
+    db.exec('PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0');
+    db.prepare("INSERT INTO cookies VALUES (0, '.claude.ai', 'sessionKey', '', x'00', ?)").run(FUTURE);
+    assert.ok((await readFile(`${file}-wal`)).length > 0, 'the row is only in the -wal file');
+    assert.equal(await read(profile, temp), 'found');
+    assert.deepEqual(await readdir(temp), [], 'the temporary copy and its -wal / -shm are deleted');
+  } finally {
+    db.close();
+  }
 });

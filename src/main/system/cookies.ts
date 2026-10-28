@@ -80,6 +80,8 @@ export async function readSessionCookie(profileDir: string, tempRoot = os.tmpdir
   } catch (err) {
     return { state: 'unreadable', reason: errText(err) };
   } finally {
-    if (dir) await rm(dir, { recursive: true, force: true, maxRetries: 3 }).catch(() => undefined);
+    // Every SQLite handle is closed above (query's finally) before this: Windows cannot delete an open file. rm
+    // retries EBUSY / EPERM a few times (~100 ms apart) for a file that is still being released.
+    if (dir) await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }).catch(() => undefined);
   }
 }
