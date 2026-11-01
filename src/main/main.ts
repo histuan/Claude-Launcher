@@ -11,7 +11,7 @@ import {
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
 import { pidsForProfile, pidsInsideFolder, runningAccountIds, windowPid } from '../core/processes.js';
-import type { Marker, MarkerAccount } from '../core/signIn.js';
+import { claudeVersion, type Marker, type MarkerAccount } from '../core/signIn.js';
 import { strings } from '../renderer/strings.js';
 import { closeProfile, removeProfile, type AccountProcessDeps } from './accountActions.js';
 import { ConfigStore } from './configStore.js';
@@ -225,7 +225,7 @@ const flow = onWindows && markerFile ? new SignInFlow({
       console.warn(`Sign-in status: ${(err as Error).message}`));
   },
 }) : null;
-// Detection: the oauth key names in config.json, checked every ~1 s while a sign-in is open.
+// Detection: a new account-related key name in config.json, checked every ~1 s while a sign-in is open.
 setInterval(() => { if (flow?.active) void flow.poll(); }, 1000);
 
 const START_ERRORS: Record<StartError, ActionError> = {
@@ -242,6 +242,7 @@ async function startSignIn(target: SignInTarget): Promise<ActionResult> {
   signInSlot = lookUpDefaultProfile();
   const [slot, exe] = await Promise.all([signInSlot, resolveClaudeExe(runPowerShell, process.env, existsSync)]);
   logTiming(`start: find the main profile and Claude.exe: ${Date.now() - t0} ms`);
+  if (exe) logTiming(`start: Claude version: ${claudeVersion(exe) ?? 'unknown'}`);
   if (!slot) return result(store.current, 'noProfile');
   if (!exe) return result(store.current, 'notInstalled');
 

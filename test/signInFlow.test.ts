@@ -595,3 +595,109 @@ test('keys never present → the detection never closes or moves anything', asyn
   assert.equal(existsSync(w.target), false);
   assert.equal(await read(path.join(w.stash, 'main.txt')), 'MAIN');
 });
+
+// ---------- 0.4.5: version-tolerant sign-in signal (Claude 3.x and 4.x key layouts) ----------
+
+const LAYOUTS = {
+  // Claude 3.6556: the oauth token cache keys.
+  '3.x': { locale: 'en', 'oauth:tokenCache': 'secret-value', 'oauth:tokenCacheV2': 'secret-value' },
+  // Claude 4.4212: no oauth: key any more; lastKnownAccountUuid (and windowSizeWasSignedIn, not a signal by itself).
+  '4.x': { locale: 'en', windowSizeWasSignedIn: true, lastKnownAccountUuid: 'secret-value' },
+} as const;
+const TRIGGER = { '3.x': 'oauth:tokenCache', '4.x': 'lastKnownAccountUuid' } as const;
+
+/** Started sign-in whose blank Claude commits its cookie database on the first 500 ms poll after the keys. */
+async function startedWithCommit(t: Parameters<typeof world>[0]) {
+  const w = await world(t);
+  let armed = false;
+  w.deps.sleep = async (ms) => {
+    if (armed && ms === 500) await writeFile(cookieFile(w), 'claude.ai sessionKey committed');
+  };
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await blankClaude(w);
+  await writeFile(cookieFile(w), 'startup');
+  await writeFile(path.join(w.slot, 'config.json'), JSON.stringify({ locale: 'en', windowSizeWasSignedIn: false }));
+  return { w, flow, arm: () => { armed = true; } };
+}
+
+test('detection: a new account key finishes the sign-in with both key layouts; the key name is logged', async (t) => {
+  for (const layout of ['3.x', '4.x'] as const) {
+    const { w, flow, arm } = await startedWithCommit(t);
+    await flow.poll();
+    assert.equal(last(w)?.phase, 'waiting', `${layout}: no account key yet`);
+    arm();
+    await writeFile(path.join(w.slot, 'config.json'), JSON.stringify(LAYOUTS[layout]));
+    await flow.poll();
+    assert.deepEqual(last(w), { phase: 'done', account: w.account }, layout);
+    assert.match(await read(path.join(w.target, 'Network', 'Cookies')), /sessionKey committed/, layout);
+    assert.ok(w.logs.includes(`detect: new account key: ${TRIGGER[layout]}`), `${layout}\n${w.logs.join('\n')}`);
+    assert.equal(w.logs.some((l) => l.includes('secret-value')), false, `${layout}: never a value`);
+  }
+});
+
+test('"I\'ve signed in": a new account key finishes it with both key layouts (no sessionKey on disk yet)', async (t) => {
+  for (const layout of ['3.x', '4.x'] as const) {
+    const { w, flow, arm } = await startedWithCommit(t);
+    arm();
+    await writeFile(path.join(w.slot, 'config.json'), JSON.stringify(LAYOUTS[layout]));
+    await flow.confirm();
+    assert.deepEqual(checking(w), [], `${layout}: no countdown`);
+    assert.deepEqual(last(w), { phase: 'done', account: w.account }, layout);
+    assert.ok(w.logs.includes(`detect: new account key: ${TRIGGER[layout]}`), layout);
+  }
+});
+
+test('detection: account keys already there when the sign-in window opened are not a sign-in', async (t) => {
+  const w = await world(t);
+  w.deps.launchDefault = async () => {
+    w.launches++;
+    w.pids = [22];
+    await blankClaude(w);
+    await writeFile(path.join(w.slot, 'config.json'), JSON.stringify({ locale: 'en', lastKnownAccountUuid: null }));
+  };
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  w.calls = [];
+  for (let i = 0; i < 3; i++) await flow.poll();
+  await flow.confirm(); // checkMs 0: one read, then notFound
+  assert.deepEqual(w.calls, [], 'nothing closed');
+  assert.deepEqual(last(w), { phase: 'notFound' });
+  assert.equal(existsSync(w.target), false);
+  // A key that was not in the starting set is the sign-in.
+  await writeFile(cookieFile(w), 'claude.ai sessionKey');
+  await writeFile(path.join(w.slot, 'config.json'),
+    JSON.stringify({ locale: 'en', lastKnownAccountUuid: 'x', 'oauth:tokenCacheV2': 'y' }));
+  await flow.poll();
+  assert.deepEqual(last(w), { phase: 'done', account: w.account });
+  assert.ok(w.logs.includes('detect: new account key: oauth:tokenCacheV2'), w.logs.join('\n'));
+});
+
+test('detection: the baseline is taken when the sign-in window shows; keys written while Claude starts never count', async (t) => {
+  const w = await world(t);
+  let windowShown!: () => void;
+  w.deps.focusDefault = () => new Promise<void>((r) => { windowShown = r; });
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  w.calls = [];
+  // The blank Claude starts up and writes an account-like key before its window shows.
+  await blankClaude(w);
+  await writeFile(cookieFile(w), 'claude.ai sessionKey');
+  await writeFile(path.join(w.slot, 'config.json'), JSON.stringify({ locale: 'en', lastKnownAccountUuid: null }));
+  await flow.poll();
+  assert.deepEqual(w.calls, [], 'no detection before the window shows');
+  windowShown();
+  for (let i = 0; i < 100 && !w.logs.some((l) => l.startsWith('start: account keys')); i++) {
+    await new Promise((r) => setTimeout(r, 1));
+  }
+  await flow.poll();
+  await flow.poll();
+  assert.deepEqual(w.calls, [], 'the key was already there when the window opened');
+  assert.equal(last(w)?.phase, 'waiting');
+  assert.ok(w.logs.includes('start: account keys when the window opened: lastKnownAccountUuid'), w.logs.join('\n'));
+  await writeFile(path.join(w.slot, 'config.json'),
+    JSON.stringify({ locale: 'en', lastKnownAccountUuid: 'x', selectedAccount: 'y' }));
+  await flow.poll();
+  assert.deepEqual(last(w), { phase: 'done', account: w.account });
+  assert.ok(w.logs.includes('detect: new account key: selectedAccount'));
+});

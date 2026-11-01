@@ -23,9 +23,16 @@ Phase 4.4: the card check after a sign-out inside Claude (0.4.4 showed the card 
   no longer counts as signed in.
 - Cards are drawn again when an account starts or stops running (before, "Not signed in" only changed when the
   launcher was reopened).
+- Sign-in on Claude 4.4212 (and later) is detected again, automatically and with **I've signed in**. Claude 4.x no
+  longer writes the `oauth:tokenCache` keys the launcher waited for. The signal is now version-tolerant: a new
+  account-related `config.json` key name (`oauth:*`, `lastKnownAccountUuid`, or a name containing `Account`) that
+  was not there when the sign-in window opened. Values are never read. The cookie-write wait before the force-end
+  stays.
 
 ### Added
 
+- `sign-in-timings.log` records the Claude version at the start of each sign-in (`start: Claude version: …`, from
+  the exe path) and which key name detected it (`detect: new account key: …`).
 - `sign-in-timings.log` records each final card decision per account (no cookie data): `card check <id>: cookie
   found | cookie not found | cookie expired | cookie empty | cookie DB unreadable (<reason>) for ~10 s -> kept: …`.
 - A card shows **Running · Not signed in** when it runs and its last known state is signed out.

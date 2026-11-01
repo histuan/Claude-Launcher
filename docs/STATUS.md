@@ -5,6 +5,10 @@
 account opens signed in); but after a sign-out inside Claude the card still looked signed in. First 0.4.5 build
 tested too: its log proved the cookie database is locked (`EBUSY`) while Claude runs and for a few seconds after
 "Close this account", and the keys fallback answered "signed in"; this PR now has the fix for that.
+Then Claude updated to **4.4212.0.0**: a sign-in on an existing card was not detected ("No sign-in found"), because
+4.x no longer writes the `oauth:tokenCache` keys. This PR now detects a **new** account-related key name
+(`oauth:*`, `lastKnownAccountUuid`, `*Account*`) compared with the keys present when the sign-in window opened
+(`docs/WINDOWS.md` §1 and §4), and logs the Claude version and the key that triggered it.
 Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Receive memories from… (`docs/PHASES.md`).
 
 ## Done
@@ -145,4 +149,10 @@ Phase 4.4 (0.4.5). Sign-in still moves your main Claude profile for a moment: ke
    path). Copy the lines that start with `card check` (only account ids, decisions and error codes; never cookie
    data). Expected after step 2: `card check <id>: cookie not found`. If you see `cookie DB unreadable (…) for ~10 s
    -> kept: …`, the file stayed locked longer than ~10 s: tell me.
-5. Sign-in (Add account) works as in 0.4.4: the new account's card has no "Not signed in".
+5. **Sign-in on Claude 4.4212:** on a card with **Not signed in**, click **Sign in** and sign in in the Claude window
+   that opens, **without** pressing anything in the launcher. Within a few seconds the dialog goes to "saving", then
+   (after Claude's cookie write, up to ~45 s) **done**; the account opens signed in and its card has no "Not signed
+   in". Try **Add account** the same way. If it does not finish by itself, press **I've signed in**.
+6. **Send me** the sign-in lines of `sign-in-timings.log` from that try: `start: Claude version: 4.4212.0.0`,
+   `start: account keys when the window opened: …`, `detect: new account key: …` (key names only, never values) and
+   the `finish:` lines.

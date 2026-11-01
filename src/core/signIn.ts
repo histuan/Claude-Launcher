@@ -66,6 +66,35 @@ export function hasOauth(configJson: string): boolean {
   }
 }
 
+/**
+ * Account-related key NAMES in config.json (values are never read): any "oauth:*" key (Claude 3.x writes
+ * oauth:tokenCache / oauth:tokenCacheV2), "lastKnownAccountUuid" (Claude 4.4212, which has no oauth: key any more),
+ * or any name containing "Account". Unreadable or non-object JSON gives [].
+ */
+export function accountKeyNames(configJson: string): string[] {
+  try {
+    const cfg: unknown = JSON.parse(configJson);
+    if (typeof cfg !== 'object' || cfg === null || Array.isArray(cfg)) return [];
+    return Object.keys(cfg).filter((key) =>
+      key.startsWith('oauth:') || key === 'lastKnownAccountUuid' || key.includes('Account'));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The sign-in signal, version-tolerant: the first account-related key name that was not in `baseline` (the key
+ * names when the sign-in window opened), or null.
+ */
+export function newAccountKey(baseline: readonly string[], configJson: string): string | null {
+  return accountKeyNames(configJson).find((key) => !baseline.includes(key)) ?? null;
+}
+
+/** Claude's version from its MSIX exe path (…\WindowsApps\Claude_4.4212.0.0_x64__…\app\Claude.exe), or null. */
+export function claudeVersion(exe: string): string | null {
+  return /[\\/]Claude_(\d+(?:\.\d+)+)_/i.exec(exe)?.[1] ?? null;
+}
+
 /** "Signed in" = the sessionKey cookie exists. Cookie names are plain text in the SQLite files; values are not read. */
 export function containsSessionKey(files: Buffer[]): boolean {
   return files.some((f) => f.includes('sessionKey'));

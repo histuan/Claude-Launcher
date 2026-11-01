@@ -24,6 +24,7 @@ Windows adaptation of the macOS guide "Run a Separate Claude Desktop App for Eac
 | Cookie database while running | `Network\Cookies` is locked while Claude runs and Chromium writes new cookies lazily (about every 30 s, and when it exits normally); a forced end loses cookies not written yet |
 | Cookie database lock (0.4.5 test, 2026-10-28) | Every copy fails with `EBUSY` while Claude runs, so a sign-out inside Claude **cannot be detected while the account runs**; only after it is closed. Right after "Close this account" the file stays locked for a few seconds, and the `oauth:tokenCache*` keys (still there after the sign-out) wrongly said "signed in": the keys no longer decide anything |
 | Force-end before the cookie commit (0.4.4 build tests, 2026-10-28) | Force-ending ~2 s after the keys, or once the profile folder had been quiet for ~5 s (10–17 s), opened the new account on the **sign-in screen**; the files changed after the keys never included `Network\` (no `Cookies` write yet). With 0.4.3 (force-end after ~35–43 s) it was signed in. **Chromium commits the cookie database about every 30 s, and the desktop sign-in needs that write**: the `oauth:tokenCache*` keys alone are not enough |
+| **Claude 4.4212.0.0** (0.4.5 test, 2026-11-01; the app updated from 3.6556) | Same default profile `%LOCALAPPDATA%\Claude-Data\claude_pzs8sxrjxfjjc`; the stash works. After a sign-in on a blank profile, the `config.json` key names matching `oauth`, `Account` or `SignedIn` are only `windowSizeWasSignedIn` and `lastKnownAccountUuid`: **`oauth:tokenCache` / `oauth:tokenCacheV2` no longer exist**, so the 0.4.3 signal never fired ("No sign-in found" though the person was signed in). `Network\Cookies` (28672 bytes) and `Cookies-journal` were written at the time of the sign-in |
 | Launcher logs (0.4.4 build test) | `%APPDATA%\claude-launcher\` (`sign-in-timings.log`, `sign-in-check.log`), not `%APPDATA%\Multi-Account Launcher for Claude` |
 | Close request (0.4.3 test, 2026-10-28) | `taskkill /PID <pid> /T` (no `/F`) **never** closes Claude: it hides in the tray. `sign-in-timings.log` showed "close main Claude: forced" every time (~8 s with the old ~5 s wait) |
 | Reopening Claude while it is being closed (0.4.3 test) | A new default-profile process appears; the 0.4.3 launcher kept trying to close for ~47 s ("still running") and then stopped |
@@ -112,9 +113,13 @@ Flow rules:
   or "continue sign-in".
 - Cancel at any point = close the default Claude, delete the new folder (it is disposable) and undo the stash.
 - The profile folder also holds the Claude Code CLI (`claude-code\…`): the stash moves it too, so nothing may run from it.
-- **Sign-in detection (0.4.3):** the fast signal is the `oauth:tokenCache` / `oauth:tokenCacheV2` key **names**
-  appearing in the blank profile's `config.json`, polled every ~1 s while the dialog is open (values never read or
-  logged). "I've signed in" is the manual fallback (keys, or the `sessionKey` text in `<profile>\Network\Cookies`
+- **Sign-in detection (0.4.5, version-tolerant):** when the sign-in window shows (or after the ~8 s window wait),
+  the launcher records the account-related key **names** already in the blank profile's `config.json`. While
+  waiting (every ~1 s), the person is signed in when a **new** account-related key name appears: any name starting
+  with `oauth:` (3.x: `oauth:tokenCache*`), `lastKnownAccountUuid` (4.4212), or any name containing `Account`.
+  Values are never read or logged; the log says which key name triggered it (`detect: new account key: …`) and the
+  Claude version from the exe path (`start: Claude version: …`). Before 0.4.5 only the 3.x `oauth:tokenCache*`
+  names counted (0.4.3). "I've signed in" is the manual fallback (the same new-key signal, or the `sessionKey` text in `<profile>\Network\Cookies`
   plus its `-journal`/`-wal`; `Partitions\*` are ignored). Before 0.4.3 the launcher waited for the lazy cookie
   write, which could take up to a minute. Step timings go to `%APPDATA%\claude-launcher\sign-in-timings.log`.
 - **Finish (0.4.4):** the keys are only the start of the sign-in (§1). Step 6 waits for Chromium's cookie commit
