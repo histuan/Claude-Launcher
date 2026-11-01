@@ -44,6 +44,15 @@ test('1st: the --user-data-dir of the running default Claude', async () => {
   assert.deepEqual(r.checked.map((c) => c.source), ['process']);
 });
 
+test('1st: a trailing separator is dropped; a --user-data-dir that is not a Claude profile folder is never used', async () => {
+  const r = await resolveDefaultProfile(deps({ processes: running(`${REAL}\\`), files: [`${REAL}\\Network\\Cookies`] }));
+  assert.equal(r.slot, REAL, 'the stash path must be <slot>.launcher-stash, not a folder inside the slot');
+  const odd = 'C:\\Temp\\someprofile';
+  const r2 = await resolveDefaultProfile(deps({ processes: running(odd), files: [`${odd}\\Network\\Cookies`] }));
+  assert.notEqual(r2.slot, odd);
+  assert.ok(r2.errors.some((e) => e.includes(odd)), r2.errors.join('\n'));
+});
+
 test('2nd: Claude-Data\\<PackageFamilyName lowercased> (Claude not running)', async () => {
   const r = await resolveDefaultProfile(deps({ family: 'Claude_ABC123', files: [`${REAL}\\Network\\Cookies`] }));
   assert.equal(r.slot, REAL);

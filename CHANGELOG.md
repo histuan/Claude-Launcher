@@ -28,6 +28,10 @@ Phase 4.4: the card check after a sign-out inside Claude (0.4.4 showed the card 
   account-related `config.json` key name (`oauth:*`, `lastKnownAccountUuid`, or a name containing `Account`) that
   was not there when the sign-in window opened. Values are never read. The cookie-write wait before the force-end
   stays.
+- Sign-in safety (code review): the default profile folder must look like a Claude profile
+  (`Claude-Data\claude_*` or `LocalCache\Roaming\Claude`, trailing `\` dropped) before anything is stashed, so the
+  crash-recovery marker can always be read back. If the marker cannot be written, nothing is moved and the main
+  Claude is opened again. A failed save of the new card no longer leaves the sign-in dialog on "saving".
 
 ### Added
 

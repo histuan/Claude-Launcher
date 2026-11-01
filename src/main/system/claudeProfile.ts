@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { readFile, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import { defaultProfileFromProcesses, type RawProcess } from '../../core/processes.js';
-import { hasOauth, STASH_SUFFIX } from '../../core/signIn.js';
+import { defaultSlot, hasOauth, STASH_SUFFIX } from '../../core/signIn.js';
 import type { RunPowerShell } from './windowsUser.js';
 
 const FAMILY_SCRIPT = '[Console]::OutputEncoding = [Text.Encoding]::UTF8; '
@@ -61,7 +61,9 @@ export async function resolveDefaultProfile(deps: ProfileLookupDeps): Promise<De
   const done = (slot: string): DefaultProfile => ({ slot, checked, errors });
 
   try {
-    const dir = defaultProfileFromProcesses(await deps.listClaudeProcesses());
+    const raw = defaultProfileFromProcesses(await deps.listClaudeProcesses());
+    const dir = raw === null ? null : defaultSlot(raw);
+    if (raw !== null && dir === null) errors.push(`process --user-data-dir is not a Claude profile folder: ${raw}`);
     if (dir && consider('process', dir)) return done(dir);
   } catch (err) {
     errors.push(`process query: ${(err as Error).message}`);

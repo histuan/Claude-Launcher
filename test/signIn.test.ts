@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  accountKeyNames, claudeVersion, containsSessionKey, hasOauth, newAccountKey, parseMarker, type Marker,
+  accountKeyNames, claudeVersion, containsSessionKey, defaultSlot, hasOauth, newAccountKey, parseMarker, type Marker,
 } from '../src/core/signIn.js';
 
 const marker: Marker = {
@@ -69,4 +69,17 @@ test('Claude version from the exe path (MSIX folder name); null when the path ha
   assert.equal(claudeVersion('C:\\Program Files\\WindowsApps\\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe'),
     '3.6556.2.0');
   assert.equal(claudeVersion('C:\\Users\\u\\AppData\\Local\\AnthropicClaude\\claude.exe'), null);
+});
+
+test('default slot: only a Claude profile folder, trailing separators dropped; never a stash or another folder', () => {
+  const real = 'C:\\U\\AppData\\Local\\Claude-Data\\claude_pzs8sxrjxfjjc';
+  assert.equal(defaultSlot(real), real);
+  assert.equal(defaultSlot(`${real}\\`), real);
+  assert.equal(defaultSlot(`${real}\\\\`), real);
+  assert.equal(defaultSlot('/home/u/Local/Claude-Data/claude_x/'), '/home/u/Local/Claude-Data/claude_x');
+  const msix = 'C:\\U\\AppData\\Local\\Packages\\Claude_x\\LocalCache\\Roaming\\Claude';
+  assert.equal(defaultSlot(msix), msix);
+  for (const bad of ['C:\\Temp\\profile', 'C:\\U\\ClaudeProfiles\\work', `${real}.launcher-stash`, 'Claude-Data\\claude_x', '']) {
+    assert.equal(defaultSlot(bad), null, bad);
+  }
 });

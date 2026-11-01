@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { SignInStatus, StartStep } from '../core/api.js';
 import { isLauncherProfileDir } from '../core/config.js';
 import {
-  accountKeyNames, containsSessionKey, MARKER_VERSION, newAccountKey, parseMarker, STASH_SUFFIX, type Marker, type MarkerAccount,
+  accountKeyNames, containsSessionKey, defaultSlot, MARKER_VERSION, newAccountKey, parseMarker, STASH_SUFFIX, type Marker, type MarkerAccount,
 } from '../core/signIn.js';
 
 export type StartError = 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk' | 'folder' | 'launchFailed';
@@ -106,6 +106,7 @@ export class SignInFlow {
     if (!isLauncherProfileDir(account.profileDir, this.deps.userProfile)) {
       throw new Error(`Refusing a profile folder outside ClaudeProfiles: ${account.profileDir}`);
     }
+    if (defaultSlot(slot) !== slot) throw new Error(`Refusing a slot that is not a Claude profile folder: ${slot}`);
     const stash = slot + STASH_SUFFIX;
     const t0 = this.now();
     if (this.marker || (await exists(this.deps.markerFile)) || (await exists(stash))) return 'pending';
@@ -133,7 +134,15 @@ export class SignInFlow {
       version: MARKER_VERSION, state: 'signing-in', slot, stash, stashed: await exists(slot), mainWasRunning,
       account, startedAt: Date.now(),
     };
-    await this.writeMarker(marker);
+    try {
+      await this.writeMarker(marker);
+    } catch (err) {
+      // Nothing moved yet: give the person their main Claude back.
+      console.warn(`Could not write the sign-in marker: ${(err as Error).message}`);
+      await rm(this.deps.markerFile, { force: true }).catch(() => undefined);
+      if (mainWasRunning) await this.deps.launchDefault().catch(() => undefined);
+      return 'folder';
+    }
     if (marker.stashed) {
       try {
         await this.move(slot, stash);

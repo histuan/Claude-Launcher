@@ -32,6 +32,15 @@ const SLOT = /([\\/]Claude-Data[\\/]claude_[^\\/]+|[\\/]LocalCache[\\/]Roaming[\
 
 const str = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
 
+/**
+ * The folder as a default Claude profile slot (trailing separators dropped), or null when it is not one: anything else
+ * would be stashed with a marker that parseMarker rejects, so a crash could not be recovered.
+ */
+export function defaultSlot(dir: string): string | null {
+  const slot = dir.replace(/[\\/]+$/, '');
+  return SLOT.test(slot) && !slot.endsWith(STASH_SUFFIX) ? slot : null;
+}
+
 /** Validates a marker read from disk; null if it is not one we wrote. */
 export function parseMarker(raw: unknown): Marker | null {
   if (typeof raw !== 'object' || raw === null) return null;

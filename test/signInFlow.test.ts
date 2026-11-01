@@ -324,6 +324,24 @@ test('abort: not enough disk space → main Claude is not even closed', async (t
   assert.equal(existsSync(w.markerFile), false);
 });
 
+test('abort: a slot that is not a Claude profile folder is refused before anything happens', async (t) => {
+  const w = await world(t);
+  const odd = path.join(path.dirname(path.dirname(w.slot)), 'Other');
+  await assert.rejects(new SignInFlow(w.deps).start(odd, w.account), /not a Claude profile folder/);
+  assert.deepEqual(w.calls, []);
+  assert.deepEqual(w.pids, [11], 'main Claude not closed');
+});
+
+test('abort: the marker cannot be written → nothing stashed, the main Claude is opened again', async (t) => {
+  const w = await world(t);
+  await mkdir(path.dirname(path.dirname(w.markerFile)), { recursive: true });
+  await writeFile(path.dirname(w.markerFile), 'a file where the ClaudeLauncher folder should be');
+  assert.equal(await new SignInFlow(w.deps).start(w.slot, w.account), 'folder');
+  assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN');
+  assert.equal(existsSync(w.stash), false);
+  assert.equal(w.launches, 1, 'the main Claude that was closed is opened again');
+});
+
 test('abort: an existing stash is never overwritten', async (t) => {
   const w = await world(t);
   await mkdir(w.stash);

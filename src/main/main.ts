@@ -178,7 +178,9 @@ async function onSignInStatus(status: SignInStatus): Promise<void> {
   if (status.phase === 'done') signedInTracker.forget(status.account.id);
   if (status.phase === 'done') {
     const { account } = status;
-    await store.update((c) => afterSignIn(c, account));
+    // A failed config write must not leave the dialog on "saving": the status is sent anyway.
+    await store.update((c) => afterSignIn(c, account)).catch((err: unknown) =>
+      console.warn(`Could not save the signed-in card: ${(err as Error).message}`));
   }
   win?.webContents.send('launcher:signIn', status);
 }
