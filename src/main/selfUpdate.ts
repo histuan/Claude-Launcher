@@ -2,12 +2,13 @@
 // Never checks or installs while a sign-in or the memory assistant runs. Logs only versions and timings.
 // The updater itself (electron-updater, GitHub provider) is injected, so tests use a mock.
 import type { UpdateStatus } from '../core/api.js';
+import type { DownloadResult } from '../core/updateDownload.js';
 
 export interface SelfUpdateDeps {
   /** The newer version on the latest GitHub release, or null. Throws when the check fails. */
   check(): Promise<string | null>;
   /** Downloads the offered version; onProgress gets 0–100. Throws when the download fails. */
-  download(onProgress: (percent: number) => void): Promise<void>;
+  download(onProgress: (percent: number) => void): Promise<DownloadResult>;
   /** Silent install, then the launcher opens again (the app quits here). */
   install(): void;
   /** A sign-in or the memory assistant is in progress. */
@@ -78,15 +79,16 @@ export class SelfUpdate {
       this.deps.send({ phase: 'downloading', version, percent: whole });
     };
     progress(0);
+    let result: DownloadResult;
     try {
-      await this.deps.download(progress);
+      result = await this.deps.download(progress);
     } catch {
       this.running = false;
       this.deps.log(`update: download ${version} failed (${Date.now() - t0} ms)`);
       this.deps.send({ phase: 'failed', version });
       return null;
     }
-    this.deps.log(`update: download ${version}: ${Date.now() - t0} ms; installing`);
+    this.deps.log(`update: download ${version}: ${result.bytes} bytes, ${Date.now() - t0} ms, ${result.mode}; installing`);
     this.deps.send({ phase: 'installing', version });
     this.deps.install();
     return null;

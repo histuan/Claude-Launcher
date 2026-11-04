@@ -1,7 +1,7 @@
 # Status
 
-**Current phase:** 5.2 — Self-update (0.6.0), in a PR to `main`, waiting for Thiago's test and merge.
-Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
+**Current phase:** 0.6.1 — self-update test release (update download log), in a PR to `main`, waiting for Thiago's
+test and merge. Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
 
 ## Done
 
@@ -88,6 +88,13 @@ Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
   `scripts/install-latest.ps1` (placeholder until Thiago pastes his script). Screenshots (mocked):
   `docs/screenshots/phase-5.2-available.png`, `phase-5.2-downloading.png`, `phase-5.2-failed.png`.
 
+- 0.6.1: test release for the self-update. `sign-in-timings.log` gets `update: download <version>: <bytes> bytes,
+  <ms> ms, full|differential|cached; installing` (`src/core/updateDownload.ts`: electron-updater has no event for
+  this, so its logger calls are watched for two flags; the messages, which carry URLs, are never kept). Differential
+  setup checked, no config change: `nsis.differentialPackage` is on by default (only `false` turns it off), the NSIS
+  installer copies itself to `%LOCALAPPDATA%\claude-launcher-updater\installer.exe` on every install (that is the
+  "old file" of the next differential download), and CI checks that each release has the `.blockmap`.
+
 ## Missing
 
 - Phase 6 (`docs/PHASES.md`).
@@ -160,21 +167,25 @@ Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
 
 ## How to test
 
-Phase 5.2 (0.6.0). The real test is 0.6.0 → 0.6.1, after the merge.
+0.6.1 (self-update test, 0.6.0 → 0.6.1). Needs v0.6.1 on the Releases page, so it starts **after this PR is merged**.
+Start with 0.6.0 installed (version label **v0.6.0**).
 
-1. **Install 0.6.0 by hand:** before the merge, the PR's latest Actions run (artifact **launcher-installer**, or
-   `scripts/install-latest.ps1`); after the merge, `Claude-Launcher-Setup-0.6.0.exe` from the Releases page (tag
-   **`v0.6.0`**, which must also list `latest.yml` and `Claude-Launcher-Setup-0.6.0.exe.blockmap`). Version label:
-   **v0.6.0**.
-2. **No update:** open the launcher. Cards appear as fast as before and no dialog shows. `sign-in-timings.log` (hover
-   the version label for the path) has `update: check: none newer than 0.6.0 (… ms)` after the `startup:` lines
-   (before v0.6.0 is released: `update: check failed (… ms)`, also with no dialog).
-3. **0.6.0 → 0.6.1:** when the next PR is merged and `v0.6.1` is released, open 0.6.0:
-   - "Version 0.6.1 is available. Install now?" shows after the cards, never before them.
-   - **What's new** opens the v0.6.1 release page in the browser; the dialog stays.
-   - **Later**: the launcher works normally. Close it and open it again: it asks again.
-   - **Install**: a progress bar, then the launcher closes and opens again by itself (no installer window, no
-     admin prompt) with **v0.6.1** in the corner. Accounts, names and photos are all still there.
-4. **Error:** with 0.6.0 and the dialog showing, turn Wi-Fi off and click Install: "Couldn't update to version
-   0.6.1", with a link to the Releases page and Close; the launcher keeps working.
-5. Send me the `update:` lines of `sign-in-timings.log` (versions and timings only).
+1. **Wi-Fi OFF:** open the launcher. The dialog may not appear at all: a failed check is only logged
+   (`update: check failed (… ms)`), by design. If the dialog did appear (the check ran before Wi-Fi went off),
+   click **Install**: "Couldn't update to version 0.6.1" with a link to the Releases page; the launcher keeps working.
+2. **Wi-Fi ON:** open the launcher. "Version 0.6.1 is available. Install now?" shows after the cards.
+   **What's new** opens the v0.6.1 release page (the dialog stays). **Later** closes the dialog; close the launcher,
+   open it again: it asks again.
+3. **Install:** progress bar → the launcher closes, installs silently (no installer window, no admin prompt) and
+   opens again with **v0.6.1** in the corner. Accounts, names and photos are all still there.
+4. **Log:** `%APPDATA%\claude-launcher\sign-in-timings.log` (hover the version label for the path). The `update:`
+   lines show the size, the time and the mode, e.g.
+   `update: download 0.6.1: 92345678 bytes, 8123 ms, full; installing`. Send me those lines.
+   - Expected **full** if 0.6.0 came from the PR artifact or `scripts/install-latest.ps1`: that build is not the
+     same file as the v0.6.0 release, so the differential download does not match and electron-updater falls back
+     to the full installer (normal, nothing breaks).
+   - If 0.6.0 came from the Releases page, it can already be **differential** (a small size): the installer copied
+     itself into the updater cache when it was installed, and it matches the v0.6.0 `.blockmap`.
+   - Either way, the real differential test is the next update (**0.6.1 → 0.6.2**): 0.6.1 was installed by the
+     updater from the release file, so that download should say **differential** with a size well below the
+     installer's.
