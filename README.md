@@ -28,12 +28,22 @@ Since 0.6.0 the launcher updates itself: when a newer release is out, it asks on
 ## For testers: installing a PR build
 
 Pull Request builds are not on the Releases page; each PR's Actions run has the installer as the artifact
-**launcher-installer**. [`scripts/install-latest.ps1`](./scripts/install-latest.ps1) installs the latest one. Save it
+**launcher-installer**. [`scripts/install-latest.ps1`](./scripts/install-latest.ps1) installs it in one step. Save it
 (for example in `%USERPROFILE%\Claude-Launcher-tools\`) and run it in PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Claude-Launcher-tools\install-latest.ps1"
 ```
+
+What it does:
+
+1. Takes the newest open PR (or the one given with `-Pr <number>`).
+2. Takes the newest CI run of that PR's latest commit and stops with a message if it is still running or failed.
+3. Downloads the `launcher-installer` artifact through [nightly.link](https://nightly.link), so no GitHub login is
+   needed. nightly.link is a third-party service, not part of GitHub.
+4. Closes the launcher if it is open, installs silently (`/S`) and opens it again.
+
+With no open PR it installs the latest Release instead. `-DownloadOnly` downloads the installer without installing it.
 
 A PR build has the same version number as the release it becomes, so the self-update does not offer that release
 again after the merge.
