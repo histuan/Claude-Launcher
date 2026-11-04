@@ -21,6 +21,16 @@ export type SignInStatus =
   /** stashPath: where the main profile is kept when it could not be put back (null = it is back in place). */
   | { phase: 'failed'; stashPath: string | null };
 
+/** Self-update (Phase 5.2), sent from the main process to the window. */
+export type UpdateStatus =
+  /** A newer release: "Version X is available. Install now?" (What's new / Later / Install). */
+  | { phase: 'available'; version: string }
+  | { phase: 'downloading'; version: string; percent: number }
+  /** Downloaded: the launcher closes, installs silently and opens again. */
+  | { phase: 'installing'; version: string }
+  /** The download or the install failed: a short message with a link to the Releases page. */
+  | { phase: 'failed'; version: string };
+
 export interface LauncherState {
   /** Greeting name from Windows (already cleaned). */
   defaultName: string;
@@ -105,4 +115,16 @@ export interface LauncherApi {
   };
   /** The first cards are on screen: logs the startup time and starts the cookie checks (background). */
   cardsShown(): Promise<void>;
+  /** Self-update (Phase 5.2): checked once per start, after the cards are shown; nothing is ever forced. */
+  updates: {
+    onStatus(listener: (status: UpdateStatus) => void): void;
+    /** Later: asked again on the next start. */
+    later(): Promise<void>;
+    /** Error pending while a sign-in or the memory assistant is in progress (nothing downloads). */
+    install(): Promise<ActionError | null>;
+    /** "What's new": the offered version's release page, in the browser. */
+    openNotes(): Promise<void>;
+    /** The Releases page, in the browser (from the error message). */
+    openReleases(): Promise<void>;
+  };
 }

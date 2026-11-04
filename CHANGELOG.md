@@ -8,6 +8,24 @@ Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-04
+
+Phase 5.2: the launcher updates itself.
+
+### Added
+
+- **Self-update** (`electron-updater`, GitHub Releases): once per start, after the cards are shown, the launcher
+  checks for a newer release. If there is one: "Version X is available. Install now?" with **What's new** (opens the
+  release page), **Later** (asked again on the next start) and **Install** (download with a progress bar, then a
+  silent install and the launcher opens again). A failed download shows a short message with a link to the
+  Releases page; nothing is ever forced. Never checks or installs during a sign-in or a memory import.
+- Releases also carry `latest.yml` and the installer's `.blockmap` (used by the self-update).
+- `scripts/install-latest.ps1` for testers, documented in the README.
+
+### Changed
+
+- Self-update moved from "Out of v1" into the scope (`docs/SCOPE.md` §5–§6).
+
 ## [0.5.1] - 2026-11-04
 
 Phase 5.1: receive memories from another account, plus a faster first screen.
@@ -338,7 +356,9 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/histuan/Claude-Launcher/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/histuan/Claude-Launcher/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.5...v0.5.0
 [0.4.5]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.4...launcher-v0.4.5
 [0.4.4]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...launcher-v0.4.4

@@ -40,6 +40,12 @@ jobs:
       - run: npm test
       # npm test already compiled the app into out/, which electron-builder packages.
       - run: npx electron-builder --win --publish never
+      # The self-update files the release uploads (checked on every run, so a PR shows it before the merge).
+      - name: Check update files
+        shell: bash
+        run: |
+          ls -l dist/*.exe dist/*.exe.blockmap dist/latest.yml
+          grep -q "Claude-Launcher-Setup-$(node -p "require('./package.json').version").exe" dist/latest.yml
       - uses: actions/upload-artifact@v7
         with:
           name: launcher-installer
@@ -70,7 +76,12 @@ jobs:
             echo "::error::CHANGELOG.md has no section for $version"
             exit 1
           fi
+          # Since 0.6.0 the self-update (electron-updater, GitHub provider) reads latest.yml from the latest release
+          # and the .blockmap for a smaller download, so both go next to the .exe.
+          for f in dist/*.exe dist/*.exe.blockmap dist/latest.yml; do
+            [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
+          done
           # Since 0.3.0 (the first usable version) every release is a regular one, marked as latest.
-          gh release create "$tag" dist/*.exe --target "$GITHUB_SHA" \
+          gh release create "$tag" dist/*.exe dist/*.exe.blockmap dist/latest.yml --target "$GITHUB_SHA" \
             --title "$tag" \
             --notes-file release-notes.md --latest

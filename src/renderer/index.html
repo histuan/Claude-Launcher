@@ -73,6 +73,19 @@
     </div>
   </dialog>
 
+  <dialog id="update">
+    <h2 id="update-title"></h2>
+    <p id="update-body"></p>
+    <progress id="update-progress" max="100" value="0" hidden></progress>
+    <p id="update-error" class="error" role="alert"></p>
+    <button id="update-releases" class="link" type="button" hidden></button>
+    <div class="dialog-buttons">
+      <button id="update-notes" type="button"></button>
+      <button id="update-later" type="button"></button>
+      <button id="update-install" class="primary" type="button"></button>
+    </div>
+  </dialog>
+
   <input id="photo-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
 
   <dialog id="dialog">

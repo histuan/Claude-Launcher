@@ -1,5 +1,6 @@
 import {
   START_STEPS, type ActionResult, type LauncherApi, type LauncherState, type SignInStatus, type SignInTarget, type StartStep,
+  type UpdateStatus,
 } from '../core/api.js';
 import { cardBadge, cardStatus } from '../core/card.js';
 import type { Account } from '../core/config.js';
@@ -902,6 +903,71 @@ async function showResult(result: ActionResult): Promise<void> {
     await ask({ title: text.title, body, confirm: strings.ok, cancel: false });
   }
 }
+
+// ---------- Self-update (Phase 5.2): What's new / Later / Install; nothing is ever forced ----------
+
+const updateDialog = byId<HTMLDialogElement>('update');
+const updateProgress = byId<HTMLProgressElement>('update-progress');
+const updateError = byId('update-error');
+const updateReleases = byId<HTMLButtonElement>('update-releases');
+const updateNotes = byId<HTMLButtonElement>('update-notes');
+const updateLater = byId<HTMLButtonElement>('update-later');
+const updateInstall = byId<HTMLButtonElement>('update-install');
+updateNotes.textContent = strings.update.whatsNew;
+updateInstall.textContent = strings.update.install;
+updateReleases.textContent = strings.update.releases;
+/** Downloading or installing: the dialog cannot be closed (the download is not stopped half-way). */
+let updateRunning = false;
+
+updateNotes.addEventListener('click', () => void api.updates.openNotes());
+updateReleases.addEventListener('click', () => void api.updates.openReleases());
+updateLater.addEventListener('click', () => closeUpdate());
+updateInstall.addEventListener('click', () => void installUpdate());
+updateDialog.addEventListener('cancel', (e) => {
+  e.preventDefault(); // Esc = Later, except while it downloads
+  if (!updateRunning) closeUpdate();
+});
+
+function closeUpdate(): void {
+  updateDialog.close();
+  void api.updates.later();
+}
+
+async function installUpdate(): Promise<void> {
+  updateError.textContent = '';
+  updateInstall.disabled = true;
+  const error = await api.updates.install().catch(() => null);
+  updateInstall.disabled = false;
+  if (error) updateError.textContent = strings.update.busy;
+}
+
+function showUpdate(status: UpdateStatus): void {
+  // Never on top of another dialog: it waits until that one is closed.
+  if (status.phase === 'available' && document.querySelector('dialog[open]')) {
+    setTimeout(() => showUpdate(status), 1_000);
+    return;
+  }
+  updateRunning = status.phase === 'downloading' || status.phase === 'installing';
+  byId('update-title').textContent = status.phase === 'failed'
+    ? strings.update.failedTitle(status.version) : strings.update.title(status.version);
+  byId('update-body').textContent = status.phase === 'available' ? strings.update.body
+    : status.phase === 'downloading' ? strings.update.downloading(status.percent)
+      : status.phase === 'installing' ? strings.update.installing : '';
+  updateProgress.hidden = !updateRunning;
+  updateProgress.value = status.phase === 'downloading' ? status.percent : 100;
+  updateError.textContent = status.phase === 'failed' ? strings.update.failed : '';
+  updateReleases.hidden = status.phase !== 'failed';
+  updateNotes.hidden = status.phase !== 'available';
+  updateInstall.hidden = status.phase !== 'available';
+  updateLater.hidden = updateRunning;
+  updateLater.textContent = status.phase === 'failed' ? strings.update.close : strings.update.later;
+  if (!updateDialog.open) {
+    updateDialog.showModal();
+    updateInstall.focus();
+  }
+}
+
+api.updates.onStatus(showUpdate);
 
 // ---------- Start ----------
 
