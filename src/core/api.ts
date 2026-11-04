@@ -27,6 +27,8 @@ export interface LauncherState {
   /** Name typed by the person; null = use defaultName. */
   greetingName: string | null;
   accounts: Account[];
+  /** Card photos as data URLs, by account id (accounts without a photo show their initial). */
+  photos: Record<string, string>;
   /** Ids of the extra accounts whose profile is not signed in yet (they get a "Sign in" action). */
   signedOut: string[];
   /** Closed extra accounts whose cookie database is still locked and being read again ("Checking…", up to ~10 s). */
@@ -44,7 +46,7 @@ export interface LauncherState {
 }
 
 /** Add account (new card, created when the sign-in succeeds) or Sign in on an existing card. */
-export type SignInTarget = { label: string } | { accountId: string };
+export type SignInTarget = { label: string; email: string; realName: string } | { accountId: string };
 
 /** Keys of strings.errors. */
 export type ActionError =
@@ -63,6 +65,10 @@ export interface LauncherApi {
   getState(): Promise<LauncherState>;
   setGreetingName(name: string | null): Promise<LauncherState>;
   renameAccount(id: string, label: string): Promise<LauncherState>;
+  /** "Edit details": typed e-mail (required) and real name (optional); an invalid e-mail changes nothing. */
+  setDetails(id: string, email: string, realName: string): Promise<LauncherState>;
+  /** "Change photo": a square PNG data URL (cropped by the window); null = back to the initial. */
+  setPhoto(id: string, dataUrl: string | null): Promise<LauncherState>;
   /** Closes the launcher once the account's Claude window is visible; error noWindow keeps it open. */
   openAccount(id: string): Promise<ActionResult>;
   /** Ends only this account's Claude processes ("Close this account"). */

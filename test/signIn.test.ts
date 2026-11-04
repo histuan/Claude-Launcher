@@ -7,7 +7,8 @@ import {
 const marker: Marker = {
   version: 1, state: 'signing-in', slot: 'C:\\L\\Packages\\Claude_x\\LocalCache\\Roaming\\Claude',
   stash: 'C:\\L\\Packages\\Claude_x\\LocalCache\\Roaming\\Claude.launcher-stash', stashed: true, mainWasRunning: true,
-  account: { id: 'work', label: 'Work', profileDir: 'C:\\U\\ClaudeProfiles\\work', isNew: true }, startedAt: 1,
+  account: { id: 'work', label: 'Work', profileDir: 'C:\\U\\ClaudeProfiles\\work', isNew: true, email: 'me@work.com' },
+  startedAt: 1,
 };
 
 test('marker: round trip; stash must be the slot + suffix and the slot the Claude folder', () => {

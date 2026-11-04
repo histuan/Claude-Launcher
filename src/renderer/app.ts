@@ -3,6 +3,8 @@ import {
 } from '../core/api.js';
 import { cardBadge, cardStatus } from '../core/card.js';
 import type { Account } from '../core/config.js';
+import { checkDetails, type Details } from '../core/details.js';
+import { PHOTO_SIZE, squareCrop } from '../core/photo.js';
 import { greetingFor } from '../core/greeting.js';
 import { strings } from './strings.js';
 
@@ -87,15 +89,15 @@ function renderCards(): void {
   const cards = state.accounts.map((account) => {
     const name = cardName(account);
     const open = h('button', { class: 'card-open', type: 'button', 'aria-label': strings.openAccount(name) },
-      h('span', { class: 'avatar', 'aria-hidden': 'true' }, initial(name)),
+      avatar(account, name),
       h('span', { class: 'label clip' }, name),
-      h('span', { class: 'email clip' },
-        account.email ?? (isSignedOut(account) && !running.has(account.id) ? strings.signIn.notSignedIn : '')),
+      h('span', { class: 'email clip' }, account.email ?? ''),
       h('span', { class: 'real-name clip' }, account.realName ?? ''),
     );
     open.addEventListener('click', () => void (isSignedOut(account) ? signIn(account) : openAccount(account, open)));
     const shown = cardStatus(running.has(account.id), isSignedOut(account), state.checking.includes(account.id));
-    const status = h('span', { class: shown === 'checking' ? 'running checking' : 'running' }, shown ? strings.status[shown] : '');
+    const kind = shown === 'checking' ? ' checking' : shown === 'signedOut' ? ' signed-out' : '';
+    const status = h('span', { class: `running${kind}` }, shown ? strings.status[shown] : '');
     status.hidden = shown === null;
     const badge = cardBadge(account);
     const extra = badge ? [h('span', { class: 'badge' }, strings.badges[badge])] : [];
@@ -107,6 +109,14 @@ function renderCards(): void {
     return h('div', { class: 'card' }, open, status, ...extra, more);
   });
   byId('cards').replaceChildren(...cards);
+}
+
+/** The chosen photo (shown as a circle) or the card name's initial. */
+function avatar(account: Account, name: string): HTMLElement {
+  const photo = state.photos[account.id];
+  return photo
+    ? h('img', { class: 'avatar', src: photo, alt: '', 'aria-hidden': 'true' })
+    : h('span', { class: 'avatar', 'aria-hidden': 'true' }, initial(name));
 }
 
 async function openAccount(account: Account, button: HTMLButtonElement): Promise<void> {
@@ -187,7 +197,9 @@ function openMenu(account: Account, owner: HTMLElement): void {
     : [signInOff() ? item(strings.menu.signIn, null, { title: strings.signInOff }) : item(strings.menu.signIn, () => void signIn(account))];
   items.push(
     item(strings.menu.rename, () => void rename(account)),
-    item(strings.menu.changePhoto, null), // the photo picker arrives in Phase 5
+    item(strings.menu.editDetails, () => void editDetails(account)),
+    item(strings.menu.changePhoto, () => pickPhoto(account)),
+    ...(state.photos[account.id] ? [item(strings.menu.removePhoto, () => void setPhoto(account, null))] : []),
     running.has(account.id)
       ? item(strings.menu.close, () => void closeAccount(account))
       : item(strings.menu.close, null, { title: strings.menu.closeOff }),
@@ -263,6 +275,117 @@ async function rename(account: Account): Promise<void> {
   renderCards();
 }
 
+// ---------- Add account / Edit details: typed by the person (WINDOWS.md §5) ----------
+
+const detailsDialog = byId<HTMLDialogElement>('details');
+const detailsName = byId<HTMLInputElement>('details-name');
+const detailsEmail = byId<HTMLInputElement>('details-email');
+const detailsRealName = byId<HTMLInputElement>('details-real-name');
+const detailsError = byId('details-error');
+byId('details-name-label').textContent = strings.details.cardName;
+byId('details-email-label').textContent = strings.details.email;
+byId('details-real-name-label').textContent = strings.details.realName;
+byId('details-cancel').textContent = strings.cancel;
+byId('details-cancel').addEventListener('click', () => detailsDialog.close());
+
+/**
+ * Card name (only when adding), e-mail (required) and real name (optional). Enter or the button checks the fields:
+ * a missing or invalid one keeps the dialog open with a message. Resolves null on Cancel / Esc.
+ */
+function askDetails(opts: {
+  title: string; body: string; confirm: string; name?: string; email: string; realName: string;
+}): Promise<{ name: string } & Details | null> {
+  byId('details-title').textContent = opts.title;
+  byId('details-body').textContent = opts.body;
+  byId('details-name-row').hidden = opts.name === undefined;
+  detailsName.value = opts.name ?? '';
+  detailsEmail.value = opts.email;
+  detailsRealName.value = opts.realName;
+  detailsError.textContent = '';
+  byId('details-confirm').textContent = opts.confirm;
+  detailsDialog.returnValue = '';
+  detailsDialog.showModal();
+  (opts.name !== undefined ? detailsName : detailsEmail).focus();
+  return new Promise((resolve) => {
+    let value: ({ name: string } & Details) | null = null;
+    const form = detailsDialog.querySelector('form')!;
+    const onSubmit = (e: SubmitEvent): void => {
+      const name = detailsName.value.trim();
+      const checked = checkDetails(detailsEmail.value, detailsRealName.value);
+      const error = opts.name !== undefined && !name ? strings.details.nameMissing
+        : 'error' in checked ? strings.details.errors[checked.error] : null;
+      if (error) {
+        e.preventDefault();
+        detailsError.textContent = error;
+        (opts.name !== undefined && !name ? detailsName : detailsEmail).focus();
+        return;
+      }
+      if (!('error' in checked)) value = { name, ...checked };
+    };
+    form.addEventListener('submit', onSubmit);
+    detailsDialog.addEventListener('close', () => {
+      form.removeEventListener('submit', onSubmit);
+      resolve(detailsDialog.returnValue === 'confirm' ? value : null);
+    }, { once: true });
+  });
+}
+
+async function editDetails(account: Account): Promise<void> {
+  const details = await askDetails({
+    title: strings.details.editTitle(cardName(account)), body: strings.details.editBody, confirm: strings.details.save,
+    email: account.email ?? '', realName: account.realName ?? '',
+  });
+  if (!details) return;
+  state = await api.setDetails(account.id, details.email, details.realName ?? '');
+  renderCards();
+}
+
+// ---------- Change photo (SCOPE §2.3): cropped to a centred square here, saved by the main process ----------
+
+const photoInput = byId<HTMLInputElement>('photo-input');
+let photoFor: Account | null = null;
+photoInput.addEventListener('change', () => {
+  const file = photoInput.files?.[0];
+  const account = photoFor;
+  photoInput.value = ''; // picking the same file again fires change again
+  if (file && account) void usePhoto(account, file);
+});
+
+function pickPhoto(account: Account): void {
+  photoFor = account;
+  photoInput.click();
+}
+
+/** Square PNG (PHOTO_SIZE) from the centre of the image. Throws if the file is not an image the browser decodes. */
+async function squarePng(file: Blob): Promise<string> {
+  const image = await createImageBitmap(file);
+  try {
+    const crop = squareCrop(image.width, image.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = PHOTO_SIZE;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('No canvas');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(image, crop.x, crop.y, crop.size, crop.size, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
+    return canvas.toDataURL('image/png');
+  } finally {
+    image.close();
+  }
+}
+
+async function usePhoto(account: Account, file: File): Promise<void> {
+  try {
+    await setPhoto(account, await squarePng(file));
+  } catch {
+    await ask({ title: strings.photo.failed.title, body: strings.photo.failed.body, confirm: strings.ok, cancel: false });
+  }
+}
+
+async function setPhoto(account: Account, dataUrl: string | null): Promise<void> {
+  state = await api.setPhoto(account.id, dataUrl);
+  renderCards();
+}
+
 async function remove(account: Account): Promise<void> {
   const name = cardName(account);
   /** A running account gets "Cancel" / "Close and remove" (its folder is locked while Claude runs). */
@@ -309,9 +432,11 @@ function renderSignInAvailability(): void {
 
 async function addNew(): Promise<void> {
   if (await explainSignInOff()) return;
-  const label = await ask({ title: strings.add.title, body: strings.add.body, value: '', confirm: strings.add.confirm });
-  if (label === null || !label.trim()) return;
-  await startSignIn({ label });
+  const details = await askDetails({
+    title: strings.add.title, body: strings.add.body, confirm: strings.add.confirm, name: '', email: '', realName: '',
+  });
+  if (!details) return;
+  await startSignIn({ label: details.name, email: details.email, realName: details.realName ?? '' });
 }
 
 async function signIn(account: Account): Promise<void> {

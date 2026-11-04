@@ -7,10 +7,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
 import {
-  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setGreetingName, setSignedIn,
+  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn,
   type LauncherConfig,
 } from '../core/config.js';
 import { findClaudeApp, lookupError, type ClaudeLookup } from '../core/claudeApp.js';
+import { checkDetails } from '../core/details.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
 import { pidsForProfile, pidsInsideFolder, runningAccountIds, windowPid } from '../core/processes.js';
@@ -18,6 +19,7 @@ import { claudeVersion, type Marker, type MarkerAccount } from '../core/signIn.j
 import { strings } from '../renderer/strings.js';
 import { closeProfile, removeProfile, type AccountProcessDeps } from './accountActions.js';
 import { ConfigStore } from './configStore.js';
+import { deletePhoto, readPhoto, savePhoto } from './photos.js';
 import { SignedInTracker } from './signedIn.js';
 import { SignInFlow, type StartError } from './signInFlow.js';
 import {
@@ -44,6 +46,9 @@ const store = new ConfigStore(path.join(app.getPath('userData'), 'config.json'))
 const signInLog = path.join(app.getPath('userData'), 'sign-in-check.log');
 /** Step timings of Add account / Sign in (paths and durations only, no secrets). Appended; restarted past 64 KB. */
 const timingsLog = path.join(app.getPath('userData'), 'sign-in-timings.log');
+/** Card photos: userData/photos/<id>.png, kept in memory as data URLs for the window. */
+const photosDir = path.join(app.getPath('userData'), 'photos');
+const photos = new Map<string, string>();
 const defaultName: Promise<string> = onWindows
   ? windowsDisplayName(process.env, runPowerShell)
   : Promise.resolve(cleanDisplayName('', process.env.USERNAME ?? process.env.USER));
@@ -85,6 +90,10 @@ async function state(cfg: LauncherConfig): Promise<LauncherState> {
     defaultName: name,
     greetingName: cfg.greetingName,
     accounts: cfg.accounts,
+    photos: Object.fromEntries(cfg.accounts.flatMap((a) => {
+      const url = a.photo ? photos.get(a.id) : undefined;
+      return url ? [[a.id, url]] : [];
+    })),
     ...signedInTracker.cards(cfg.accounts, lastRunning),
     signInAvailable,
     signInLog,
@@ -317,8 +326,11 @@ async function startSignIn(target: SignInTarget): Promise<ActionResult> {
   let account: MarkerAccount;
   if ('label' in target) {
     const added = addAccount(store.current, target.label, userProfile, existsSync);
-    if (!added?.account.profileDir || !added.account.label) return result(store.current);
-    account = { id: added.account.id, label: added.account.label, profileDir: added.account.profileDir, isNew: true };
+    const details = checkDetails(target.email, target.realName);
+    if (!added?.account.profileDir || !added.account.label || 'error' in details) return result(store.current);
+    account = {
+      id: added.account.id, label: added.account.label, profileDir: added.account.profileDir, isNew: true, ...details,
+    };
   } else {
     const card = store.current.accounts.find((a) => a.id === target.accountId);
     if (!card || card.profileDir === null) return result(store.current);
@@ -394,6 +406,8 @@ async function removeExisting(id: string, closeFirst: boolean): Promise<ActionRe
   }
   if (error) return result(store.current, error);
   signedInTracker.forget(id);
+  photos.delete(id);
+  await deletePhoto(photosDir, id).catch((err: unknown) => console.warn(`Could not delete the photo: ${(err as Error).message}`));
   return result(await store.update((c) => removeAccount(c, id)));
 }
 
@@ -407,13 +421,30 @@ function registerIpc(): void {
     if (!isText(id) || !isText(label)) throw new Error('Invalid arguments');
     return state(await store.update((c) => renameAccount(c, id, label)));
   });
+  ipcMain.handle('launcher:setDetails', async (_e, id: unknown, email: unknown, realName: unknown) => {
+    if (!isText(id) || !isText(email) || !isText(realName)) throw new Error('Invalid arguments');
+    return state(await store.update((c) => setDetails(c, id, email, realName)));
+  });
+  ipcMain.handle('launcher:setPhoto', async (_e, id: unknown, dataUrl: unknown) => {
+    if (!isText(id) || (dataUrl !== null && !isText(dataUrl))) throw new Error('Invalid arguments');
+    if (!store.current.accounts.some((a) => a.id === id)) return state(store.current);
+    if (dataUrl === null) {
+      photos.delete(id);
+      await deletePhoto(photosDir, id);
+      return state(await store.update((c) => setPhoto(c, id, null)));
+    }
+    const name = await savePhoto(photosDir, id, dataUrl);
+    if (!name) throw new Error('Not a valid photo');
+    photos.set(id, dataUrl);
+    return state(await store.update((c) => setPhoto(c, id, name)));
+  });
   ipcMain.handle('launcher:openAccount', (_e, id: unknown) => {
     if (!isText(id)) throw new Error('Invalid arguments');
     return openAccount(id);
   });
   ipcMain.handle('launcher:startSignIn', (_e, target: unknown) => {
     const t = (typeof target === 'object' && target !== null ? target : {}) as Record<string, unknown>;
-    if (isText(t.label)) return startSignIn({ label: t.label });
+    if (isText(t.label) && isText(t.email)) return startSignIn({ label: t.label, email: t.email, realName: isText(t.realName) ? t.realName : '' });
     if (isText(t.accountId)) return startSignIn({ accountId: t.accountId });
     throw new Error('Invalid arguments');
   });
@@ -471,6 +502,11 @@ async function start(): Promise<void> {
   // First run: only Main. Phase 2 sample accounts (demo-*) are dropped by parseConfig.
   await store.load(defaultConfig);
   signedInTracker.seed(store.current.accounts);
+  // Small files (256 × 256 PNG), read once so the cards never wait for them.
+  await Promise.all(store.current.accounts.map(async (a) => {
+    const url = a.photo ? await readPhoto(photosDir, a.photo) : null;
+    if (url) photos.set(a.id, url);
+  }));
   startup.config = performance.now();
   if (marker) await recoverSignIn(marker);
   // After the recovery, which may put the main profile back. Also fills the Claude.exe cache on the first run.

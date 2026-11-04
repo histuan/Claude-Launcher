@@ -1,6 +1,7 @@
 // Launcher config (JSON in userData). Pure functions: they never mutate the input.
 // The Main account is the default Claude profile: profileDir null, always first, cannot be removed.
 import path from 'node:path';
+import { checkDetails } from './details.js';
 import { isDesktopExe } from './processes.js';
 
 export const CONFIG_VERSION = 1;
@@ -141,15 +142,28 @@ export function renameAccount(cfg: LauncherConfig, id: string, label: string): L
 /** After a successful sign-in: adds the new card (once) or marks the existing one as signed in. */
 export function afterSignIn(
   cfg: LauncherConfig,
-  account: { id: string; label: string; profileDir: string; isNew: boolean },
+  account: { id: string; label: string; profileDir: string; isNew: boolean; email?: string | null; realName?: string | null },
 ): LauncherConfig {
   const { id, label, profileDir, isNew } = account;
   if (!isNew) return setSignedIn(cfg, id, true);
   if (cfg.accounts.some((a) => a.id === id)) return cfg;
-  return {
-    ...cfg,
-    accounts: [...cfg.accounts, { id, label, email: null, realName: null, photo: null, profileDir, signedIn: true }],
-  };
+  const details = checkDetails(account.email ?? '', account.realName ?? '');
+  const email = 'error' in details ? null : details.email;
+  const realName = 'error' in details ? null : details.realName;
+  return { ...cfg, accounts: [...cfg.accounts, { id, label, email, realName, photo: null, profileDir, signedIn: true }] };
+}
+
+/** "Edit details" (any card, Main included). An invalid e-mail leaves the config as it is. */
+export function setDetails(cfg: LauncherConfig, id: string, email: string, realName: string): LauncherConfig {
+  const details = checkDetails(email, realName);
+  if ('error' in details || !cfg.accounts.some((a) => a.id === id)) return cfg;
+  return { ...cfg, accounts: cfg.accounts.map((a) => (a.id === id ? { ...a, ...details } : a)) };
+}
+
+/** Photo file name in userData/photos (null = back to the initial). */
+export function setPhoto(cfg: LauncherConfig, id: string, photo: string | null): LauncherConfig {
+  if (!cfg.accounts.some((a) => a.id === id)) return cfg;
+  return { ...cfg, accounts: cfg.accounts.map((a) => (a.id === id ? { ...a, photo } : a)) };
 }
 
 /** Remembers the last known signed-in state of an extra account (unchanged config if it is already that). */

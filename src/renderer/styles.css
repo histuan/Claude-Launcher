@@ -15,7 +15,7 @@
   --font-sans: 'Inter Variable', 'Segoe UI', sans-serif;
   --titlebar-height: 36px;
   --card-width: 160px;
-  --card-height: 200px;
+  --card-height: 216px; /* 0.5.0: room for e-mail + account name above the Main badge */
   --card-radius: 16px;
   --card-gap: 20px;
   --avatar-size: 64px;
@@ -75,7 +75,7 @@ main {
 }
 .card { position: relative; flex: none; width: var(--card-width); height: var(--card-height); }
 .card-open {
-  width: 100%; height: 100%; padding: 28px 10px 14px;
+  width: 100%; height: 100%; padding: 28px 10px 30px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   border: 1px solid var(--border); border-radius: var(--card-radius);
   background: var(--surface); cursor: pointer; text-align: center;
@@ -106,7 +106,7 @@ main {
 }
 .running::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--running); }
 .running[hidden] { display: none; }
-.running.checking::before { background: var(--text-real-name); }
+.running.checking::before, .running.signed-out::before { background: var(--text-real-name); }
 /* Fixed badge (Main), at the bottom of the card so it never meets "Running" or the ⋯ button. */
 .badge {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); padding: 1px 8px;
@@ -175,3 +175,14 @@ dialog input:focus { border-color: var(--accent); outline: none; }
 .dialog-buttons button:disabled { opacity: .5; cursor: progress; }
 dialog p { white-space: pre-line; overflow-wrap: anywhere; }
 #dialog-confirm.danger { background: var(--danger); }
+
+/* Add account / Edit details */
+.field { display: block; margin-bottom: 10px; font-size: 13px; color: var(--text-email); }
+.field[hidden] { display: none; }
+.field span { display: block; margin-bottom: 4px; }
+dialog .field input { margin-bottom: 0; }
+dialog p.error { color: var(--danger); }
+
+/* Card photo: a square PNG shown as a circle */
+img.avatar { object-fit: cover; background: var(--surface); }
+#details .dialog-buttons { margin-top: 16px; }

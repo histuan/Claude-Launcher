@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  afterSignIn, removeAccount, renameAccount, setClaudeApp, setGreetingName, setSignedIn, type Account,
+  afterSignIn, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
@@ -157,4 +157,31 @@ test('Claude.exe cache: kept only for an MSIX Claude.exe path; default and bad v
   const cfg = setClaudeApp(defaultConfig(), { exe, family: null });
   assert.deepEqual(cfg.claudeApp, { exe, family: null });
   assert.deepEqual(cfg.accounts, defaultConfig().accounts);
+});
+
+test('Add account: the typed details go on the new card; an invalid e-mail is not saved', () => {
+  const base = parseConfig({ accounts: [acc('main', null)] });
+  const work = { id: 'work', label: 'Work', profileDir: 'C:\\P\\work', isNew: true };
+  const added = afterSignIn(base, { ...work, email: ' me@work.com ', realName: 'Thiago G.' });
+  assert.equal(added.accounts[1]?.email, 'me@work.com');
+  assert.equal(added.accounts[1]?.realName, 'Thiago G.');
+  assert.equal(afterSignIn(base, { ...work, email: 'nope' }).accounts[1]?.email, null);
+});
+
+test('Edit details: any card (Main too); invalid e-mail or unknown id leaves the config as it is', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null), acc('w', 'D:\\w')] });
+  const main = setDetails(cfg, 'main', 'thiago@gmail.com', ' Thiago U. ');
+  assert.deepEqual([main.accounts[0]?.email, main.accounts[0]?.realName], ['thiago@gmail.com', 'Thiago U.']);
+  assert.equal(setDetails(main, 'main', 'thiago@gmail.com', '').accounts[0]?.realName, null, 'real name can be cleared');
+  assert.equal(setDetails(cfg, 'w', 'bad', 'x'), cfg);
+  assert.equal(setDetails(cfg, 'nope', 'a@b.cd', 'x'), cfg);
+  assert.equal(cfg.accounts[0]?.email, null, 'input not mutated');
+});
+
+test('photo: set and back to the initial', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null)] });
+  const withPhoto = setPhoto(cfg, 'main', 'main.png');
+  assert.equal(withPhoto.accounts[0]?.photo, 'main.png');
+  assert.equal(setPhoto(withPhoto, 'main', null).accounts[0]?.photo, null);
+  assert.equal(setPhoto(cfg, 'nope', 'x.png'), cfg);
 });
