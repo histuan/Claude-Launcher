@@ -5,6 +5,7 @@ import { cardBadge, cardStatus } from '../core/card.js';
 import type { Account } from '../core/config.js';
 import { checkDetails, type Details } from '../core/details.js';
 import { checkMemoryText, MAX_MEMORY_CHARS, memorySources } from '../core/memories.js';
+import { MAX_ZIP_FILE_BYTES, readMemoryZip } from '../core/memoryZip.js';
 import { PHOTO_SIZE, squareCrop } from '../core/photo.js';
 import { greetingFor } from '../core/greeting.js';
 import { strings } from './strings.js';
@@ -462,6 +463,9 @@ const memoriesCopy = byId<HTMLButtonElement>('memories-copy');
 memoriesText.placeholder = strings.memories.copy.placeholder;
 byId('memories-cancel').textContent = strings.cancel;
 memoriesCopy.textContent = strings.memories.import.copyAgain;
+const memoriesFile = byId<HTMLButtonElement>('memories-file');
+const memoriesFileInput = byId<HTMLInputElement>('memories-file-input');
+memoriesFile.textContent = strings.memories.copy.chooseFile;
 /** Set while a transfer runs: what Next / Done / Cancel do. */
 let memoriesStep: 'copy' | 'import' | null = null;
 
@@ -497,6 +501,7 @@ function showMemoriesStep(step: 'copy' | 'import', source: Account, target: Acco
   byId('memories-body').textContent = text.body(name);
   byId('memories-steps').replaceChildren(...text.steps.map((line) => h('li', {}, line)));
   memoriesText.hidden = !copy;
+  memoriesFile.hidden = !copy;
   memoriesCopy.hidden = copy;
   memoriesNext.textContent = copy ? strings.memories.copy.next : strings.memories.import.done;
   byId('memories-tip').textContent = copy ? strings.memories.copy.tip : '';
@@ -509,7 +514,9 @@ function showMemoriesStep(step: 'copy' | 'import', source: Account, target: Acco
 async function useMemoriesText(source: Account, target: Account): Promise<void> {
   const checked = checkMemoryText(memoriesText.value);
   if ('error' in checked) {
-    memoriesError.textContent = strings.memories.errors[checked.error];
+    memoriesError.textContent = checked.error === 'tooLong'
+      ? strings.memories.zipTooLong(memoriesText.value.trim().length)
+      : strings.memories.errors[checked.error];
     memoriesText.focus();
     return;
   }
@@ -540,8 +547,49 @@ memoriesCopy.addEventListener('click', () => {
   void api.memories.copyAgain().then(() => { byId('memories-tip').textContent = strings.memories.import.copied; });
 });
 
-// Dropping a .txt / .md file fills the field (read here, in memory). Anywhere else, a drop does nothing (Electron
-// would otherwise open the file in the window).
+// The exported .zip (or a .txt / .md file), dropped or chosen, fills the field. It is read here, in memory only:
+// nothing is extracted to disk and nothing is logged. A drop anywhere else does nothing (Electron would otherwise
+// open the file in the window).
+async function loadMemoryFile(file: File): Promise<void> {
+  memoriesError.textContent = '';
+  const tip = byId('memories-tip');
+  if (/\.zip$/i.test(file.name)) {
+    if (file.size > MAX_ZIP_FILE_BYTES) {
+      memoriesError.textContent = strings.memories.zipErrors.tooBig;
+      return;
+    }
+    tip.textContent = strings.memories.copy.reading;
+    const result = await readMemoryZip(new Uint8Array(await file.arrayBuffer()));
+    if (memoriesStep !== 'copy') return; // cancelled meanwhile
+    if ('error' in result) {
+      tip.textContent = strings.memories.copy.tip;
+      memoriesError.textContent = strings.memories.zipErrors[result.error];
+      return;
+    }
+    memoriesText.value = result.text;
+    tip.textContent = strings.memories.copy.fromZip(result.files);
+  } else if (/\.(txt|md)$/i.test(file.name)) {
+    // A UTF-8 character is at most 4 bytes: a bigger file cannot fit the limit.
+    if (file.size > MAX_MEMORY_CHARS * 4) {
+      memoriesError.textContent = strings.memories.errors.tooLong;
+      return;
+    }
+    memoriesText.value = await file.text();
+  } else {
+    memoriesError.textContent = strings.memories.fileType;
+    return;
+  }
+  // Said at once, never cut: the person shortens the text before Next.
+  const length = memoriesText.value.trim().length;
+  if (length > MAX_MEMORY_CHARS) memoriesError.textContent = strings.memories.zipTooLong(length);
+}
+
+memoriesFile.addEventListener('click', () => memoriesFileInput.click());
+memoriesFileInput.addEventListener('change', () => {
+  const file = memoriesFileInput.files?.[0];
+  memoriesFileInput.value = ''; // the same file can be chosen again
+  if (file) void loadMemoryFile(file);
+});
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', (e) => e.preventDefault());
 memoriesText.addEventListener('dragenter', () => memoriesText.classList.add('drop'));
@@ -550,16 +598,7 @@ memoriesText.addEventListener('drop', (e) => {
   e.preventDefault();
   memoriesText.classList.remove('drop');
   const file = e.dataTransfer?.files[0];
-  if (!file) return;
-  // A UTF-8 character is at most 4 bytes: bigger files cannot pass checkMemoryText.
-  if (!/\.(txt|md)$/i.test(file.name) || file.size > MAX_MEMORY_CHARS * 4) {
-    memoriesError.textContent = !/\.(txt|md)$/i.test(file.name) ? strings.memories.fileType : strings.memories.errors.tooLong;
-    return;
-  }
-  void file.text().then((text) => {
-    memoriesText.value = text;
-    memoriesError.textContent = '';
-  });
+  if (file) void loadMemoryFile(file);
 });
 
 // ---------- Sign-in (WINDOWS.md §4): the main process runs the flow, the window shows its progress ----------

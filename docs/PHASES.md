@@ -191,12 +191,22 @@ so the launcher only walks the person through copying the text from one account 
 - Warning dialog first (buttons **Cancel** in red, **Proceed** in orange): imported memories are **added** to the
   target's existing ones; they may duplicate or conflict; the import is experimental; for work accounts, check the
   organization's rules before moving memories between accounts.
-- **Step 1 — copy from the source account:** the launcher opens the source account. Instructions: Settings → Your
-  Claude → Manage → copy the memories. The person pastes the text into the assistant, or drops a `.txt`/`.md` file.
-  Tip shown: if Manage does not offer a copy, ask Claude "Write out all my memories verbatim." and copy the answer.
+- **Step 1 — copy from the source account:** the launcher opens the source account. Instructions: Settings →
+  Memory → Export memory → Export, which downloads a `.zip` of Markdown files (the memory files). The person drops
+  the `.zip` on the assistant or picks it ("Choose a file…"); fallbacks: paste the text, or a `.txt`/`.md` file.
+  Tip shown: if Export is not there, ask Claude "Write out all my memories verbatim." and paste the answer.
+- **The `.zip` (fix before the 0.5.1 test, `src/core/memoryZip.ts`):** read in memory only, never extracted to disk,
+  never logged. Only `.md` entries, joined with one heading per file (its path inside the zip), in path order.
+  Paths with `..` are ignored; more than 500 entries, or more than 2 MB of real inflated text (not the declared
+  size), is refused; a broken zip gives a clear message. Dependency-free: the zip records are parsed by hand and
+  deflate goes through `DecompressionStream('deflate-raw')` (Chromium in the window, Node in the tests). Over
+  100,000 characters: said at once with the count, nothing is cut.
 - **Step 2 — import into the target account:** the launcher opens the target account and puts the text on the
-  clipboard. Instructions: Settings → Your Claude → Start import → paste → **Add to memory**. Buttons: **Copy again**
-  (puts the text back on the clipboard) and **Done**.
+  clipboard. Instructions: Settings → Memory → Import memory from other AI providers → Start import (Claude shows a
+  prompt meant for the other provider) → paste (Ctrl+V) → confirm. Buttons: **Copy again** (puts the text back on
+  the clipboard) and **Done**.
+- Menu names checked on Thiago's Claude Desktop (UI in Portuguese: Configurações → Memória → Exportar /
+  Iniciar importação); the support article's names (Your Claude, Manage, Add to memory) were outdated.
 - Privacy: the text is kept **only in memory**, never written to disk or logs, and cleared on **Done** or **Cancel**.
 - Tests: the warning comes first; the text never reaches a file or a log; Done and Cancel clear it; only signed-in
   accounts are offered as the source.

@@ -3,6 +3,7 @@ import type { ActionError, StartStep } from '../core/api.js';
 import type { CardBadge, CardStatus } from '../core/card.js';
 import type { DetailsError } from '../core/details.js';
 import type { MemoryTextError } from '../core/memories.js';
+import type { MemoryZipError } from '../core/memoryZip.js';
 import type { GreetingPeriod } from '../core/greeting.js';
 
 export const strings = {
@@ -214,25 +215,50 @@ export const strings = {
     copy: {
       title: (source: string) => `Step 1 of 2 · Copy from “${source}”`,
       body: (source: string) => `Claude opens with “${source}”. In it:`,
-      steps: ['Settings → Your Claude → Manage', 'Copy the memories', 'Paste them below'],
+      steps: [
+        'Settings → Memory',
+        'Export memory → Export (a .zip of your memory files downloads)',
+        'Drop the .zip below, or choose it with “Choose a file…”',
+      ],
       opening: 'Opening Claude…',
-      placeholder: 'Paste the memories here, or drop a .txt or .md file',
-      tip: 'Tip: if Manage does not offer a copy, ask Claude “Write out all my memories verbatim.” and copy the answer.',
+      placeholder: 'Drop the exported .zip here, or paste the memories (a .txt or .md file works too)',
+      chooseFile: 'Choose a file…',
+      reading: 'Reading the .zip…',
+      /** The .zip was read: its .md files are in the box, one heading per file. */
+      fromZip: (files: number) => `${files} memory ${files === 1 ? 'file' : 'files'} from the .zip, one heading `
+        + 'per file. Check the text, then press Next.',
+      tip: 'Tip: if Export is not there, ask Claude “Write out all my memories verbatim.” and paste the answer.',
       next: 'Next',
     },
     import: {
       title: (target: string) => `Step 2 of 2 · Import into “${target}”`,
       body: (target: string) => `Claude opens with “${target}”, and the memories are on the clipboard. In it:`,
-      steps: ['Settings → Your Claude → Start import', 'Paste', 'Add to memory'],
+      steps: [
+        'Settings → Memory → Import memory from other AI providers → Start import',
+        'Claude shows a prompt for the other provider: you already have the memories, so paste them (Ctrl+V)',
+        'Confirm',
+      ],
       copyAgain: 'Copy again',
       copied: 'The memories are on the clipboard again.',
       done: 'Done',
     },
     errors: {
-      empty: 'Paste the memories first, or drop a .txt or .md file.',
-      tooLong: 'This text is too long for a list of memories (over 100,000 characters).',
+      empty: 'Paste the memories first, or drop the exported .zip.',
+      /** Nothing is cut: the person shortens the text. */
+      tooLong: 'The memories are over the limit of 100,000 characters. Nothing was cut: remove some text, then '
+        + 'press Next.',
     } satisfies Record<MemoryTextError, string>,
-    fileType: 'Drop a .txt or .md file.',
+    /** Shown at once when a .zip gives more than the limit (with the real count). */
+    zipTooLong: (chars: number) => `The memories from the .zip have ${chars.toLocaleString('en')} characters, over the `
+      + 'limit of 100,000. Nothing was cut: remove some text, then press Next.',
+    zipErrors: {
+      broken: 'This .zip could not be read. Export it again from Claude, or paste the memories.',
+      tooBig: 'This .zip has more than 2 MB of memory text (or is over 20 MB): it does not look like a memory export.',
+      tooManyEntries: 'This .zip has more than 500 files: it does not look like a memory export.',
+      noMemories: 'This .zip has no .md memory files.',
+      unsupported: 'This .zip uses a format the launcher cannot read (encrypted or Zip64). Paste the memories instead.',
+    } satisfies Record<MemoryZipError, string>,
+    fileType: 'Use the exported .zip, or a .txt or .md file.',
   },
   photo: {
     failed: {

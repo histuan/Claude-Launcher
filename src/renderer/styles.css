@@ -202,3 +202,9 @@ img.avatar { object-fit: cover; background: var(--surface); }
 #memories textarea:focus, #memories textarea.drop { border-color: var(--accent); outline: none; }
 #memories textarea[hidden] { display: none; }
 dialog p.tip { font-size: 12px; color: var(--text-real-name); }
+#memories .link {
+  display: block; margin: 0 0 10px; padding: 0; border: 0; background: none;
+  color: var(--accent); font-size: 13px; cursor: pointer;
+}
+#memories .link:hover { color: var(--accent-hover); text-decoration: underline; }
+#memories .link[hidden] { display: none; }
