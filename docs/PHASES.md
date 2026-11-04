@@ -181,7 +181,7 @@ Housekeeping first (2026-11-04):
   `WINDOWS.md` §5 as a possible later improvement.
 - Change photo: pick an image, save a resized copy to `userData/photos/<id>.png`; "back to the initial".
 
-## Phase 5.1 — Receive memories from…
+## Phase 5.1 — Receive memories from… ✅ (2026-11-04, version 0.5.1)
 
 A **guided assistant**, not an automatic transfer: memories live on Anthropic's servers and there is no official API,
 so the launcher only walks the person through copying the text from one account and importing it into another.

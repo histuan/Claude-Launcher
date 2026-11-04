@@ -60,6 +60,8 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
   Main included). **Add account** asks for them too (`docs/WINDOWS.md` §5).
 - **Change photo** — picks an image from the PC (png/jpg/webp), cropped to a circle; option "back to the initial".
 - **Remove** — with confirmation. Deletes that account's profile folder. Not available on the Main card.
+- **Receive memories from…** — guided copy and paste of the memories of another signed-in account into this one
+  (`docs/PHASES.md`, Phase 5.1). The text stays only in the launcher's memory and is cleared on Done or Cancel.
 - **Close this account** — ends that account's Claude. The launcher **stays open** afterwards (intended: the person
   usually closes one account to do something else in the launcher).
 

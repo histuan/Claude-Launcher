@@ -8,6 +8,26 @@ Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-04
+
+Phase 5.1: receive memories from another account, plus a faster first screen.
+
+### Added
+
+- **Receive memories from…** in the card ⋯ menu: pick another signed-in account, read the warning (memories are
+  added, may duplicate or conflict, import is experimental, check your organization's rules for work accounts),
+  then two guided steps: the launcher opens the source account so you copy its memories and paste them (or drop a
+  `.txt` / `.md` file), then opens the target account with the text on the clipboard (**Copy again**, **Done**).
+  The launcher never reads Claude's memories itself; the text is kept only in memory, never written to disk or to a
+  log, and is cleared (and taken off the clipboard if it is still there) on Done, Cancel or when the window closes.
+
+### Changed
+
+- The Windows display name and the main Claude profile folder are kept in the launcher config: the first screen
+  uses them at once instead of waiting for two PowerShell queries (~0.5 s), and they are looked up again in the
+  background after the cards are shown (the greeting and Add account update if they changed). A sign-in still
+  looks up the main profile fresh.
+
 ## [0.5.0] - 2026-11-04
 
 Phase 5: account details and photo, plus housekeeping.
