@@ -1,24 +1,10 @@
 # Status
 
-**Current phase:** 5 — Account details and photo (issue #2), **in progress**. Housekeeping done (Node 24, `v<version>`
-tags, startup timing, remembered signed-in state, reopen the main Claude only if it had a visible window).
-`scripts/diagnose-accounts.ps1` written; **waiting for Thiago to run it and paste the output** in the session before
-the e-mail/name detection is written.
-
-**Previous:** 4.4 — Card check after a sign-out (0.4.5), merged (PR #15).
-0.4.4 (PR #14, merged) tested on the PC: sign-in works (`finish: wait for the cookie write: written: 24965 ms`, the new
-account opens signed in); but after a sign-out inside Claude the card still looked signed in. First 0.4.5 build
-tested too: its log proved the cookie database is locked (`EBUSY`) while Claude runs and for a few seconds after
-"Close this account", and the keys fallback answered "signed in"; this PR now has the fix for that.
-Then Claude updated to **4.4212.0.0**: a sign-in on an existing card was not detected ("No sign-in found"), because
-4.x no longer writes the `oauth:tokenCache` keys. This PR now detects a **new** account-related key name
-(`oauth:*`, `lastKnownAccountUuid`, `*Account*`) compared with the keys present when the sign-in window opened
-(`docs/WINDOWS.md` §1 and §4), and logs the Claude version and the key that triggered it.
-Then (2026-11-04, Claude **4.16336.0.0**) Sign in said "Claude is not installed": starting PowerShell exceeded the 5 s
-timeout. The `Claude.exe` path is now cached in the launcher config (file check only; re-resolved when missing), the
-lookup has ~15 s and one retry, and a timeout shows "Couldn't find Claude in time. Try again.". No "tray" in texts any
-more: Claude has no tray icon on this PC.
-Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Receive memories from… (`docs/PHASES.md`).
+**Current phase:** 5 — Account details and photo (0.5.0), in a PR to `main` (Closes #2), waiting for Thiago's test
+and merge. Housekeeping: Node 24, `v<version>` tags, startup timing, remembered signed-in state, main Claude reopened
+only if it had a visible window. Details: `scripts/diagnose-accounts.ps1` showed the local files are not reliable, so
+v1 uses **typed** details (Add account + Edit details). Change photo done.
+Next: Phase 5.1 — Receive memories from… (`docs/PHASES.md`), after the merge.
 
 ## Done
 
@@ -75,26 +61,30 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
   Cause of the 0.4.4 report (from the first 0.4.5 build's log): copy failed with `EBUSY` right after the close, and
   the keys fallback said "signed in".
 
+- Phase 5 (0.5.0): Add account asks for the e-mail (required) and real name (optional); **Edit details** on every
+  card (Main too); **Change photo** (PNG/JPG/WebP → centre square, 256 × 256 PNG in `userData/photos/<id>.png`, shown
+  as a circle; **Back to the initial**). Cards show the last known signed-in state from the config at once; cookie
+  checks run after the cards are on screen. `startup: cards shown: …` in `sign-in-timings.log`. Main Claude reopened
+  after a sign-in only if it had a visible window. Node 24, scripts in TypeScript, tags `v<version>`.
+  Screenshots (mocked): `docs/screenshots/phase-5-cards.png`, `docs/screenshots/phase-5-add.png`.
+
 ## Missing
 
-- Phases 5 and 6 (`docs/PHASES.md`).
+- Phases 5.1 and 6 (`docs/PHASES.md`).
 - Milestone "Multi-Account Launcher v1.0": the cloud session has no tool to create milestones. Thiago creates it on
   GitHub (Issues → Milestones → New milestone) and adds the open phase issues (#1–#5) to it.
 
-## Notes for Phase 5
+## Notes for the next phases
 
-- Email and real name are not detected yet: new cards show only their name (SCOPE §4.2.4, `docs/WINDOWS.md` §5).
-  The signed-in profile is `account.profileDir`; `src/main/system/claudeProfile.ts` already reads its `config.json`.
-- `config.json` holds `oauth:tokenCache`, `oauth:tokenCacheV2` and `lastKnownAccountUuid` (seen in the 0.4.1 test).
-  `lastKnownAccountUuid` may identify the account without secrets: try it first (`docs/WINDOWS.md` §5).
-- Not verified on the PC yet: the window query (`Get-Process` `MainWindowHandle` joined to `Win32_Process` by id) and
-  the cookie reader on a real Chromium `Cookies` file. If "Not signed in" looks wrong, the reader may have failed and
-  fallen back to `config.json` (a warning goes to the console).
+- E-mail and real name are typed by the person (`docs/WINDOWS.md` §5). Reading them via the `sessionKey` cookie and
+  the claude.ai endpoint is a possible later improvement, not v1.
+- The first state still waits for the Windows name query and the main-profile lookup (both PowerShell). The
+  `startup:` line in `sign-in-timings.log` says how long each took: if the cards feel slow, cache them in the config.
+- Not verified on the PC yet: the window query (`Get-Process` `MainWindowHandle` joined to `Win32_Process` by id),
+  now also used to decide whether the main Claude is reopened after a sign-in.
 - `launchClaude` uses `windowsHide: true` (CLAUDE.md rule 7). libuv also applies it to GUI windows (`SW_HIDE` in
   `STARTUPINFO`); if Claude's window does not appear when opened from the launcher, this is the first suspect.
-- Old (non-MSIX) install: it opens, but the "Running" indicator and sign-in only support the MSIX package
-  (without a trusted profile folder, sign-in is turned off: "Sign-in is turned off" + `sign-in-check.log`).
-- The greeting still waits for the PowerShell name query (timeout 5 s). If it feels slow, cache the name in the config.
+- Old (non-MSIX) install: it opens, but the "Running" indicator and sign-in only support the MSIX package.
 
 ## Decisions
 
@@ -117,7 +107,7 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
   device name nor a folder that already exists; the folder name is the id. The launcher only creates or deletes folders
   directly inside `%USERPROFILE%\ClaudeProfiles` (`isLauncherProfileDir`).
 - Process filtering by exe path is done in `src/core/processes.ts` (tested); PowerShell only lists `claude.exe`.
-- Card size: CSS px already follow Windows scaling, so sizes are set for 100 % (160 × 200 shows as 240 × 300 at 150 %).
+- Card size: CSS px already follow Windows scaling, so sizes are set for 100 % (160 × 200 shows as 240 × 300 at 150 %). 0.5.0: 160 × 216, for e-mail + name above the Main badge.
 - Releases: regular and marked as latest since 0.3.0.
 - Sign-in (0.4.4): the default Claude is asked to close (`taskkill /PID <pid> /T`, no `/F`), its exit is checked every
   ~250 ms (`process.kill(pid, 0)`), and after ~1 s what is left of the default profile is force-ended
@@ -126,7 +116,7 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
   write (stat only, max ~45 s, then Wait longer / Cancel), ~1 s more, then force-ends the sign-in Claude (the close
   request never works). A failed
   process query counts as "still running" (abort), never as "closed". The main Claude is reopened at the end only if it
-  was open before (cancel and success alike); after a success the new account opens too.
+  had a visible window before (0.5.0; running hidden or not running = left closed; cancel and success alike); after a success the new account opens too.
   "Session saved" (inside the sign-in, blank profile) = the text `sessionKey` in the cookie database files.
 - "Signed in" for a card (0.4.5) = a claude.ai `sessionKey` row in `<profile>\Network\Cookies`, not expired and not
   empty (queried with the built-in `node:sqlite` on a temporary copy with its `-journal` / `-wal`; names, hosts,
@@ -141,32 +131,24 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
 
 ## How to test
 
-Phase 4.4 (0.4.5). Sign-in still moves your main Claude profile for a moment: keep a backup of
+Phase 5 (0.5.0). Sign-in still moves your main Claude profile for a moment: keep a backup of
 `%LOCALAPPDATA%\Claude-Data\claude_…` (copied elsewhere with Claude fully closed).
 
-0. Get `Claude-Launcher-Setup-0.4.5.exe`: before the merge, from this PR's latest Actions run (artifact
-   **launcher-installer**); after the merge, from the **Releases** page (tag `launcher-v0.4.5`). Install over 0.4.4.
-   The version label (bottom-right) says **v0.4.5**.
-1. **Signed-in card:** use an extra account that is signed in. Open the launcher: its card has no "Not signed in".
-2. **Log out, then close:** open that account, **Log out inside Claude**, wait about **1 minute** (Claude writes
-   cookies about every 30 s), then open the launcher. While it runs the card still shows only **Running** (a sign-out
-   cannot be seen while Claude runs). Use ⋯ → **Close this account**. Within ~3 s "Running" goes away; the card may
-   show **Checking…** for a few seconds, then by itself **Not signed in** (clicking it starts Sign in). It must not
-   stay on "Checking…" for more than ~10 s.
-3. **Reopen the launcher** (close it and open it again): the card still says **Not signed in**.
-4. **Send me the log lines:** `%APPDATA%\claude-launcher\sign-in-timings.log` (hover the version label for the
-   path). Copy the lines that start with `card check` (only account ids, decisions and error codes; never cookie
-   data). Expected after step 2: `card check <id>: cookie not found`. If you see `cookie DB unreadable (…) for ~10 s
-   -> kept: …`, the file stayed locked longer than ~10 s: tell me.
-5. **Sign-in on Claude 4.x:** on a card with **Not signed in**, click **Sign in** and sign in in the Claude window
-   that opens, **without** pressing anything in the launcher. Within a few seconds the dialog goes to "saving", then
-   (after Claude's cookie write, up to ~45 s) **done**; the account opens signed in and its card has no "Not signed
-   in". Try **Add account** the same way. If it does not finish by itself, press **I've signed in**.
-6. **Send me** the sign-in lines of `sign-in-timings.log` from that try: `start: find Claude.exe: …`,
-   `start: Claude version: 4.16336.0.0`,
-   `start: account keys when the window opened: …`, `detect: new account key: …` (key names only, never values) and
-   the `finish:` lines.
-7. **Claude.exe cache:** the first Sign in or card click after installing may still take a few seconds (one lookup,
-   logged as `find Claude.exe: lookup: N ms`). Every click after that starts at once (`start: find Claude.exe: cache`).
-   You should never see "Claude is not installed" while Claude is installed; if PowerShell is very slow you may see
-   "Couldn't find Claude in time. Try again." instead.
+0. Get `Claude-Launcher-Setup-0.5.0.exe`: before the merge, from this PR's latest Actions run (artifact
+   **launcher-installer**); after the merge, from the **Releases** page (tag **`v0.5.0`**, title `v0.5.0`). Install
+   over 0.4.5. The version label (bottom-right) says **v0.5.0**.
+1. **Fast cards:** open the launcher. The cards appear with their last known "Not signed in" state at once (from the
+   second start on). Send me the `startup:` lines of `sign-in-timings.log` (hover the version label for the path).
+2. **Edit details:** ⋯ on **Main** → **Edit details** → type the e-mail and your name → Save: both show on the card.
+   An empty or wrong e-mail (e.g. `abc`) keeps the dialog open with a message. Do the same on an extra card. Close
+   and reopen the launcher: the details are still there.
+3. **Add account:** the dialog asks for card name, e-mail (required) and account name (optional). Finish the
+   sign-in: the new card shows the e-mail and name you typed. Cancel the sign-in once: no card is created.
+4. **Main Claude after a sign-in:** (a) with the main Claude's window open, do a Sign in: at the end it reopens.
+   (b) Close its window (Claude keeps running hidden) and do a Sign in: at the end it stays closed. The log has
+   `start: main Claude: running with a window` / `running hidden`.
+5. **Change photo:** ⋯ → **Change photo** → pick a JPG, a PNG and a WebP (one at a time; a wide or tall one too):
+   the card shows the centre of the image in a circle. ⋯ → **Back to the initial**: the letter returns. A file that
+   is not an image shows "Could not use this image". Remove an extra account with a photo: its file in
+   `%APPDATA%\claude-launcher\photos` is deleted.
+6. **Not signed in** now shows in the card's top line (grey dot), not in place of the e-mail.

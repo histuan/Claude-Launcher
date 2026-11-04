@@ -157,7 +157,7 @@ After testing 0.4.2 on the PC (all 7 tests passed).
 - Docs: "Close this account" keeps the launcher open; "Running" = process open; signed-out state only known once
   the profile is closed (`SCOPE.md` §2.2–2.3).
 
-## Phase 5 — Account details and photo
+## Phase 5 — Account details and photo ✅ (2026-11-04, version 0.5.0)
 
 Read: `WINDOWS.md` §5, `SCOPE.md` §2.2–2.3.
 
@@ -176,6 +176,9 @@ Housekeeping first (2026-11-04):
 - First: diagnostic script (only keys and paths, never token values) for Thiago to run and paste the output.
   Stop the phase here if the output does not exist yet.
 - Then: detection in the order of section 5, with manual fallback. Also update the Main card.
+  **Decided after the diagnostic:** local files are not reliable; v1 uses manual details only (e-mail required,
+  real name optional) in Add account, plus **Edit details** in the ⋯ menu of every card. Option 2 stays noted in
+  `WINDOWS.md` §5 as a possible later improvement.
 - Change photo: pick an image, save a resized copy to `userData/photos/<id>.png`; "back to the initial".
 
 ## Phase 5.1 — Receive memories from…

@@ -142,19 +142,26 @@ Flow rules:
 
 ## 5. Account details (email and real name)
 
-Order of attempts, stopping at the first that works:
+**Decision (Phase 5, 2026-11-04): v1 uses manual details only.** Thiago ran `scripts/diagnose-accounts.ps1`
+(key names, paths and masked e-mails only) on his PC: the local profile files are **not a reliable source** of the
+account's e-mail and name, so option 1 is dropped and option 2 is left for later.
 
-1. **Local, non-secret** profile files (e.g. `config.json`, Local Storage) that already contain email and name.
-   The cloud cannot see Thiago's PC: the phase writes a diagnostic script that lists **only keys and paths, never token
-   values**; Thiago runs it and pastes the output.
-2. `sessionKey` cookie (DPAPI + AES-GCM, via PowerShell/.NET) + undocumented `claude.ai` endpoint
-   (see `usage.py` in ai-multi-instance). May break with updates: handle errors and fall back to 3.
-3. Manual: the person types the email when adding the account.
+What v1 does (option 3):
 
-Store only email and name in the launcher config. Never store the token.
+- **Add account** asks for the card name, the account's **e-mail (required)** and its **real name (optional)**.
+  They are saved on the new card when the sign-in succeeds (carried in the sign-in marker meanwhile).
+- **Edit details** in the ⋯ menu of every card, Main included, changes the e-mail and the real name.
+- The launcher config stores only the e-mail and the name. Never a token.
 
-Phase 5 candidate: `config.json` has `lastKnownAccountUuid` (seen in the 0.4.1 test). It may identify the account
-without any secret; check whether it maps to the email before trying option 2.
+Options considered, kept for reference:
+
+1. Local, non-secret profile files (`config.json`, Local Storage, IndexedDB). Checked with the diagnostic script:
+   not reliable. `lastKnownAccountUuid` identifies the account but does not map to an e-mail locally.
+2. **Possible later improvement:** the `sessionKey` cookie (DPAPI + AES-GCM, via PowerShell/.NET) + the
+   undocumented `claude.ai` account endpoint (see `usage.py` in ai-multi-instance) would fill the details by itself.
+   It reads a secret and may break with Claude updates: it must handle errors, fall back to the typed details, never
+   log or store the cookie, and send it only to `claude.ai` (CLAUDE.md rule 3). Not in v1.
+3. Manual (what v1 does, above).
 
 ## 6. References
 
