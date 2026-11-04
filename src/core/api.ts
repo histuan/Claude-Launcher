@@ -95,9 +95,10 @@ export interface LauncherApi {
     begin(sourceId: string, targetId: string): Promise<ActionError | null>;
     /** Proceed: opens the source account (the launcher stays open). */
     proceed(): Promise<ActionError | null>;
-    /** Puts the pasted text on the clipboard and opens the target account. */
-    useText(text: string): Promise<ActionError | null>;
-    copyAgain(): Promise<void>;
+    /** The text in parts of whole files, each under the limit: part 1 goes on the clipboard, the target opens. */
+    useParts(parts: string[]): Promise<ActionError | null>;
+    /** Copy part / Next part (0-based). */
+    copyPart(index: number): Promise<void>;
     /** Done or Cancel: the text is forgotten (and taken off the clipboard if it is still there). */
     finish(): Promise<void>;
     cancel(): Promise<void>;

@@ -4,7 +4,10 @@ import {
 import { cardBadge, cardStatus } from '../core/card.js';
 import type { Account } from '../core/config.js';
 import { checkDetails, type Details } from '../core/details.js';
-import { checkMemoryText, MAX_MEMORY_CHARS, memorySources } from '../core/memories.js';
+import {
+  checkedByDefault, checkMemoryText, joinMemoryFiles, MAX_MEMORY_CHARS, memoryFolders, memorySection, memorySources,
+  splitMemoryParts, type MemoryFile,
+} from '../core/memories.js';
 import { MAX_ZIP_FILE_BYTES, readMemoryZip } from '../core/memoryZip.js';
 import { PHOTO_SIZE, squareCrop } from '../core/photo.js';
 import { greetingFor } from '../core/greeting.js';
@@ -454,20 +457,33 @@ async function closeAccount(account: Account): Promise<void> {
 
 // ---------- Receive memories from… (Phase 5.1): a guided copy and paste ----------
 // The text is sent to the main process, which keeps it only in memory; Done / Cancel / Esc clear it there and here.
+// From Claude's exported .zip the person checks which files to bring; over the limit, the text goes in parts of
+// whole files, imported one Start import at a time.
 
 const memoriesDialog = byId<HTMLDialogElement>('memories');
 const memoriesText = byId<HTMLTextAreaElement>('memories-text');
 const memoriesError = byId('memories-error');
 const memoriesNext = byId<HTMLButtonElement>('memories-next');
 const memoriesCopy = byId<HTMLButtonElement>('memories-copy');
+const memoriesFiles = byId('memories-files');
+const memoriesTotal = byId('memories-total');
+const memoriesPart = byId('memories-part');
+const memoriesTip = byId('memories-tip');
 memoriesText.placeholder = strings.memories.copy.placeholder;
 byId('memories-cancel').textContent = strings.cancel;
-memoriesCopy.textContent = strings.memories.import.copyAgain;
 const memoriesFile = byId<HTMLButtonElement>('memories-file');
 const memoriesFileInput = byId<HTMLInputElement>('memories-file-input');
 memoriesFile.textContent = strings.memories.copy.chooseFile;
 /** Set while a transfer runs: what Next / Done / Cancel do. */
 let memoriesStep: 'copy' | 'import' | null = null;
+/** The files of the exported .zip while step 1 shows their checklist (null = pasted text or a .txt / .md file). */
+let zipFiles: MemoryFile[] | null = null;
+const checkedPaths = new Set<string>();
+/** Step 2: how many parts the main process holds, and which one is on the clipboard (0-based). */
+let partCount = 0;
+let partIndex = 0;
+
+const characters = (n: number): string => n.toLocaleString('en');
 
 async function receiveMemories(source: Account, target: Account): Promise<void> {
   const refused = await api.memories.begin(source.id, target.id);
@@ -479,9 +495,9 @@ async function receiveMemories(source: Account, target: Account): Promise<void> 
     cancelDanger: true,
   });
   if (ok === null) return api.memories.cancel();
-  showMemoriesStep('copy', source, target);
+  showCopyStep(source, target);
   memoriesNext.disabled = true;
-  byId('memories-tip').textContent = strings.memories.copy.opening;
+  memoriesTip.textContent = strings.memories.copy.opening;
   const error = await api.memories.proceed().catch(() => 'launchFailed' as const);
   if (memoriesStep !== 'copy') return; // cancelled meanwhile
   if (error) {
@@ -489,43 +505,176 @@ async function receiveMemories(source: Account, target: Account): Promise<void> 
     return showResult({ state, error });
   }
   memoriesNext.disabled = false;
-  byId('memories-tip').textContent = strings.memories.copy.tip;
+  if (!zipFiles) memoriesTip.textContent = strings.memories.copy.tip;
 }
 
-function showMemoriesStep(step: 'copy' | 'import', source: Account, target: Account): void {
-  memoriesStep = step;
-  const copy = step === 'copy';
-  const text = copy ? strings.memories.copy : strings.memories.import;
-  const name = cardName(copy ? source : target);
-  byId('memories-title').textContent = text.title(name);
-  byId('memories-body').textContent = text.body(name);
-  byId('memories-steps').replaceChildren(...text.steps.map((line) => h('li', {}, line)));
-  memoriesText.hidden = !copy;
-  memoriesFile.hidden = !copy;
-  memoriesCopy.hidden = copy;
-  memoriesNext.textContent = copy ? strings.memories.copy.next : strings.memories.import.done;
-  byId('memories-tip').textContent = copy ? strings.memories.copy.tip : '';
+function showSteps(title: string, body: string, steps: readonly string[]): void {
+  byId('memories-title').textContent = title;
+  byId('memories-body').textContent = body;
+  byId('memories-steps').replaceChildren(...steps.map((line) => h('li', {}, line)));
   memoriesError.textContent = '';
-  memoriesNext.onclick = copy ? () => void useMemoriesText(source, target) : () => void closeMemories(true);
-  if (!memoriesDialog.open) memoriesDialog.showModal();
-  (copy ? memoriesText : memoriesNext).focus();
 }
 
-async function useMemoriesText(source: Account, target: Account): Promise<void> {
-  const checked = checkMemoryText(memoriesText.value);
-  if ('error' in checked) {
-    memoriesError.textContent = checked.error === 'tooLong'
-      ? strings.memories.zipTooLong(memoriesText.value.trim().length)
-      : strings.memories.errors[checked.error];
-    memoriesText.focus();
-    return;
+function showCopyStep(source: Account, target: Account): void {
+  memoriesStep = 'copy';
+  const text = strings.memories.copy;
+  showSteps(text.title(cardName(source)), text.body(cardName(source)), text.steps);
+  memoriesText.hidden = false;
+  memoriesFile.hidden = false;
+  memoriesCopy.hidden = true;
+  memoriesPart.textContent = '';
+  memoriesTip.textContent = text.tip;
+  memoriesNext.textContent = text.next;
+  memoriesNext.onclick = () => void useMemories(target);
+  if (!memoriesDialog.open) memoriesDialog.showModal();
+  memoriesText.focus();
+}
+
+function showImportStep(target: Account): void {
+  memoriesStep = 'import';
+  const text = strings.memories.import;
+  const name = cardName(target);
+  const many = partCount > 1;
+  showSteps(text.title(name), many ? text.partsBody(name, partCount) : text.body(name), text.steps);
+  memoriesText.hidden = true;
+  memoriesFile.hidden = true;
+  memoriesFiles.hidden = true;
+  memoriesTotal.textContent = '';
+  memoriesCopy.hidden = false;
+  memoriesCopy.textContent = many ? text.copyPart : text.copyAgain;
+  memoriesTip.textContent = '';
+  renderPart();
+  memoriesNext.onclick = () => void nextPart();
+  memoriesNext.focus();
+}
+
+/** "Part 2 of 3 is on the clipboard"; the last part (or the only one) gets Done. */
+function renderPart(): void {
+  const last = partIndex >= partCount - 1;
+  memoriesPart.textContent = partCount > 1 ? strings.memories.import.partOnClipboard(partIndex + 1, partCount) : '';
+  memoriesNext.textContent = last ? strings.memories.import.done : strings.memories.import.nextPart;
+}
+
+async function nextPart(): Promise<void> {
+  if (partIndex >= partCount - 1) return closeMemories(true);
+  memoriesNext.disabled = true;
+  try {
+    await api.memories.copyPart(partIndex + 1);
+    partIndex++;
+    memoriesTip.textContent = '';
+    renderPart();
+  } finally {
+    memoriesNext.disabled = false;
+  }
+}
+
+memoriesCopy.addEventListener('click', () => {
+  void api.memories.copyPart(partIndex).then(() => {
+    memoriesTip.textContent = partCount > 1
+      ? strings.memories.import.partCopied(partIndex + 1, partCount)
+      : strings.memories.import.copied;
+  });
+});
+
+// --- Step 1: the .zip checklist ---
+
+/** The checked files, in the order of the list (top level first, then folders in path order). */
+function checkedFiles(): MemoryFile[] {
+  return zipFiles ? memoryFolders(zipFiles).flatMap((g) => g.files).filter((f) => checkedPaths.has(f.path)) : [];
+}
+
+function useZip(files: MemoryFile[]): void {
+  zipFiles = files;
+  checkedPaths.clear();
+  for (const f of files) if (checkedByDefault(f.path)) checkedPaths.add(f.path);
+  memoriesText.readOnly = true; // the box shows the checked files; the checklist decides what goes
+  memoriesText.rows = 3; // a preview: the list needs the room
+  memoriesFiles.hidden = false;
+  memoriesTip.textContent = strings.memories.copy.fromZip(files.length, files.some((f) => !checkedByDefault(f.path)));
+  renderChecklist();
+}
+
+function leaveZip(): void {
+  zipFiles = null;
+  checkedPaths.clear();
+  memoriesText.readOnly = false;
+  memoriesText.rows = 7;
+  memoriesFiles.hidden = true;
+  memoriesFiles.replaceChildren();
+  memoriesTotal.textContent = '';
+}
+
+function renderChecklist(): void {
+  if (!zipFiles) return;
+  const scroll = memoriesFiles.scrollTop;
+  const checkbox = (checked: boolean, onChange: (on: boolean) => void): HTMLInputElement => {
+    const box = h('input', { type: 'checkbox' });
+    box.checked = checked;
+    box.addEventListener('change', () => { onChange(box.checked); renderChecklist(); });
+    return box;
+  };
+  memoriesFiles.replaceChildren(...memoryFolders(zipFiles).map(({ folder, files }) => {
+    const on = files.filter((f) => checkedPaths.has(f.path)).length;
+    const all = checkbox(on === files.length, (value) => {
+      for (const f of files) value ? checkedPaths.add(f.path) : checkedPaths.delete(f.path);
+    });
+    all.indeterminate = on > 0 && on < files.length;
+    const rows = files.map((f) => h('label', { class: 'file' },
+      checkbox(checkedPaths.has(f.path), (value) => { value ? checkedPaths.add(f.path) : checkedPaths.delete(f.path); }),
+      h('span', { class: 'clip' }, f.path.slice(folder ? folder.length + 1 : 0)),
+      h('span', { class: 'size' }, characters(memorySection(f).length)),
+    ));
+    return h('div', { class: 'group' },
+      h('label', { class: 'folder' }, all, folder ? `${folder}/` : strings.memories.copy.topLevel), ...rows);
+  }));
+  memoriesFiles.scrollTop = scroll;
+
+  const chosen = checkedFiles();
+  const text = joinMemoryFiles(chosen);
+  memoriesText.value = text;
+  const split = splitMemoryParts(chosen);
+  memoriesTotal.textContent = strings.memories.copy.total(
+    chosen.length, zipFiles.length, characters(text.length), 'parts' in split ? split.parts.length : 0,
+  );
+  memoriesError.textContent = 'error' in split && split.error === 'fileTooLong' ? tooLongFile(split.path) : '';
+}
+
+function tooLongFile(path: string): string {
+  const file = zipFiles?.find((f) => f.path === path);
+  return strings.memories.fileTooLong(path, characters(file ? memorySection(file).length : 0));
+}
+
+/** Next: the checked files in parts (or the pasted text as one part) go to the main process. */
+async function useMemories(target: Account): Promise<void> {
+  let parts: string[];
+  if (zipFiles) {
+    const split = splitMemoryParts(checkedFiles());
+    if ('error' in split) {
+      memoriesError.textContent = split.error === 'empty' ? strings.memories.noneChecked : tooLongFile(split.path);
+      return;
+    }
+    parts = split.parts;
+  } else {
+    const checked = checkMemoryText(memoriesText.value);
+    if ('error' in checked) {
+      memoriesError.textContent = checked.error === 'tooLong'
+        ? strings.memories.pastedTooLong(characters(memoriesText.value.trim().length))
+        : strings.memories.errors.empty;
+      memoriesText.focus();
+      return;
+    }
+    parts = [checked.text];
   }
   memoriesNext.disabled = true;
   try {
-    const error = await api.memories.useText(checked.text);
-    memoriesText.value = ''; // the main process holds it now (and the clipboard)
-    showMemoriesStep('import', source, target);
-    // The text is on the clipboard: the person can still open the account and paste.
+    const error = await api.memories.useParts(parts);
+    // The main process holds the text now (and the clipboard): nothing stays in the window.
+    memoriesText.value = '';
+    leaveZip();
+    partCount = parts.length;
+    partIndex = 0;
+    showImportStep(target);
+    // Part 1 is on the clipboard: the person can still open the account and paste.
     if (error) memoriesError.textContent = strings.errors[error].title;
   } finally {
     memoriesNext.disabled = false;
@@ -537,51 +686,49 @@ async function closeMemories(done = false): Promise<void> {
   if (memoriesStep === null) return;
   memoriesStep = null;
   memoriesText.value = '';
+  leaveZip();
+  partCount = 0;
+  partIndex = 0;
   if (memoriesDialog.open) memoriesDialog.close();
   await (done ? api.memories.finish() : api.memories.cancel());
 }
 
 byId('memories-cancel').addEventListener('click', () => void closeMemories());
 memoriesDialog.addEventListener('close', () => void closeMemories()); // Esc
-memoriesCopy.addEventListener('click', () => {
-  void api.memories.copyAgain().then(() => { byId('memories-tip').textContent = strings.memories.import.copied; });
-});
 
-// The exported .zip (or a .txt / .md file), dropped or chosen, fills the field. It is read here, in memory only:
-// nothing is extracted to disk and nothing is logged. A drop anywhere else does nothing (Electron would otherwise
-// open the file in the window).
+// The exported .zip (or a .txt / .md file), dropped or chosen. It is read here, in memory only: nothing is
+// extracted to disk and nothing is logged. A drop anywhere else does nothing (Electron would otherwise open the
+// file in the window).
 async function loadMemoryFile(file: File): Promise<void> {
   memoriesError.textContent = '';
-  const tip = byId('memories-tip');
   if (/\.zip$/i.test(file.name)) {
     if (file.size > MAX_ZIP_FILE_BYTES) {
       memoriesError.textContent = strings.memories.zipErrors.tooBig;
       return;
     }
-    tip.textContent = strings.memories.copy.reading;
+    memoriesTip.textContent = strings.memories.copy.reading;
     const result = await readMemoryZip(new Uint8Array(await file.arrayBuffer()));
     if (memoriesStep !== 'copy') return; // cancelled meanwhile
     if ('error' in result) {
-      tip.textContent = strings.memories.copy.tip;
+      memoriesTip.textContent = zipFiles ? memoriesTip.textContent : strings.memories.copy.tip;
       memoriesError.textContent = strings.memories.zipErrors[result.error];
       return;
     }
-    memoriesText.value = result.text;
-    tip.textContent = strings.memories.copy.fromZip(result.files);
+    useZip(result.files);
   } else if (/\.(txt|md)$/i.test(file.name)) {
     // A UTF-8 character is at most 4 bytes: a bigger file cannot fit the limit.
     if (file.size > MAX_MEMORY_CHARS * 4) {
-      memoriesError.textContent = strings.memories.errors.tooLong;
+      memoriesError.textContent = strings.memories.pastedTooLong(`more than ${characters(MAX_MEMORY_CHARS)}`);
       return;
     }
+    leaveZip();
     memoriesText.value = await file.text();
+    memoriesTip.textContent = strings.memories.copy.tip;
+    const length = memoriesText.value.trim().length;
+    if (length > MAX_MEMORY_CHARS) memoriesError.textContent = strings.memories.pastedTooLong(characters(length));
   } else {
     memoriesError.textContent = strings.memories.fileType;
-    return;
   }
-  // Said at once, never cut: the person shortens the text before Next.
-  const length = memoriesText.value.trim().length;
-  if (length > MAX_MEMORY_CHARS) memoriesError.textContent = strings.memories.zipTooLong(length);
 }
 
 memoriesFile.addEventListener('click', () => memoriesFileInput.click());

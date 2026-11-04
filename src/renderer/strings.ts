@@ -218,15 +218,21 @@ export const strings = {
       steps: [
         'Settings → Memory',
         'Export memory → Export (a .zip of your memory files downloads)',
-        'Drop the .zip below, or choose it with “Choose a file…”',
+        'Drop the .zip below, or choose it with “Choose a file…”, then check the files to bring',
       ],
       opening: 'Opening Claude…',
       placeholder: 'Drop the exported .zip here, or paste the memories (a .txt or .md file works too)',
       chooseFile: 'Choose a file…',
       reading: 'Reading the .zip…',
-      /** The .zip was read: its .md files are in the box, one heading per file. */
-      fromZip: (files: number) => `${files} memory ${files === 1 ? 'file' : 'files'} from the .zip, one heading `
-        + 'per file. Check the text, then press Next.',
+      /** The .zip was read: its files are listed with a checkbox each; the box shows the checked ones. */
+      fromZip: (files: number, hasProjects: boolean) => (hasProjects
+        ? 'projects/ starts unchecked: Project memories would land in the general memory of the other account.'
+        : `${files} memory ${files === 1 ? 'file' : 'files'} from the .zip; the box shows the checked ones.`),
+      /** Checklist group of the files that are not in a folder. */
+      topLevel: 'Top level',
+      /** Running total under the checklist; parts > 1 = over the limit, imported in parts in step 2. */
+      total: (checked: number, files: number, chars: string, parts: number) => `${checked} of ${files} files · `
+        + `${chars} characters` + (parts > 1 ? ` · over 100,000: imported in ${parts} parts` : ''),
       tip: 'Tip: if Export is not there, ask Claude “Write out all my memories verbatim.” and paste the answer.',
       next: 'Next',
     },
@@ -238,19 +244,28 @@ export const strings = {
         'Claude shows a prompt for the other provider: you already have the memories, so paste them (Ctrl+V)',
         'Confirm',
       ],
+      /** Over the limit: whole files in parts, one Start import each. */
+      partsBody: (target: string, parts: number) => `Claude opens with “${target}”. The memories are in ${parts} parts `
+        + '(whole files, each under the limit): import them one at a time. For each part, in Claude:',
+      partOnClipboard: (part: number, parts: number) => `Part ${part} of ${parts} is on the clipboard.`,
       copyAgain: 'Copy again',
+      copyPart: 'Copy part',
+      nextPart: 'Next part',
       copied: 'The memories are on the clipboard again.',
+      partCopied: (part: number, parts: number) => `Part ${part} of ${parts} is on the clipboard again.`,
       done: 'Done',
     },
     errors: {
       empty: 'Paste the memories first, or drop the exported .zip.',
-      /** Nothing is cut: the person shortens the text. */
-      tooLong: 'The memories are over the limit of 100,000 characters. Nothing was cut: remove some text, then '
-        + 'press Next.',
+      tooLong: 'The text is over the limit of 100,000 characters.',
     } satisfies Record<MemoryTextError, string>,
-    /** Shown at once when a .zip gives more than the limit (with the real count). */
-    zipTooLong: (chars: number) => `The memories from the .zip have ${chars.toLocaleString('en')} characters, over the `
-      + 'limit of 100,000. Nothing was cut: remove some text, then press Next.',
+    /** Pasted text (or a .txt / .md file) cannot be split by file: nothing is cut. */
+    pastedTooLong: (chars: string) => `This text has ${chars} characters, over the limit of 100,000. Nothing was cut: `
+      + 'drop the exported .zip instead (it is imported in parts, by whole files), or shorten the text.',
+    noneChecked: 'Check at least one file.',
+    /** One file alone does not fit in a part; files are never cut. */
+    fileTooLong: (path: string, chars: string) => `“${path}” alone has ${chars} characters, over the limit of `
+      + '100,000, and a file is never cut. Uncheck it, or ask Claude to shorten that memory first.',
     zipErrors: {
       broken: 'This .zip could not be read. Export it again from Claude, or paste the memories.',
       tooBig: 'This .zip has more than 2 MB of memory text (or is over 20 MB): it does not look like a memory export.',

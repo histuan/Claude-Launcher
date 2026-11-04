@@ -48,15 +48,26 @@ function zip(entries: Entry[]): Uint8Array {
   return new Uint8Array(Buffer.concat([...locals, cd, end]));
 }
 
-test('normal export: .md entries joined in path order, one heading per file (deflate and stored)', async () => {
+test('normal export: .md entries in path order, trimmed, BOM dropped (deflate and stored)', async () => {
   const result = await readMemoryZip(zip([
     { name: 'memory/work.md', data: 'Works on the launcher.\n' },
-    { name: 'memory/about-me.md', data: '﻿Likes short answers.', stored: true },
+    { name: 'memory/about-me.md', data: '\uFEFFLikes short answers.', stored: true },
   ]));
-  assert.deepEqual(result, {
-    text: '# memory/about-me.md\n\nLikes short answers.\n\n# memory/work.md\n\nWorks on the launcher.',
-    files: 2,
-  });
+  assert.deepEqual(result, { files: [
+    { path: 'memory/about-me.md', text: 'Likes short answers.' },
+    { path: 'memory/work.md', text: 'Works on the launcher.' },
+  ] });
+});
+
+test("Claude's claude-memory-<date>/ folder is dropped from the paths", async () => {
+  const result = await readMemoryZip(zip([
+    { name: 'claude-memory-2026-11-04/areas/claude-launcher.md', data: 'Electron app.' },
+    { name: 'claude-memory-2026-11-04/about.md', data: 'Thiago.' },
+  ]));
+  assert.deepEqual(result, { files: [
+    { path: 'about.md', text: 'Thiago.' },
+    { path: 'areas/claude-launcher.md', text: 'Electron app.' },
+  ] });
 });
 
 test('non-.md entries and folders are ignored', async () => {
@@ -66,7 +77,7 @@ test('non-.md entries and folders are ignored', async () => {
     { name: 'memory/notes.txt', data: 'not a memory file' },
     { name: 'memory/a.MD', data: 'kept' },
   ]));
-  assert.deepEqual(result, { text: '# memory/a.MD\n\nkept', files: 1 });
+  assert.deepEqual(result, { files: [{ path: 'memory/a.MD', text: 'kept' }] });
 });
 
 test('paths with ".." are ignored', async () => {
@@ -75,7 +86,7 @@ test('paths with ".." are ignored', async () => {
     { name: 'memory\\..\\..\\evil.md', data: 'outside too' },
     { name: 'memory/ok.md', data: 'inside' },
   ]));
-  assert.deepEqual(result, { text: '# memory/ok.md\n\ninside', files: 1 });
+  assert.deepEqual(result, { files: [{ path: 'memory/ok.md', text: 'inside' }] });
 });
 
 test('no .md entry at all', async () => {

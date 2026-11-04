@@ -196,11 +196,17 @@ so the launcher only walks the person through copying the text from one account 
   the `.zip` on the assistant or picks it ("Choose a file…"); fallbacks: paste the text, or a `.txt`/`.md` file.
   Tip shown: if Export is not there, ask Claude "Write out all my memories verbatim." and paste the answer.
 - **The `.zip` (fix before the 0.5.1 test, `src/core/memoryZip.ts`):** read in memory only, never extracted to disk,
-  never logged. Only `.md` entries, joined with one heading per file (its path inside the zip), in path order.
+  never logged. Only `.md` entries, joined with one heading per file (its path inside the zip, without Claude's
+  `claude-memory-<date>/` folder), in path order.
   Paths with `..` are ignored; more than 500 entries, or more than 2 MB of real inflated text (not the declared
   size), is refused; a broken zip gives a clear message. Dependency-free: the zip records are parsed by hand and
-  deflate goes through `DecompressionStream('deflate-raw')` (Chromium in the window, Node in the tests). Over
-  100,000 characters: said at once with the count, nothing is cut.
+  deflate goes through `DecompressionStream('deflate-raw')` (Chromium in the window, Node in the tests).
+- **Choosing and splitting (after the PC test: 41 files, 131,248 characters):** a checklist of the files grouped by
+  folder, each with its size in characters, and a running total. `projects/` starts unchecked (Project memories
+  would land in the other account's general memory). The text box previews the checked files (read-only). Over
+  100,000 characters, step 2 splits the checked files into parts of whole files, each under the limit: "Part 1 of
+  N", **Copy part** / **Next part**, one Start import each. A file is never cut; one alone over the limit gets a
+  message. Pasted text over the limit is reported with its length.
 - **Step 2 — import into the target account:** the launcher opens the target account and puts the text on the
   clipboard. Instructions: Settings → Memory → Import memory from other AI providers → Start import (Claude shows a
   prompt meant for the other provider) → paste (Ctrl+V) → confirm. Buttons: **Copy again** (puts the text back on

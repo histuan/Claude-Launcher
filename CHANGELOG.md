@@ -20,9 +20,14 @@ Phase 5.1: receive memories from another account, plus a faster first screen.
   Export memory → Export) and drop or choose the downloaded `.zip` (pasting the text or a `.txt` / `.md` file also
   works); then it opens the target account with the text on the clipboard (Settings → Memory → Start import →
   paste → confirm; **Copy again**, **Done**).
-- The exported `.zip` is read in memory only (never extracted to disk, never logged): only its `.md` entries, joined
-  with one heading per file. Paths with `..` are ignored; more than 500 entries or more than 2 MB of real inflated
-  text is refused. A text over 100,000 characters is reported with its length, never cut.
+- The exported `.zip` is read in memory only (never extracted to disk, never logged): only its `.md` entries. Paths
+  with `..` are ignored; more than 500 entries or more than 2 MB of real inflated text is refused.
+- After a `.zip` is read, a checklist of its files grouped by folder (without the `claude-memory-<date>/` folder),
+  with each file's size in characters and a running total. Files under `projects/` (Project memories) start
+  unchecked; the text box previews the checked files, one heading per file.
+- Over 100,000 characters, step 2 imports the text in parts of whole files ("Part 1 of N", **Copy part**,
+  **Next part**), one Start import each. A file is never cut: one that alone is over the limit gets a message. Pasted
+  text over the limit is reported with its length, never cut.
   The launcher never reads Claude's memories itself; the text is kept only in memory, never written to disk or to a
   log, and is cleared (and taken off the clipboard if it is still there) on Done, Cancel or when the window closes.
 

@@ -27,8 +27,8 @@ contextBridge.exposeInMainWorld('launcher', {
   memories: {
     begin: (sourceId: string, targetId: string) => ipcRenderer.invoke('launcher:memories:begin', sourceId, targetId),
     proceed: () => ipcRenderer.invoke('launcher:memories:proceed'),
-    useText: (text: string) => ipcRenderer.invoke('launcher:memories:useText', text),
-    copyAgain: () => ipcRenderer.invoke('launcher:memories:copyAgain'),
+    useParts: (parts: string[]) => ipcRenderer.invoke('launcher:memories:useParts', parts),
+    copyPart: (index: number) => ipcRenderer.invoke('launcher:memories:copyPart', index),
     finish: () => ipcRenderer.invoke('launcher:memories:finish'),
     cancel: () => ipcRenderer.invoke('launcher:memories:cancel'),
   },

@@ -69,12 +69,17 @@ Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
 - Phase 5.1 (0.5.1): **Receive memories from…** in the ⋯ menu (`src/main/memoryTransfer.ts`, `src/core/memories.ts`):
   sources = the other signed-in accounts (Main counts as signed in; "Checking…" does not); warning first (Cancel red,
   Proceed orange); step 1 opens the source (launcher stays open), drop or pick the exported `.zip` (read in memory by
-  `src/core/memoryZip.ts`, `.md` entries only, limits in `docs/PHASES.md`), or paste / `.txt` / `.md`; step 2 puts the text
-  on the clipboard and opens the target; Copy again / Done. Text only in memory (main process), cleared on Done /
-  Cancel / Esc / window close; the clipboard is emptied only if it still holds that text. Logs: step names only.
+  `src/core/memoryZip.ts`, `.md` entries only, limits in `docs/PHASES.md`), or paste / `.txt` / `.md`. A `.zip` gives a
+  checklist grouped by folder (`claude-memory-<date>/` dropped; `projects/` unchecked; size of each file and running
+  total); the box is a read-only preview of the checked files. Over 100,000 characters, step 2 imports parts of whole
+  files (`splitMemoryParts` in `src/core/memories.ts`): "Part 1 of N", Copy part / Next part, then Done; one file over
+  the limit = a message, never cut. Step 2 puts part 1 on the clipboard and opens the target. Parts only in memory
+  (main process), cleared on Done / Cancel / Esc / window close; the clipboard is emptied only if it still holds one
+  of them. Logs: step names and part numbers only.
   Startup cache: `windowsName` and `defaultProfile` in the config (`src/core/cachedLookup.ts`), refreshed after the
   cards are shown (`startup: background refresh …` in the log). Screenshots (mocked):
-  `docs/screenshots/phase-5.1-warning.png`, `docs/screenshots/phase-5.1-step1.png`.
+  `docs/screenshots/phase-5.1-warning.png`, `docs/screenshots/phase-5.1-step1.png` (checklist),
+  `docs/screenshots/phase-5.1-parts.png` (step 2 in parts).
 
 ## Missing
 
@@ -86,8 +91,10 @@ Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
   the claude.ai endpoint is a possible later improvement, not v1.
 - Startup (0.5.1): only the very first start (no cache yet) waits for the Windows name and main-profile lookups.
 - Memories: the menu paths are Thiago's translation of the Portuguese UI (Configurações → Memória → Exportar /
-  Iniciar importação). If the English UI words them differently, only `strings.memories` changes. The export's
-  `.zip` layout was not seen in the cloud: the reader takes any `.md` entry, wherever it is in the zip.
+  Iniciar importação). If the English UI words them differently, only `strings.memories` changes. Export layout
+  (PC test): `claude-memory-<date>/<memory path>.md`, 41 files and 131,248 characters on Thiago's account.
+- Not verified: whether Claude's Start import accepts a second import right after the first (the parts flow assumes
+  it does), and whether a paste near 100,000 characters goes through in one go.
 - Not verified on the PC yet: the window query (`Get-Process` `MainWindowHandle` joined to `Win32_Process` by id),
   now also used to decide whether the main Claude is reopened after a sign-in.
 - `launchClaude` uses `windowsHide: true` (CLAUDE.md rule 7). libuv also applies it to GUI windows (`SW_HIDE` in
@@ -151,14 +158,22 @@ Phase 5.1 (0.5.1). Use two accounts you don't mind adding memories to (or a test
    only (not signed-out ones, not the card itself). On a "Not signed in" card the item is greyed.
 3. **Warning:** pick a source: the warning comes first (Cancel red, Proceed orange). Cancel: nothing opens.
 4. **Step 1:** Proceed: the source account's Claude opens and the launcher stays open. In Claude: Settings →
-   Memory → Export memory → Export: a `.zip` downloads. Drop it on the launcher's text box (or **Choose a file…**):
-   the box shows each memory file under a `# <path>` heading and the line under it says how many files were read.
-   Also try: a `.zip` that is not an export (a clear message, nothing in the box), pasting text, a `.txt` file,
-   and Next with an empty box (a message). Nothing new appears in your Downloads or temp folders besides the
-   `.zip` Claude saved.
-5. **Step 2:** Next: the target account's Claude opens. In it: Settings → Memory → Import memory from other AI
-   providers → Start import; Claude shows a prompt for the other provider: ignore it, paste (Ctrl+V) and confirm.
-   Copy something else, press **Copy again**, paste again: the memories come back. **Done**.
-6. **Privacy:** after Done (or Cancel, or closing the launcher mid-way), Ctrl+V in Notepad pastes nothing (if you
+   Memory → Export memory → Export: a `.zip` downloads. Drop it on the launcher's text box (or **Choose a file…**).
+   - A checklist appears, grouped by folder, without the `claude-memory-<date>/` folder in the names. Each file
+     shows its size in characters.
+   - Files under `projects/` start unchecked, everything else checked. The line under the list gives
+     "N of 41 files · X characters", and "imported in N parts" when over 100,000.
+   - Uncheck and check a file and a whole folder: the total and the preview box follow.
+   - Also try: a `.zip` that is not an export (a clear message), pasting text, a `.txt` file, Next with nothing
+     checked (a message). Nothing new appears in your Downloads or temp folders besides the `.zip` Claude saved.
+5. **Step 2, one part:** with fewer files checked (under 100,000 characters), Next: the target account's Claude
+   opens. In it: Settings → Memory → Import memory from other AI providers → Start import; Claude shows a prompt
+   for the other provider: ignore it, paste (Ctrl+V) and confirm. **Copy again** puts it back on the clipboard.
+   **Done**.
+6. **Step 2, in parts:** with everything checked (your 131,248 characters), Next: "Part 1 of 2 is on the
+   clipboard." Import it with Start import, then **Next part** → "Part 2 of 2", import it again, then **Done**.
+   Check in Claude that both parts arrived and that no memory was cut in the middle. Tell me if Claude refused a
+   second import or a long paste.
+7. **Privacy:** after Done (or Cancel, or closing the launcher mid-way), Ctrl+V in Notepad pastes nothing (if you
    did not copy something else meanwhile). `sign-in-timings.log` has only `memories: …` step lines, no memory text.
-7. Tell me if Claude's menus are named differently from the steps shown (the texts are easy to change).
+8. Tell me if Claude's menus are named differently from the steps shown (the texts are easy to change).

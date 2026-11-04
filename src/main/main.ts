@@ -500,11 +500,14 @@ function registerIpc(): void {
     return beginMemories(sourceId, targetId);
   });
   ipcMain.handle('launcher:memories:proceed', () => memories.proceed());
-  ipcMain.handle('launcher:memories:useText', (_e, text: unknown) => {
-    if (!isText(text)) throw new Error('Invalid arguments');
-    return memories.useText(text);
+  ipcMain.handle('launcher:memories:useParts', (_e, parts: unknown) => {
+    if (!Array.isArray(parts) || !parts.every(isText)) throw new Error('Invalid arguments');
+    return memories.useParts(parts);
   });
-  ipcMain.handle('launcher:memories:copyAgain', () => memories.copyAgain());
+  ipcMain.handle('launcher:memories:copyPart', (_e, index: unknown) => {
+    if (typeof index !== 'number') throw new Error('Invalid arguments');
+    return memories.copyPart(index);
+  });
   ipcMain.handle('launcher:memories:finish', () => memories.finish());
   ipcMain.handle('launcher:memories:cancel', () => memories.cancel());
 }

@@ -1,7 +1,9 @@
-// Claude's "Export memory" (Settings → Memory → Export) gives a .zip of Markdown files. This reads it in memory only
-// (never extracted to disk): the .md entries are inflated and joined, one heading per file. Dependency-free: the zip
+// Claude's "Export memory" (Settings → Memory → Export) gives a .zip of Markdown files
+// (claude-memory-<date>/<memory path>.md). This reads it in memory only (never extracted to disk): the .md entries
+// are inflated and returned as files; src/core/memories.ts joins and splits them. Dependency-free: the zip
 // structures are parsed here and deflate goes through the web-standard DecompressionStream, available both in the
 // launcher window (Chromium) and in Node (tests). Nothing here logs the content.
+import type { MemoryFile } from './memories.js';
 
 /** More entries than this is not a memory export. */
 export const MAX_ZIP_ENTRIES = 500;
@@ -12,7 +14,7 @@ export const MAX_ZIP_FILE_BYTES = 20 * 1024 * 1024;
 
 /** unsupported = encrypted, Zip64 or a compression other than stored / deflate. */
 export type MemoryZipError = 'broken' | 'tooBig' | 'tooManyEntries' | 'noMemories' | 'unsupported';
-export type MemoryZipResult = { text: string; files: number } | { error: MemoryZipError };
+export type MemoryZipResult = { files: MemoryFile[] } | { error: MemoryZipError };
 
 interface ZipEntry {
   name: string;
@@ -22,6 +24,9 @@ interface ZipEntry {
   size: number;
   localOffset: number;
 }
+
+/** Claude's export puts everything in one claude-memory-<date>/ folder: dropped from the paths shown. */
+const EXPORT_FOLDER = /^claude-memory-[^/]*\//i;
 
 class ZipError extends Error {
   constructor(readonly code: MemoryZipError) {
@@ -38,13 +43,14 @@ export async function readMemoryZip(bytes: Uint8Array): Promise<MemoryZipResult>
     const files = entries.filter((e) => isMemoryFile(e.name)).sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
     if (files.length === 0) return { error: 'noMemories' };
     let budget = MAX_ZIP_TEXT_BYTES;
-    const parts: string[] = [];
+    const result: MemoryFile[] = [];
     for (const entry of files) {
       const data = await entryData(bytes, entry, dataEnd, budget);
       budget -= data.length;
-      parts.push(`# ${entry.name}\n\n${utf8.decode(data).replace(/^﻿/, '').trim()}`);
+      const text = utf8.decode(data).replace(/^\uFEFF/, '').trim();
+      result.push({ path: entry.name.replace(/\\/g, '/').replace(EXPORT_FOLDER, ''), text });
     }
-    return { text: parts.join('\n\n'), files: files.length };
+    return { files: result };
   } catch (err) {
     return { error: err instanceof ZipError ? err.code : 'broken' };
   }
