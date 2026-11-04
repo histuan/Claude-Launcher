@@ -70,7 +70,8 @@ one account per profile, with no signing out and back in.
 
 ## Rules that must never be broken
 
-1. Never copy, modify or move the Claude app (`WindowsApps`). Resolve `Claude.exe` on every launch via `Get-AppxPackage`.
+1. Never copy, modify or move the Claude app (`WindowsApps`). The resolved `Claude.exe` path is cached in the launcher
+   config and used only while the file exists; when it is missing (Claude updated) or not cached, resolve it again via `Get-AppxPackage`.
 2. The default Claude profile is touched only by the sign-in flow (`docs/WINDOWS.md`, section 4), with stash, marker and restore. No other code writes there.
 3. Session cookies and tokens: never log them, never store them in plain text, never send them to any host other than `claude.ai`.
 4. Detect Claude processes by the exe **path** (`\WindowsApps\Claude_*\app\Claude.exe`), never by name alone:

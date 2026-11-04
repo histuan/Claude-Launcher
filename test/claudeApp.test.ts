@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { bringToFront, launchClaude, listClaudeProcesses, resolveClaudeExe, type SpawnFn } from '../src/main/system/claudeApp.js';
+import { bringToFront, launchClaude, listClaudeProcesses, lookUpClaudeApp, type SpawnFn } from '../src/main/system/claudeApp.js';
 
 const LOC = 'C:\\Program Files\\WindowsApps\\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc';
 const EXE = `${LOC}\\app\\Claude.exe`;
@@ -9,24 +9,45 @@ const OLD = 'C:\\Users\\thiag\\AppData\\Local\\AnthropicClaude\\claude.exe';
 const env = { LOCALAPPDATA: 'C:\\Users\\thiag\\AppData\\Local' };
 const exists = (files: string[]) => (p: string) => files.includes(p);
 
-test('resolves the MSIX exe from Get-AppxPackage, on every call', async () => {
-  let calls = 0;
-  const run = async (script: string) => {
-    calls++;
+const pkg = (exe = true) => JSON.stringify([{ Name: 'Claude', InstallLocation: exe ? LOC : 'C:\\gone', PackageFamilyName: 'Claude_pzs8sxrjxfjjc' }]);
+
+test('lookup: exe and PackageFamilyName from one Get-AppxPackage call, with a ~15 s timeout', async () => {
+  const timeouts: (number | undefined)[] = [];
+  const run = async (script: string, timeoutMs?: number) => {
     assert.match(script, /Get-AppxPackage/);
-    return JSON.stringify([{ Name: 'ClaudeHelper', InstallLocation: 'C:\\x' }, { Name: 'Claude', InstallLocation: LOC }]);
+    assert.match(script, /PackageFamilyName/);
+    timeouts.push(timeoutMs);
+    return pkg();
   };
-  assert.equal(await resolveClaudeExe(run, env, exists([EXE])), EXE);
-  assert.equal(await resolveClaudeExe(run, env, exists([EXE])), EXE);
+  assert.deepEqual(await lookUpClaudeApp(run, env, exists([EXE])),
+    { state: 'found', app: { exe: EXE, family: 'Claude_pzs8sxrjxfjjc' }, source: 'lookup' });
+  assert.deepEqual(timeouts, [15_000]);
+});
+
+test('lookup: a timeout is retried once; the second answer is used', async () => {
+  let calls = 0;
+  const run = async () => { if (++calls === 1) throw new Error('spawnSync powershell.exe ETIMEDOUT'); return pkg(); };
+  const r = await lookUpClaudeApp(run, env, exists([EXE]));
+  assert.equal(r.state, 'found');
   assert.equal(calls, 2);
 });
 
-test('falls back to the old install, then null when Claude is not installed', async () => {
-  assert.equal(await resolveClaudeExe(async () => '[]', env, exists([OLD])), OLD);
-  assert.equal(await resolveClaudeExe(async () => { throw new Error('no powershell'); }, env, exists([OLD])), OLD);
-  assert.equal(await resolveClaudeExe(async () => '', env, exists([])), null);
-  // Package listed but its exe is missing.
-  assert.equal(await resolveClaudeExe(async () => JSON.stringify({ Name: 'Claude', InstallLocation: LOC }), env, exists([])), null);
+test('lookup: two timeouts → failed (never "not installed"); the old install still counts', async () => {
+  let calls = 0;
+  const run = async () => { calls++; throw new Error('timeout'); };
+  const r = await lookUpClaudeApp(run, env, exists([]));
+  assert.equal(r.state, 'failed');
+  assert.match(r.state === 'failed' ? r.reason : '', /timeout/);
+  assert.equal(calls, 2);
+  assert.deepEqual(await lookUpClaudeApp(run, env, exists([OLD])),
+    { state: 'found', app: { exe: OLD, family: null }, source: 'old install' });
+});
+
+test('lookup completed: no package, or its exe missing → not installed (old install first)', async () => {
+  assert.deepEqual(await lookUpClaudeApp(async () => '[]', env, exists([])), { state: 'notInstalled' });
+  assert.deepEqual(await lookUpClaudeApp(async () => '', env, exists([])), { state: 'notInstalled' });
+  assert.deepEqual(await lookUpClaudeApp(async () => pkg(false), env, exists([])), { state: 'notInstalled' });
+  assert.equal((await lookUpClaudeApp(async () => '[]', env, exists([OLD]))).state, 'found');
 });
 
 test('process list: PowerShell failure gives an empty list', async () => {

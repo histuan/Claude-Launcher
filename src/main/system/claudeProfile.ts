@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { readFile, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import { defaultProfileFromProcesses, type RawProcess } from '../../core/processes.js';
-import { hasOauth, STASH_SUFFIX } from '../../core/signIn.js';
+import { defaultSlot, hasOauth, STASH_SUFFIX } from '../../core/signIn.js';
 import type { RunPowerShell } from './windowsUser.js';
 
 const FAMILY_SCRIPT = '[Console]::OutputEncoding = [Text.Encoding]::UTF8; '
@@ -36,6 +36,8 @@ export interface DefaultProfile {
 export interface ProfileLookupDeps {
   run: RunPowerShell;
   env: Record<string, string | undefined>;
+  /** PackageFamilyName already known (launcher cache): skips the PowerShell call. */
+  knownFamily?: string | null;
   listClaudeProcesses(): Promise<RawProcess[]>;
   exists(file: string): boolean;
   listDir(dir: string): string[];
@@ -61,7 +63,9 @@ export async function resolveDefaultProfile(deps: ProfileLookupDeps): Promise<De
   const done = (slot: string): DefaultProfile => ({ slot, checked, errors });
 
   try {
-    const dir = defaultProfileFromProcesses(await deps.listClaudeProcesses());
+    const raw = defaultProfileFromProcesses(await deps.listClaudeProcesses());
+    const dir = raw === null ? null : defaultSlot(raw);
+    if (raw !== null && dir === null) errors.push(`process --user-data-dir is not a Claude profile folder: ${raw}`);
     if (dir && consider('process', dir)) return done(dir);
   } catch (err) {
     errors.push(`process query: ${(err as Error).message}`);
@@ -70,7 +74,7 @@ export async function resolveDefaultProfile(deps: ProfileLookupDeps): Promise<De
 
   let family: string | null = null;
   try {
-    family = await packageFamilyName(deps.run);
+    family = deps.knownFamily ?? await packageFamilyName(deps.run);
   } catch (err) {
     errors.push(`Get-AppxPackage: ${(err as Error).message}`);
   }
@@ -130,7 +134,7 @@ const execQuiet: ExecFn = (file, args) => new Promise((resolve) => {
 
 /**
  * Asks the given processes and their children to close (taskkill /T without /F: a close message, like clicking ×).
- * Claude may only hide to the tray; callers force-end what is still running after a few seconds.
+ * Claude may only close its window and keep running; callers force-end what is still running after a few seconds.
  */
 export async function closeProcessesGracefully(pids: number[], exec: ExecFn = execQuiet): Promise<void> {
   for (const pid of pids) await exec('taskkill', ['/PID', String(pid), '/T']);

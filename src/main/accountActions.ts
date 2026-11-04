@@ -14,7 +14,8 @@ export interface AccountProcessDeps {
 /**
  * Ends only that profile's Claude (null = the default profile, i.e. main processes without --user-data-dir;
  * otherwise the processes with exactly that --user-data-dir) and waits until they are gone.
- * Claude hides in the tray when its window is closed, so this is the way to really close it.
+ * Claude keeps running without a window (and without a tray icon) when its window is closed, so this is the way to
+ * really close it.
  */
 export async function closeProfile(deps: AccountProcessDeps, profileDir: string | null): Promise<boolean> {
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));

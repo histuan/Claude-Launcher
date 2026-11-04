@@ -106,6 +106,7 @@ main {
 }
 .running::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--running); }
 .running[hidden] { display: none; }
+.running.checking::before { background: var(--text-real-name); }
 /* Fixed badge (Main), at the bottom of the card so it never meets "Running" or the ⋯ button. */
 .badge {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); padding: 1px 8px;

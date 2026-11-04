@@ -2,17 +2,19 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { parseClaudeProcesses, parseProcessList, type ClaudeProcess, type RawProcess } from '../../core/processes.js';
+import type { ClaudeLookup } from '../../core/claudeApp.js';
 import type { RunPowerShell } from './windowsUser.js';
 
 const UTF8 = '[Console]::OutputEncoding = [Text.Encoding]::UTF8';
 
-const APPX_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-AppxPackage *Claude* | Select-Object Name, InstallLocation)`;
+const APPX_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-AppxPackage *Claude* `
+  + '| Select-Object Name, InstallLocation, PackageFamilyName)';
 
 // Filtering by exe path happens in parseClaudeProcesses (tested), not here.
 const PROCESS_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -Filter "Name='claude.exe'" `
   + '| Select-Object ProcessId, ParentProcessId, ExecutablePath, CommandLine)';
 
-// Same list plus each process's main window handle (0 = no visible window, e.g. Claude hidden in the tray).
+// Same list plus each process's main window handle (0 = no visible window, e.g. Claude running after its window was closed).
 // Get-Process gives the handle, Win32_Process the command line; joined by process id.
 const WINDOW_SCRIPT = `${UTF8}; $w = @{}; Get-Process -Name claude -ErrorAction SilentlyContinue `
   + '| ForEach-Object { $w[[int]$_.Id] = [int64]$_.MainWindowHandle }; '
@@ -23,34 +25,54 @@ const WINDOW_SCRIPT = `${UTF8}; $w = @{}; Get-Process -Name claude -ErrorAction 
 const ALL_PROCESSES_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process `
   + '| Select-Object ProcessId, ExecutablePath)';
 
+/** The Claude.exe lookup: one PowerShell start can exceed 5 s on a busy PC (0.4.5 test), so ~15 s and one retry. */
+const LOOKUP_TIMEOUT_MS = 15_000;
+const LOOKUP_TRIES = 2;
+
 /**
- * Path to Claude.exe, resolved on every call (the MSIX folder changes on every update).
- * MSIX install first, then the old install in %LOCALAPPDATA%\AnthropicClaude; null if Claude is not installed.
+ * Looks up Claude.exe and its PackageFamilyName with Get-AppxPackage (the MSIX folder changes on every update), then
+ * the old install in %LOCALAPPDATA%\AnthropicClaude. 'notInstalled' only when the lookup completed; a lookup that
+ * failed twice (timeout, no PowerShell) is 'failed'. The app itself is never touched. Callers use the launcher's
+ * cached path first (core/claudeApp.ts).
  */
-export async function resolveClaudeExe(
+export async function lookUpClaudeApp(
   run: RunPowerShell,
   env: Record<string, string | undefined>,
   exists: (file: string) => boolean,
-): Promise<string | null> {
-  try {
-    const out = (await run(APPX_SCRIPT)).trim();
-    const data: unknown = out ? JSON.parse(out) : [];
-    const packages = (Array.isArray(data) ? data : [data]) as { Name?: unknown; InstallLocation?: unknown }[];
-    // The package named exactly "Claude" first; *Claude* may match other packages.
-    packages.sort((a, b) => Number(b?.Name === 'Claude') - Number(a?.Name === 'Claude'));
-    for (const pkg of packages) {
-      if (typeof pkg?.InstallLocation !== 'string' || !pkg.InstallLocation) continue;
-      const exe = path.win32.join(pkg.InstallLocation, 'app', 'Claude.exe');
-      if (exists(exe)) return exe;
+): Promise<ClaudeLookup> {
+  let out: string | null = null;
+  let reason = '';
+  for (let i = 0; i < LOOKUP_TRIES && out === null; i++) {
+    try {
+      out = (await run(APPX_SCRIPT, LOOKUP_TIMEOUT_MS)).trim();
+    } catch (err) {
+      reason = (err as Error).message;
+      console.warn(`Get-AppxPackage failed (try ${i + 1} of ${LOOKUP_TRIES}): ${reason}`);
     }
-  } catch (err) {
-    console.warn(`Get-AppxPackage failed: ${(err as Error).message}`);
+  }
+  if (out !== null) {
+    try {
+      const data: unknown = out ? JSON.parse(out) : [];
+      const packages = (Array.isArray(data) ? data : [data]) as
+        { Name?: unknown; InstallLocation?: unknown; PackageFamilyName?: unknown }[];
+      // The package named exactly "Claude" first; *Claude* may match other packages.
+      packages.sort((a, b) => Number(b?.Name === 'Claude') - Number(a?.Name === 'Claude'));
+      for (const pkg of packages) {
+        if (typeof pkg?.InstallLocation !== 'string' || !pkg.InstallLocation) continue;
+        const exe = path.win32.join(pkg.InstallLocation, 'app', 'Claude.exe');
+        const family = typeof pkg.PackageFamilyName === 'string' && pkg.PackageFamilyName ? pkg.PackageFamilyName : null;
+        if (exists(exe)) return { state: 'found', app: { exe, family }, source: 'lookup' };
+      }
+    } catch (err) {
+      reason = `unexpected Get-AppxPackage output: ${(err as Error).message}`;
+      out = null;
+    }
   }
   if (env.LOCALAPPDATA) {
     const old = path.win32.join(env.LOCALAPPDATA, 'AnthropicClaude', 'claude.exe');
-    if (exists(old)) return old;
+    if (exists(old)) return { state: 'found', app: { exe: old, family: null }, source: 'old install' };
   }
-  return null;
+  return out === null ? { state: 'failed', reason } : { state: 'notInstalled' };
 }
 
 /** Running Claude Desktop main processes. Throws if the query fails (the sign-in flow must not guess). */

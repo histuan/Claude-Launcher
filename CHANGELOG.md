@@ -8,6 +8,55 @@ Releases are tagged `launcher-vX.Y.Z`.
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-28
+
+Phase 4.4: the card check after a sign-out inside Claude (0.4.4 showed the card as signed in).
+
+### Fixed
+
+- The `config.json` `oauth:tokenCache` keys no longer decide whether a card is signed in (they stay after a
+  sign-out). Only a valid claude.ai `sessionKey` cookie does. When the cookie database cannot be read, the card
+  keeps its last known state and shows **Checking…**.
+- Right after **Close this account** (and whenever an account stops running), the cookie database can stay locked
+  for a few seconds: it is read again every ~1 s for up to ~10 s, then the card updates by itself.
+- A `sessionKey` cookie that is expired (`expires_utc` in the past) or empty (value length 0, checked by length only)
+  no longer counts as signed in.
+- Cards are drawn again when an account starts or stops running (before, "Not signed in" only changed when the
+  launcher was reopened).
+- Sign-in on Claude 4.4212 (and later) is detected again, automatically and with **I've signed in**. Claude 4.x no
+  longer writes the `oauth:tokenCache` keys the launcher waited for. The signal is now version-tolerant: a new
+  account-related `config.json` key name (`oauth:*`, `lastKnownAccountUuid`, or a name containing `Account`) that
+  was not there when the sign-in window opened. Values are never read. The cookie-write wait before the force-end
+  stays.
+- Sign-in safety (code review): the default profile folder must look like a Claude profile
+  (`Claude-Data\claude_*` or `LocalCache\Roaming\Claude`, trailing `\` dropped) before anything is stashed, so the
+  crash-recovery marker can always be read back. If the marker cannot be written, nothing is moved and the main
+  Claude is opened again. A failed save of the new card no longer leaves the sign-in dialog on "saving".
+- **Sign in** no longer says "Claude is not installed" when Claude is installed. Starting PowerShell took more than the
+  5 s timeout on a busy PC. The launcher now remembers the `Claude.exe` path (and its PackageFamilyName) in its config
+  and only checks that the file exists, so most clicks start no PowerShell at all. It looks Claude up again only when
+  the file is gone (Claude updated) or nothing is remembered yet, with a ~15 s timeout and one retry. A lookup that does
+  not finish shows "Couldn't find Claude in time. Try again."; "Claude is not installed" appears only when the lookup
+  finished and found no Claude.
+- Texts no longer mention a tray icon: Claude has none on Windows here. When its window closes it keeps running with
+  no icon, and only Task Manager or **Close this account** ends it.
+
+### Added
+
+- `sign-in-timings.log` records the Claude version at the start of each sign-in (`start: Claude version: …`, from
+  the exe path) and which key name detected it (`detect: new account key: …`).
+- `sign-in-timings.log` records each final card decision per account (no cookie data): `card check <id>: cookie
+  found | cookie not found | cookie expired | cookie empty | cookie DB unreadable (<reason>) for ~10 s -> kept: …`.
+- A card shows **Running · Not signed in** when it runs and its last known state is signed out.
+
+### Notes
+
+- A sign-out inside Claude is only detected after the account is closed: Claude locks its cookie database while it
+  runs (every copy fails with `EBUSY`, PC test). An earlier build of this PR re-checked running accounts every ~30 s;
+  that was removed.
+- The temporary cookie copy includes `Cookies-journal` / `Cookies-wal` (already the case since 0.4.2); now covered
+  by a test.
+
 ## [0.4.4] - 2026-10-28
 
 Phase 4.3: speed fixes after testing 0.4.3 on a real PC (0.4.3 was not released on its own: its changes ship here).
@@ -233,7 +282,9 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.3...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.5...HEAD
+[0.4.5]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.4...launcher-v0.4.5
+[0.4.4]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...launcher-v0.4.4
 [0.4.3]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...launcher-v0.4.3
 [0.4.2]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.1...launcher-v0.4.2
 [0.4.1]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.0...launcher-v0.4.1

@@ -13,6 +13,9 @@ export interface ClaudeProcess {
 // Claude Desktop only. The Claude Code CLI is also called claude.exe, but lives elsewhere.
 const DESKTOP_EXE = /\\WindowsApps\\Claude_[^\\]+\\app\\Claude\.exe$/i;
 
+/** The MSIX Claude Desktop exe (…\WindowsApps\Claude_*\app\Claude.exe). */
+export const isDesktopExe = (exe: string): boolean => DESKTOP_EXE.test(exe);
+
 /** Splits a Windows command line into arguments; double quotes group and are removed. */
 function splitArgs(commandLine: string): string[] {
   const args: string[] = [];
@@ -71,7 +74,7 @@ export function pidsForProfile(processes: ClaudeProcess[], profileDir: string | 
 }
 
 /**
- * Pid of that profile's main process when it shows a window, else null (Claude hides in the tray when its window is
+ * Pid of that profile's main process when it shows a window, else null (Claude keeps running without a window when its window is
  * closed). The pid is used to bring that window to the front.
  */
 export function windowPid(processes: ClaudeProcess[], profileDir: string | null): number | null {

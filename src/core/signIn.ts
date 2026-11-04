@@ -32,6 +32,15 @@ const SLOT = /([\\/]Claude-Data[\\/]claude_[^\\/]+|[\\/]LocalCache[\\/]Roaming[\
 
 const str = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
 
+/**
+ * The folder as a default Claude profile slot (trailing separators dropped), or null when it is not one: anything else
+ * would be stashed with a marker that parseMarker rejects, so a crash could not be recovered.
+ */
+export function defaultSlot(dir: string): string | null {
+  const slot = dir.replace(/[\\/]+$/, '');
+  return SLOT.test(slot) && !slot.endsWith(STASH_SUFFIX) ? slot : null;
+}
+
 /** Validates a marker read from disk; null if it is not one we wrote. */
 export function parseMarker(raw: unknown): Marker | null {
   if (typeof raw !== 'object' || raw === null) return null;
@@ -64,6 +73,35 @@ export function hasOauth(configJson: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * Account-related key NAMES in config.json (values are never read): any "oauth:*" key (Claude 3.x writes
+ * oauth:tokenCache / oauth:tokenCacheV2), "lastKnownAccountUuid" (Claude 4.4212, which has no oauth: key any more),
+ * or any name containing "Account". Unreadable or non-object JSON gives [].
+ */
+export function accountKeyNames(configJson: string): string[] {
+  try {
+    const cfg: unknown = JSON.parse(configJson);
+    if (typeof cfg !== 'object' || cfg === null || Array.isArray(cfg)) return [];
+    return Object.keys(cfg).filter((key) =>
+      key.startsWith('oauth:') || key === 'lastKnownAccountUuid' || key.includes('Account'));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * The sign-in signal, version-tolerant: the first account-related key name that was not in `baseline` (the key
+ * names when the sign-in window opened), or null.
+ */
+export function newAccountKey(baseline: readonly string[], configJson: string): string | null {
+  return accountKeyNames(configJson).find((key) => !baseline.includes(key)) ?? null;
+}
+
+/** Claude's version from its MSIX exe path (…\WindowsApps\Claude_4.4212.0.0_x64__…\app\Claude.exe), or null. */
+export function claudeVersion(exe: string): string | null {
+  return /[\\/]Claude_(\d+(?:\.\d+)+)_/i.exec(exe)?.[1] ?? null;
 }
 
 /** "Signed in" = the sessionKey cookie exists. Cookie names are plain text in the SQLite files; values are not read. */

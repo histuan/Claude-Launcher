@@ -82,7 +82,7 @@ test('pidsForProfile: null = default instance only; a folder matches only that p
   assert.deepEqual(pidsForProfile(list, 'C:\\Users\\thiag\\ClaudeProfiles\\nope'), []);
 });
 
-test('window query: MainWindowHandle 0 or null = no window (Claude in the tray)', () => {
+test('window query: MainWindowHandle 0 or null = no window (Claude running without one)', () => {
   const json = JSON.stringify([
     { ProcessId: 100, ExecutablePath: APP, CommandLine: `"${APP}"`, MainWindowHandle: 0 },
     { ProcessId: 101, ExecutablePath: APP, CommandLine: `"${APP}" --type=gpu-process`, MainWindowHandle: 77 },

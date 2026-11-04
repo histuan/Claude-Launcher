@@ -15,7 +15,7 @@ export interface WindowWaitDeps {
 }
 
 /**
- * A freshly signed-in profile may start in the tray without a window. Spawning the same command again reaches
+ * A freshly signed-in profile may start without a window. Spawning the same command again reaches
  * Claude's single-instance handler, which shows the window. true = a window was confirmed within the wait.
  * An error from the first launch is thrown; the second launch is best effort.
  */

@@ -6,7 +6,7 @@ import path from 'node:path';
 import type { SignInStatus, StartStep } from '../core/api.js';
 import { isLauncherProfileDir } from '../core/config.js';
 import {
-  containsSessionKey, hasOauth, MARKER_VERSION, parseMarker, STASH_SUFFIX, type Marker, type MarkerAccount,
+  accountKeyNames, containsSessionKey, defaultSlot, MARKER_VERSION, newAccountKey, parseMarker, STASH_SUFFIX, type Marker, type MarkerAccount,
 } from '../core/signIn.js';
 
 export type StartError = 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk' | 'folder' | 'launchFailed';
@@ -29,7 +29,10 @@ export interface SignInDeps {
   listPidsInside(dir: string): Promise<number[]>;
   /** Opens Claude without flag (default profile). */
   launchDefault(): Promise<void>;
-  /** Best effort, not awaited: brings the sign-in window to the front once it shows. Never fails the sign-in. */
+  /**
+   * Best effort, not awaited: brings the sign-in window to the front once it shows (gives up after ~8 s). Never fails
+   * the sign-in. When it settles, the account keys present at that moment become the baseline.
+   */
   focusDefault?(): Promise<void>;
   freeBytes(dir: string): Promise<number>;
   onStatus(status: SignInStatus): void;
@@ -38,14 +41,14 @@ export interface SignInDeps {
   minFreeBytes?: number;
   sleep?: (ms: number) => Promise<void>;
   /**
-   * Start and cancel: how long a close request gets before the force-end (~1 s). Claude only hides to the tray on a
+   * Start and cancel: how long a close request gets before the force-end (~1 s). Claude only closes its window on a
    * close request (0.4.3 test), so this is kept short.
    */
   gracefulMs?: number;
   /** Process exit poll interval during the graceful close (~250 ms). */
   exitPollMs?: number;
   /**
-   * Finishing: after the oauth keys, wait for Chromium's cookie database write (Network\Cookies or its -journal /
+   * Finishing: after a new account key, wait for Chromium's cookie database write (Network\Cookies or its -journal /
    * -wal gets a newer mtime or another size; stat only), polled every cookiePollMs (~500 ms), at most cookieWaitMs
    * (~45 s) per wait; then cookieSettleMs (~1 s) before the force-end. Chromium commits cookies about every 30 s and
    * the sign-in needs that write (0.4.4 tests: a force-end before it opened the account signed out).
@@ -76,6 +79,15 @@ export class SignInFlow {
   private notSaved = false;
   /** Cookie database stats when the keys appeared (kept across "Wait longer"). */
   private cookieBase: string | null = null;
+  /**
+   * Account-related config.json key names when the sign-in window opened: only a key that is not in this set is a
+   * sign-in. Empty after a restart ("continue sign-in"): the profile is a blank one, and the person may have
+   * signed in before the restart.
+   */
+  private baseline: string[] = [];
+  /** false from the launch until the baseline is taken: detection waits, "I've signed in" awaits it. */
+  private baselineSet = true;
+  private baselineReady: Promise<void> = Promise.resolve();
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly pollMs: number;
 
@@ -94,6 +106,7 @@ export class SignInFlow {
     if (!isLauncherProfileDir(account.profileDir, this.deps.userProfile)) {
       throw new Error(`Refusing a profile folder outside ClaudeProfiles: ${account.profileDir}`);
     }
+    if (defaultSlot(slot) !== slot) throw new Error(`Refusing a slot that is not a Claude profile folder: ${slot}`);
     const stash = slot + STASH_SUFFIX;
     const t0 = this.now();
     if (this.marker || (await exists(this.deps.markerFile)) || (await exists(stash))) return 'pending';
@@ -121,7 +134,15 @@ export class SignInFlow {
       version: MARKER_VERSION, state: 'signing-in', slot, stash, stashed: await exists(slot), mainWasRunning,
       account, startedAt: Date.now(),
     };
-    await this.writeMarker(marker);
+    try {
+      await this.writeMarker(marker);
+    } catch (err) {
+      // Nothing moved yet: give the person their main Claude back.
+      console.warn(`Could not write the sign-in marker: ${(err as Error).message}`);
+      await rm(this.deps.markerFile, { force: true }).catch(() => undefined);
+      if (mainWasRunning) await this.deps.launchDefault().catch(() => undefined);
+      return 'folder';
+    }
     if (marker.stashed) {
       try {
         await this.move(slot, stash);
@@ -144,7 +165,18 @@ export class SignInFlow {
       return 'launchFailed';
     }
     this.log('start: open the sign-in window', t2);
-    void this.deps.focusDefault?.().catch(() => undefined);
+    // Baseline once the sign-in window shows (nobody can sign in before), so keys a blank Claude writes while starting
+    // up never count as a sign-in. Without a window wait: right after the launch.
+    this.baselineSet = false;
+    const focus = this.deps.focusDefault;
+    this.baselineReady = (focus ? focus().catch(() => undefined) : Promise.resolve()).then(async () => {
+      const keys = accountKeyNames(await this.readConfig(slot));
+      if (this.marker !== marker) return;
+      this.baseline = keys;
+      this.baselineSet = true;
+      this.log(`start: account keys when the window opened: ${keys.join(', ') || 'none'}`);
+    });
+    if (!focus) await this.baselineReady;
     this.log('start: total', t0);
     this.deps.onStatus({ phase: 'waiting' });
     return null;
@@ -153,18 +185,20 @@ export class SignInFlow {
   // ---------- Detection (step 5) ----------
 
   /**
-   * One detection tick (every ~1 s from the main process while the dialog is open). The fast signal is the oauth key
-   * NAMES appearing in config.json (a plain file, readable while Claude runs); the finish then waits for the cookie
+   * One detection tick (every ~1 s from the main process while the dialog is open). The fast signal is a new
+   * account-related key NAME in config.json (a plain file, readable while Claude runs; see newAccountKey: works with
+   * the 3.x oauth:tokenCache and the 4.x lastKnownAccountUuid layouts); the finish then waits for the cookie
    * database write, which the sign-in needs.
    */
   async poll(): Promise<void> {
     const marker = this.marker;
-    if (!marker || this.busy || this.notSaved) return;
-    if (await this.oauthKeys(marker.slot)) await this.finish();
+    if (!marker || this.busy || this.notSaved || !this.baselineSet) return;
+    if (await this.accountKey(marker.slot)) await this.finish();
   }
 
   /**
-   * "I've signed in" button. Read-only check: finishes at once if the oauth keys or the session cookie are on disk; otherwise
+   * "I've signed in" button. Read-only check: finishes at once on the same signal as the detection (a new account
+   * key) or if the session cookie is on disk; otherwise
    * keeps checking for ~15 s ("checking" with a countdown, Cancel stays available) and then reports "notFound".
    * A negative result never stashes, moves or restores anything: the sign-in simply stays open.
    */
@@ -173,12 +207,13 @@ export class SignInFlow {
     if (!marker || this.busy || this.checking || this.notSaved) return;
     this.checking = true;
     const now = this.deps.now ?? Date.now;
-    const deadline = now() + (this.deps.checkMs ?? 15_000);
     let shown = -1;
     try {
+      await this.baselineReady; // at most the ~8 s window wait, only right after the start
+      const deadline = now() + (this.deps.checkMs ?? 15_000);
       for (;;) {
         if (this.marker !== marker || this.busy) return; // cancelled, or the automatic detection is finishing
-        if ((await this.oauthKeys(marker.slot)) || (await this.sessionSaved(marker.slot))) return await this.finish();
+        if ((await this.accountKey(marker.slot)) || (await this.sessionSaved(marker.slot))) return await this.finish();
         if (this.marker !== marker || this.busy) return; // the same, after the read: never re-enable Cancel then
         const left = Math.ceil((deadline - now()) / 1000);
         if (left <= 0) break;
@@ -201,7 +236,7 @@ export class SignInFlow {
     try {
       this.deps.onStatus({ phase: 'saving' });
       const t0 = this.now();
-      // A close request never works (Claude hides to the tray), so Claude is force-ended, but only after its cookie
+      // A close request never works (Claude only closes its window and keeps running), so Claude is force-ended, but only after its cookie
       // database write: a forced end loses what is not committed yet. No write within the cap: nothing moves.
       const written = await this.waitForCookieWrite(marker.slot);
       this.log(`finish: wait for the cookie write: ${written ? 'written' : 'cap'}`, t0);
@@ -275,6 +310,8 @@ export class SignInFlow {
 
   async recover(marker: Marker, choice: 'restore' | 'continue'): Promise<void> {
     this.marker = marker;
+    this.baseline = [];
+    this.baselineSet = true;
     if (choice === 'continue' && marker.state === 'signing-in') {
       if ((await this.deps.listDefaultPids()).length === 0) {
         try {
@@ -302,14 +339,20 @@ export class SignInFlow {
     return containsSessionKey(cookies);
   }
 
-  /** The oauth key names are in config.json (values never read). */
-  private async oauthKeys(slot: string): Promise<boolean> {
-    return hasOauth(await readFile(path.join(slot, 'config.json'), 'utf8').catch(() => ''));
+  private readConfig(slot: string): Promise<string> {
+    return readFile(path.join(slot, 'config.json'), 'utf8').catch(() => '');
+  }
+
+  /** A new account key name in config.json (values never read); logs which key it was. */
+  private async accountKey(slot: string): Promise<boolean> {
+    const key = newAccountKey(this.baseline, await this.readConfig(slot));
+    if (key) this.log(`detect: new account key: ${key}`);
+    return key !== null;
   }
 
   /**
    * Waits for the cookie database write: true once Network\Cookies (or its -journal / -wal) has another mtime or size
-   * than when the keys appeared, or at once when the sessionKey is already on disk (the commit happened before, e.g.
+   * than when the key appeared, or at once when the sessionKey is already on disk (the commit happened before, e.g.
    * "I've signed in" pressed late). false after ~45 s without a write. Stat only while Claude runs.
    */
   private async waitForCookieWrite(slot: string): Promise<boolean> {
@@ -379,6 +422,7 @@ export class SignInFlow {
     this.marker = null;
     this.notSaved = false;
     this.cookieBase = null;
+    this.baseline = [];
     if (marker.mainWasRunning) await this.deps.launchDefault().catch(() => undefined);
     this.deps.onStatus(outcome);
   }
@@ -388,6 +432,7 @@ export class SignInFlow {
     this.marker = null;
     this.notSaved = false;
     this.cookieBase = null;
+    this.baseline = [];
     this.deps.onStatus({ phase: 'failed', stashPath: marker.stashed ? marker.stash : null });
   }
 

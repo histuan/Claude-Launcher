@@ -2,7 +2,8 @@
 import { execFile } from 'node:child_process';
 import { cleanDisplayName } from '../../core/name.js';
 
-export type RunPowerShell = (script: string) => Promise<string>;
+/** timeoutMs: default ~5 s. Starting powershell.exe alone can take several seconds on a busy PC. */
+export type RunPowerShell = (script: string, timeoutMs?: number) => Promise<string>;
 
 // WQL escapes a single quote as \' ; UTF-8 output keeps accented names intact.
 const FULL_NAME_SCRIPT = [
@@ -25,12 +26,12 @@ export async function windowsDisplayName(
   return cleanDisplayName(fullName, env.USERNAME);
 }
 
-export const runPowerShell: RunPowerShell = (script) =>
+export const runPowerShell: RunPowerShell = (script, timeoutMs = 5000) =>
   new Promise((resolve, reject) => {
     execFile(
       'powershell.exe',
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
-      { windowsHide: true, timeout: 5000, encoding: 'utf8' },
+      { windowsHide: true, timeout: timeoutMs, encoding: 'utf8' },
       (err, stdout) => (err ? reject(err) : resolve(stdout)),
     );
   });
