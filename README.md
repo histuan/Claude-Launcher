@@ -43,7 +43,8 @@ What it does:
    needed. nightly.link is a third-party service, not part of GitHub.
 4. Closes the launcher if it is open, installs silently (`/S`) and opens it again.
 
-With no open PR it installs the latest Release instead. `-DownloadOnly` downloads the installer without installing it.
+With no open PR it installs the latest Release instead. `-DownloadOnly` only downloads: the installer is saved to
+`%USERPROFILE%\Downloads` and the script prints its full path.
 
 A PR build has the same version number as the release it becomes, so the self-update does not offer that release
 again after the merge.

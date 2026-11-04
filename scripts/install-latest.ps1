@@ -1,5 +1,5 @@
 # Installs the newest Multi-Account Launcher build in one go (testers; see README "For testers: installing a PR build").
-# - With an open PR: takes the installer of the newest green CI run of that PR (via nightly.link, no GitHub login).
+# - With an open PR: takes the installer of the newest CI run of that PR, if it is green (via nightly.link, no GitHub login).
 # - With no open PR: takes the installer of the latest Release.
 # Usage: install-latest.ps1 [-Pr 18] [-DownloadOnly]
 param([int]$Pr = 0, [switch]$DownloadOnly)
@@ -39,7 +39,13 @@ try {
   $exe = Get-ChildItem -LiteralPath $tmp -Filter '*.exe' -Recurse | Select-Object -First 1
   if (-not $exe) { throw 'The download has no installer .exe.' }
   Write-Host "Got $($exe.Name)."
-  if ($DownloadOnly) { Write-Host "Download only: not installing."; return }
+  if ($DownloadOnly) {
+    # Copied out before the temp folder is deleted (finally below).
+    $saved = Join-Path (Join-Path $env:USERPROFILE 'Downloads') $exe.Name
+    Copy-Item -LiteralPath $exe.FullName -Destination $saved -Force
+    Write-Host "Download only: not installing. Saved to $saved"
+    return
+  }
 
   Get-Process -Name $app -ErrorAction SilentlyContinue | Stop-Process -Force
   Start-Sleep -Milliseconds 800
