@@ -4,6 +4,11 @@ import {
 import { cardBadge, cardStatus } from '../core/card.js';
 import type { Account } from '../core/config.js';
 import { checkDetails, type Details } from '../core/details.js';
+import {
+  checkedByDefault, checkMemoryText, joinMemoryFiles, MAX_MEMORY_CHARS, memoryFolders, memorySection, memorySources,
+  splitMemoryParts, type MemoryFile,
+} from '../core/memories.js';
+import { MAX_ZIP_FILE_BYTES, readMemoryZip } from '../core/memoryZip.js';
 import { PHOTO_SIZE, squareCrop } from '../core/photo.js';
 import { greetingFor } from '../core/greeting.js';
 import { strings } from './strings.js';
@@ -141,15 +146,26 @@ const sameIds = (a: Iterable<string>, b: Iterable<string>): boolean => {
   return x.length === y.length && x.every((v, i) => v === y[i]);
 };
 
-/** Draws the cards again with a fresh state when the running set or the signed-out set changed. */
+/**
+ * Draws the cards again with a fresh state when the running set or the signed-out set changed. Also follows a new
+ * Windows name or sign-in availability (0.5.1: the cached values are looked up again after the cards are shown).
+ */
 async function refreshCards(nextRunning: Set<string>): Promise<void> {
   const fresh = await api.getState();
-  if (sameIds(nextRunning, running) && sameIds(fresh.signedOut, state.signedOut)
-    && sameIds(fresh.checking, state.checking)) return;
+  const cardsSame = sameIds(nextRunning, running) && sameIds(fresh.signedOut, state.signedOut)
+    && sameIds(fresh.checking, state.checking);
+  const nameChanged = fresh.defaultName !== state.defaultName;
+  const availabilityChanged = fresh.signInAvailable !== state.signInAvailable;
+  if (cardsSame && !nameChanged && !availabilityChanged) return;
   running = nextRunning;
   state = fresh;
-  closeMenu(); // its card is about to be replaced
-  renderCards();
+  if (!cardsSame) {
+    closeMenu(); // its card is about to be replaced
+    renderCards();
+  }
+  // Not while the person is typing a name (the field would vanish).
+  if (nameChanged && !byId('name-wrap').querySelector('input')) renderName();
+  if (availabilityChanged) renderSignInAvailability();
 }
 
 async function refreshRunning(): Promise<void> {
@@ -180,19 +196,21 @@ document.addEventListener('mouseover', (e) => {
 const menu = byId('menu');
 let menuOwner: HTMLElement | null = null;
 
+function menuItem(text: string | (Node | string)[], action: (() => void) | null, extra: Record<string, string> = {}): HTMLButtonElement {
+  const button = h('button', { type: 'button', role: 'menuitem', ...extra }, ...(typeof text === 'string' ? [text] : text));
+  if (action) {
+    button.addEventListener('click', () => { closeMenu(); action(); });
+  } else {
+    button.setAttribute('aria-disabled', 'true');
+    button.title = extra.title ?? strings.comingSoon;
+  }
+  return button;
+}
+
 function openMenu(account: Account, owner: HTMLElement): void {
   if (menuOwner === owner) return closeMenu();
   closeMenu();
-  const item = (text: string, action: (() => void) | null, extra: Record<string, string> = {}): HTMLButtonElement => {
-    const button = h('button', { type: 'button', role: 'menuitem', ...extra }, text);
-    if (action) {
-      button.addEventListener('click', () => { closeMenu(); action(); });
-    } else {
-      button.setAttribute('aria-disabled', 'true');
-      button.title = extra.title ?? strings.comingSoon;
-    }
-    return button;
-  };
+  const item = menuItem;
   const items = !isSignedOut(account) ? []
     : [signInOff() ? item(strings.menu.signIn, null, { title: strings.signInOff }) : item(strings.menu.signIn, () => void signIn(account))];
   items.push(
@@ -200,12 +218,18 @@ function openMenu(account: Account, owner: HTMLElement): void {
     item(strings.menu.editDetails, () => void editDetails(account)),
     item(strings.menu.changePhoto, () => pickPhoto(account)),
     ...(state.photos[account.id] ? [item(strings.menu.removePhoto, () => void setPhoto(account, null))] : []),
+    memoriesItem(account, owner),
     running.has(account.id)
       ? item(strings.menu.close, () => void closeAccount(account))
       : item(strings.menu.close, null, { title: strings.menu.closeOff }),
   );
   if (!isMain(account)) items.push(item(strings.menu.remove, () => void remove(account), { class: 'danger' }));
-  menu.replaceChildren(...items);
+  showMenu(owner, items);
+}
+
+/** Puts the items in the menu under the card's ⋯ button. */
+function showMenu(owner: HTMLElement, items: HTMLElement[], title?: string): void {
+  menu.replaceChildren(...(title ? [h('p', { class: 'menu-title' }, title)] : []), ...items);
   menu.hidden = false;
 
   const box = owner.getBoundingClientRect();
@@ -215,6 +239,22 @@ function openMenu(account: Account, owner: HTMLElement): void {
   menuOwner = owner;
   owner.setAttribute('aria-expanded', 'true');
   items[0]?.focus();
+}
+
+/** "Receive memories from…": the menu turns into the list of the other signed-in accounts (Phase 5.1). */
+function memoriesItem(target: Account, owner: HTMLElement): HTMLButtonElement {
+  const sources = memorySources(state.accounts, target.id, state);
+  if (sources.length === 0) {
+    const why = isSignedOut(target) ? strings.menu.memoriesSignedOut : strings.menu.memoriesNoSource;
+    return menuItem(strings.menu.receiveMemories, null, { title: why });
+  }
+  return menuItem(strings.menu.receiveMemories, () => {
+    const items = sources.map((source) => menuItem(
+      source.email ? [cardName(source), h('span', { class: 'menu-email' }, source.email)] : cardName(source),
+      () => void receiveMemories(source, target),
+    ));
+    showMenu(owner, items, strings.menu.memoriesFrom);
+  });
 }
 
 function closeMenu(focusOwner = false): void {
@@ -251,6 +291,8 @@ byId('dialog-cancel').addEventListener('click', () => dialog.close());
 /** Resolves with the typed text (or '' without a field) on confirm, null on cancel. */
 function ask(opts: {
   title: string; body?: string; value?: string; confirm: string; danger?: boolean; cancel?: boolean;
+  /** Cancel in red (Receive memories warning). */
+  cancelDanger?: boolean;
 }): Promise<string | null> {
   byId('dialog-title').textContent = opts.title;
   byId('dialog-body').textContent = opts.body ?? '';
@@ -259,6 +301,7 @@ function ask(opts: {
   dialogConfirm.textContent = opts.confirm;
   dialogConfirm.classList.toggle('danger', opts.danger === true);
   byId('dialog-cancel').hidden = opts.cancel === false;
+  byId('dialog-cancel').classList.toggle('danger', opts.cancelDanger === true);
   dialog.returnValue = '';
   dialog.showModal();
   if (opts.value !== undefined) dialogInput.select();
@@ -411,6 +454,299 @@ async function closeAccount(account: Account): Promise<void> {
   await showResult(await api.closeAccount(account.id));
   await refreshRunning();
 }
+
+// ---------- Receive memories from… (Phase 5.1): a guided copy and paste ----------
+// The text is sent to the main process, which keeps it only in memory; Done / Cancel / Esc clear it there and here.
+// From Claude's exported .zip the person checks which files to bring; over the limit, the text goes in parts of
+// whole files, imported one Start import at a time.
+
+const memoriesDialog = byId<HTMLDialogElement>('memories');
+const memoriesText = byId<HTMLTextAreaElement>('memories-text');
+const memoriesError = byId('memories-error');
+const memoriesNext = byId<HTMLButtonElement>('memories-next');
+const memoriesCopy = byId<HTMLButtonElement>('memories-copy');
+const memoriesFiles = byId('memories-files');
+const memoriesTotal = byId('memories-total');
+const memoriesPart = byId('memories-part');
+const memoriesTip = byId('memories-tip');
+memoriesText.placeholder = strings.memories.copy.placeholder;
+byId('memories-cancel').textContent = strings.cancel;
+const memoriesFile = byId<HTMLButtonElement>('memories-file');
+const memoriesFileInput = byId<HTMLInputElement>('memories-file-input');
+memoriesFile.textContent = strings.memories.copy.chooseFile;
+/** Set while a transfer runs: what Next / Done / Cancel do. */
+let memoriesStep: 'copy' | 'import' | null = null;
+/** The files of the exported .zip while step 1 shows their checklist (null = pasted text or a .txt / .md file). */
+let zipFiles: MemoryFile[] | null = null;
+const checkedPaths = new Set<string>();
+/** Step 2: how many parts the main process holds, and which one is on the clipboard (0-based). */
+let partCount = 0;
+let partIndex = 0;
+
+const characters = (n: number): string => n.toLocaleString('en');
+
+async function receiveMemories(source: Account, target: Account): Promise<void> {
+  const refused = await api.memories.begin(source.id, target.id);
+  if (refused) return showResult({ state, error: refused });
+  const ok = await ask({
+    title: strings.memories.warning.title,
+    body: strings.memories.warning.body(cardName(source), cardName(target)),
+    confirm: strings.memories.warning.proceed,
+    cancelDanger: true,
+  });
+  if (ok === null) return api.memories.cancel();
+  showCopyStep(source, target);
+  memoriesNext.disabled = true;
+  memoriesTip.textContent = strings.memories.copy.opening;
+  const error = await api.memories.proceed().catch(() => 'launchFailed' as const);
+  if (memoriesStep !== 'copy') return; // cancelled meanwhile
+  if (error) {
+    await closeMemories();
+    return showResult({ state, error });
+  }
+  memoriesNext.disabled = false;
+  if (!zipFiles) memoriesTip.textContent = strings.memories.copy.tip;
+}
+
+function showSteps(title: string, body: string, steps: readonly string[]): void {
+  byId('memories-title').textContent = title;
+  byId('memories-body').textContent = body;
+  byId('memories-steps').replaceChildren(...steps.map((line) => h('li', {}, line)));
+  memoriesError.textContent = '';
+}
+
+function showCopyStep(source: Account, target: Account): void {
+  memoriesStep = 'copy';
+  const text = strings.memories.copy;
+  showSteps(text.title(cardName(source)), text.body(cardName(source)), text.steps);
+  memoriesText.hidden = false;
+  memoriesFile.hidden = false;
+  memoriesCopy.hidden = true;
+  memoriesPart.textContent = '';
+  memoriesTip.textContent = text.tip;
+  memoriesNext.textContent = text.next;
+  memoriesNext.onclick = () => void useMemories(target);
+  if (!memoriesDialog.open) memoriesDialog.showModal();
+  memoriesText.focus();
+}
+
+function showImportStep(target: Account): void {
+  memoriesStep = 'import';
+  const text = strings.memories.import;
+  const name = cardName(target);
+  const many = partCount > 1;
+  showSteps(text.title(name), many ? text.partsBody(name, partCount) : text.body(name), text.steps);
+  memoriesText.hidden = true;
+  memoriesFile.hidden = true;
+  memoriesFiles.hidden = true;
+  memoriesTotal.textContent = '';
+  memoriesCopy.hidden = false;
+  memoriesCopy.textContent = many ? text.copyPart : text.copyAgain;
+  memoriesTip.textContent = '';
+  renderPart();
+  memoriesNext.onclick = () => void nextPart();
+  memoriesNext.focus();
+}
+
+/** "Part 2 of 3 is on the clipboard"; the last part (or the only one) gets Done. */
+function renderPart(): void {
+  const last = partIndex >= partCount - 1;
+  memoriesPart.textContent = partCount > 1 ? strings.memories.import.partOnClipboard(partIndex + 1, partCount) : '';
+  memoriesNext.textContent = last ? strings.memories.import.done : strings.memories.import.nextPart;
+}
+
+async function nextPart(): Promise<void> {
+  if (partIndex >= partCount - 1) return closeMemories(true);
+  memoriesNext.disabled = true;
+  try {
+    await api.memories.copyPart(partIndex + 1);
+    partIndex++;
+    memoriesTip.textContent = '';
+    renderPart();
+  } finally {
+    memoriesNext.disabled = false;
+  }
+}
+
+memoriesCopy.addEventListener('click', () => {
+  void api.memories.copyPart(partIndex).then(() => {
+    memoriesTip.textContent = partCount > 1
+      ? strings.memories.import.partCopied(partIndex + 1, partCount)
+      : strings.memories.import.copied;
+  });
+});
+
+// --- Step 1: the .zip checklist ---
+
+/** The checked files, in the order of the list (top level first, then folders in path order). */
+function checkedFiles(): MemoryFile[] {
+  return zipFiles ? memoryFolders(zipFiles).flatMap((g) => g.files).filter((f) => checkedPaths.has(f.path)) : [];
+}
+
+function useZip(files: MemoryFile[]): void {
+  zipFiles = files;
+  checkedPaths.clear();
+  for (const f of files) if (checkedByDefault(f.path)) checkedPaths.add(f.path);
+  memoriesText.readOnly = true; // the box shows the checked files; the checklist decides what goes
+  memoriesText.rows = 3; // a preview: the list needs the room
+  memoriesFiles.hidden = false;
+  memoriesTip.textContent = strings.memories.copy.fromZip(files.length, files.some((f) => !checkedByDefault(f.path)));
+  renderChecklist();
+}
+
+function leaveZip(): void {
+  zipFiles = null;
+  checkedPaths.clear();
+  memoriesText.readOnly = false;
+  memoriesText.rows = 7;
+  memoriesFiles.hidden = true;
+  memoriesFiles.replaceChildren();
+  memoriesTotal.textContent = '';
+}
+
+function renderChecklist(): void {
+  if (!zipFiles) return;
+  const scroll = memoriesFiles.scrollTop;
+  const checkbox = (checked: boolean, onChange: (on: boolean) => void): HTMLInputElement => {
+    const box = h('input', { type: 'checkbox' });
+    box.checked = checked;
+    box.addEventListener('change', () => { onChange(box.checked); renderChecklist(); });
+    return box;
+  };
+  memoriesFiles.replaceChildren(...memoryFolders(zipFiles).map(({ folder, files }) => {
+    const on = files.filter((f) => checkedPaths.has(f.path)).length;
+    const all = checkbox(on === files.length, (value) => {
+      for (const f of files) value ? checkedPaths.add(f.path) : checkedPaths.delete(f.path);
+    });
+    all.indeterminate = on > 0 && on < files.length;
+    const rows = files.map((f) => h('label', { class: 'file' },
+      checkbox(checkedPaths.has(f.path), (value) => { value ? checkedPaths.add(f.path) : checkedPaths.delete(f.path); }),
+      h('span', { class: 'clip' }, f.path.slice(folder ? folder.length + 1 : 0)),
+      h('span', { class: 'size' }, characters(memorySection(f).length)),
+    ));
+    return h('div', { class: 'group' },
+      h('label', { class: 'folder' }, all, folder ? `${folder}/` : strings.memories.copy.topLevel), ...rows);
+  }));
+  memoriesFiles.scrollTop = scroll;
+
+  const chosen = checkedFiles();
+  const text = joinMemoryFiles(chosen);
+  memoriesText.value = text;
+  const split = splitMemoryParts(chosen);
+  memoriesTotal.textContent = strings.memories.copy.total(
+    chosen.length, zipFiles.length, characters(text.length), 'parts' in split ? split.parts.length : 0,
+  );
+  memoriesError.textContent = 'error' in split && split.error === 'fileTooLong' ? tooLongFile(split.path) : '';
+}
+
+function tooLongFile(path: string): string {
+  const file = zipFiles?.find((f) => f.path === path);
+  return strings.memories.fileTooLong(path, characters(file ? memorySection(file).length : 0));
+}
+
+/** Next: the checked files in parts (or the pasted text as one part) go to the main process. */
+async function useMemories(target: Account): Promise<void> {
+  let parts: string[];
+  if (zipFiles) {
+    const split = splitMemoryParts(checkedFiles());
+    if ('error' in split) {
+      memoriesError.textContent = split.error === 'empty' ? strings.memories.noneChecked : tooLongFile(split.path);
+      return;
+    }
+    parts = split.parts;
+  } else {
+    const checked = checkMemoryText(memoriesText.value);
+    if ('error' in checked) {
+      memoriesError.textContent = checked.error === 'tooLong'
+        ? strings.memories.pastedTooLong(characters(memoriesText.value.trim().length))
+        : strings.memories.errors.empty;
+      memoriesText.focus();
+      return;
+    }
+    parts = [checked.text];
+  }
+  memoriesNext.disabled = true;
+  try {
+    const error = await api.memories.useParts(parts);
+    // The main process holds the text now (and the clipboard): nothing stays in the window.
+    memoriesText.value = '';
+    leaveZip();
+    partCount = parts.length;
+    partIndex = 0;
+    showImportStep(target);
+    // Part 1 is on the clipboard: the person can still open the account and paste.
+    if (error) memoriesError.textContent = strings.errors[error].title;
+  } finally {
+    memoriesNext.disabled = false;
+  }
+}
+
+/** Done or Cancel (Esc too): the text is forgotten here and in the main process. */
+async function closeMemories(done = false): Promise<void> {
+  if (memoriesStep === null) return;
+  memoriesStep = null;
+  memoriesText.value = '';
+  leaveZip();
+  partCount = 0;
+  partIndex = 0;
+  if (memoriesDialog.open) memoriesDialog.close();
+  await (done ? api.memories.finish() : api.memories.cancel());
+}
+
+byId('memories-cancel').addEventListener('click', () => void closeMemories());
+memoriesDialog.addEventListener('close', () => void closeMemories()); // Esc
+
+// The exported .zip (or a .txt / .md file), dropped or chosen. It is read here, in memory only: nothing is
+// extracted to disk and nothing is logged. A drop anywhere else does nothing (Electron would otherwise open the
+// file in the window).
+async function loadMemoryFile(file: File): Promise<void> {
+  memoriesError.textContent = '';
+  if (/\.zip$/i.test(file.name)) {
+    if (file.size > MAX_ZIP_FILE_BYTES) {
+      memoriesError.textContent = strings.memories.zipErrors.tooBig;
+      return;
+    }
+    memoriesTip.textContent = strings.memories.copy.reading;
+    const result = await readMemoryZip(new Uint8Array(await file.arrayBuffer()));
+    if (memoriesStep !== 'copy') return; // cancelled meanwhile
+    if ('error' in result) {
+      memoriesTip.textContent = zipFiles ? memoriesTip.textContent : strings.memories.copy.tip;
+      memoriesError.textContent = strings.memories.zipErrors[result.error];
+      return;
+    }
+    useZip(result.files);
+  } else if (/\.(txt|md)$/i.test(file.name)) {
+    // A UTF-8 character is at most 4 bytes: a bigger file cannot fit the limit.
+    if (file.size > MAX_MEMORY_CHARS * 4) {
+      memoriesError.textContent = strings.memories.pastedTooLong(`more than ${characters(MAX_MEMORY_CHARS)}`);
+      return;
+    }
+    leaveZip();
+    memoriesText.value = await file.text();
+    memoriesTip.textContent = strings.memories.copy.tip;
+    const length = memoriesText.value.trim().length;
+    if (length > MAX_MEMORY_CHARS) memoriesError.textContent = strings.memories.pastedTooLong(characters(length));
+  } else {
+    memoriesError.textContent = strings.memories.fileType;
+  }
+}
+
+memoriesFile.addEventListener('click', () => memoriesFileInput.click());
+memoriesFileInput.addEventListener('change', () => {
+  const file = memoriesFileInput.files?.[0];
+  memoriesFileInput.value = ''; // the same file can be chosen again
+  if (file) void loadMemoryFile(file);
+});
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => e.preventDefault());
+memoriesText.addEventListener('dragenter', () => memoriesText.classList.add('drop'));
+memoriesText.addEventListener('dragleave', () => memoriesText.classList.remove('drop'));
+memoriesText.addEventListener('drop', (e) => {
+  e.preventDefault();
+  memoriesText.classList.remove('drop');
+  const file = e.dataTransfer?.files[0];
+  if (file) void loadMemoryFile(file);
+});
 
 // ---------- Sign-in (WINDOWS.md §4): the main process runs the flow, the window shows its progress ----------
 

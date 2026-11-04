@@ -24,4 +24,12 @@ contextBridge.exposeInMainWorld('launcher', {
   removeAccount: (id: string, closeFirst?: boolean) => ipcRenderer.invoke('launcher:removeAccount', id, closeFirst === true),
   runningAccounts: () => ipcRenderer.invoke('launcher:runningAccounts'),
   cardsShown: () => ipcRenderer.invoke('launcher:cardsShown'),
+  memories: {
+    begin: (sourceId: string, targetId: string) => ipcRenderer.invoke('launcher:memories:begin', sourceId, targetId),
+    proceed: () => ipcRenderer.invoke('launcher:memories:proceed'),
+    useParts: (parts: string[]) => ipcRenderer.invoke('launcher:memories:useParts', parts),
+    copyPart: (index: number) => ipcRenderer.invoke('launcher:memories:copyPart', index),
+    finish: () => ipcRenderer.invoke('launcher:memories:finish'),
+    cancel: () => ipcRenderer.invoke('launcher:memories:cancel'),
+  },
 });

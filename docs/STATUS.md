@@ -1,10 +1,8 @@
 # Status
 
-**Current phase:** 5 — Account details and photo (0.5.0), in a PR to `main` (Closes #2), waiting for Thiago's test
-and merge. Housekeeping: Node 24, `v<version>` tags, startup timing, remembered signed-in state, main Claude reopened
-only if it had a visible window. Details: `scripts/diagnose-accounts.ps1` showed the local files are not reliable, so
-v1 uses **typed** details (Add account + Edit details). Change photo done.
-Next: Phase 5.1 — Receive memories from… (`docs/PHASES.md`), after the merge.
+**Current phase:** 5.1 — Receive memories from… (0.5.1), in a PR to `main` (Closes #17), waiting for Thiago's test and
+merge. Extra: the Windows name and the main profile folder are cached in the config (first screen without PowerShell).
+Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
 
 ## Done
 
@@ -68,18 +66,35 @@ Next: Phase 5.1 — Receive memories from… (`docs/PHASES.md`), after the merge
   after a sign-in only if it had a visible window. Node 24, scripts in TypeScript, tags `v<version>`.
   Screenshots (mocked): `docs/screenshots/phase-5-cards.png`, `docs/screenshots/phase-5-add.png`.
 
+- Phase 5.1 (0.5.1): **Receive memories from…** in the ⋯ menu (`src/main/memoryTransfer.ts`, `src/core/memories.ts`):
+  sources = the other signed-in accounts (Main counts as signed in; "Checking…" does not); warning first (Cancel red,
+  Proceed orange); step 1 opens the source (launcher stays open), drop or pick the exported `.zip` (read in memory by
+  `src/core/memoryZip.ts`, `.md` entries only, limits in `docs/PHASES.md`), or paste / `.txt` / `.md`. A `.zip` gives a
+  checklist grouped by folder (`claude-memory-<date>/` dropped; `projects/` unchecked; size of each file and running
+  total); the box is a read-only preview of the checked files. Over 100,000 characters, step 2 imports parts of whole
+  files (`splitMemoryParts` in `src/core/memories.ts`): "Part 1 of N", Copy part / Next part, then Done; one file over
+  the limit = a message, never cut. Step 2 puts part 1 on the clipboard and opens the target. Parts only in memory
+  (main process), cleared on Done / Cancel / Esc / window close; the clipboard is emptied only if it still holds one
+  of them. Logs: step names and part numbers only.
+  Startup cache: `windowsName` and `defaultProfile` in the config (`src/core/cachedLookup.ts`), refreshed after the
+  cards are shown (`startup: background refresh …` in the log). Screenshots (mocked):
+  `docs/screenshots/phase-5.1-warning.png`, `docs/screenshots/phase-5.1-step1.png` (checklist),
+  `docs/screenshots/phase-5.1-parts.png` (step 2 in parts).
+
 ## Missing
 
-- Phases 5.1 and 6 (`docs/PHASES.md`).
-- Milestone "Multi-Account Launcher v1.0": the cloud session has no tool to create milestones. Thiago creates it on
-  GitHub (Issues → Milestones → New milestone) and adds the open phase issues (#1–#5) to it.
+- Phase 6 (`docs/PHASES.md`).
 
 ## Notes for the next phases
 
 - E-mail and real name are typed by the person (`docs/WINDOWS.md` §5). Reading them via the `sessionKey` cookie and
   the claude.ai endpoint is a possible later improvement, not v1.
-- The first state still waits for the Windows name query and the main-profile lookup (both PowerShell). The
-  `startup:` line in `sign-in-timings.log` says how long each took: if the cards feel slow, cache them in the config.
+- Startup (0.5.1): only the very first start (no cache yet) waits for the Windows name and main-profile lookups.
+- Memories: the menu paths are Thiago's translation of the Portuguese UI (Configurações → Memória → Exportar /
+  Iniciar importação). If the English UI words them differently, only `strings.memories` changes. Export layout
+  (PC test): `claude-memory-<date>/<memory path>.md`, 41 files and 131,248 characters on Thiago's account.
+- Not verified: whether Claude's Start import accepts a second import right after the first (the parts flow assumes
+  it does), and whether a paste near 100,000 characters goes through in one go.
 - Not verified on the PC yet: the window query (`Get-Process` `MainWindowHandle` joined to `Win32_Process` by id),
   now also used to decide whether the main Claude is reopened after a sign-in.
 - `launchClaude` uses `windowsHide: true` (CLAUDE.md rule 7). libuv also applies it to GUI windows (`SW_HIDE` in
@@ -131,24 +146,34 @@ Next: Phase 5.1 — Receive memories from… (`docs/PHASES.md`), after the merge
 
 ## How to test
 
-Phase 5 (0.5.0). Sign-in still moves your main Claude profile for a moment: keep a backup of
-`%LOCALAPPDATA%\Claude-Data\claude_…` (copied elsewhere with Claude fully closed).
+Phase 5.1 (0.5.1). Use two accounts you don't mind adding memories to (or a test account as the target).
 
-0. Get `Claude-Launcher-Setup-0.5.0.exe`: before the merge, from this PR's latest Actions run (artifact
-   **launcher-installer**); after the merge, from the **Releases** page (tag **`v0.5.0`**, title `v0.5.0`). Install
-   over 0.4.5. The version label (bottom-right) says **v0.5.0**.
-1. **Fast cards:** open the launcher. The cards appear with their last known "Not signed in" state at once (from the
-   second start on). Send me the `startup:` lines of `sign-in-timings.log` (hover the version label for the path).
-2. **Edit details:** ⋯ on **Main** → **Edit details** → type the e-mail and your name → Save: both show on the card.
-   An empty or wrong e-mail (e.g. `abc`) keeps the dialog open with a message. Do the same on an extra card. Close
-   and reopen the launcher: the details are still there.
-3. **Add account:** the dialog asks for card name, e-mail (required) and account name (optional). Finish the
-   sign-in: the new card shows the e-mail and name you typed. Cancel the sign-in once: no card is created.
-4. **Main Claude after a sign-in:** (a) with the main Claude's window open, do a Sign in: at the end it reopens.
-   (b) Close its window (Claude keeps running hidden) and do a Sign in: at the end it stays closed. The log has
-   `start: main Claude: running with a window` / `running hidden`.
-5. **Change photo:** ⋯ → **Change photo** → pick a JPG, a PNG and a WebP (one at a time; a wide or tall one too):
-   the card shows the centre of the image in a circle. ⋯ → **Back to the initial**: the letter returns. A file that
-   is not an image shows "Could not use this image". Remove an extra account with a photo: its file in
-   `%APPDATA%\claude-launcher\photos` is deleted.
-6. **Not signed in** now shows in the card's top line (grey dot), not in place of the e-mail.
+0. Get `Claude-Launcher-Setup-0.5.1.exe`: before the merge, from this PR's latest Actions run (artifact
+   **launcher-installer**); after the merge, from the **Releases** page (tag **`v0.5.1`**). Install over 0.5.0. The
+   version label (bottom-right) says **v0.5.1**.
+1. **Faster start:** open the launcher twice. From the second start on, the greeting name and the cards appear at
+   once. Send me the `startup:` lines of `sign-in-timings.log` (hover the version label for the path): "waited for
+   the Windows name" and "for the profile lookup" should be ~0 ms, and a `startup: background refresh …` line follows.
+2. **Menu:** ⋯ on a signed-in card → **Receive memories from…** → the list shows the other signed-in accounts
+   only (not signed-out ones, not the card itself). On a "Not signed in" card the item is greyed.
+3. **Warning:** pick a source: the warning comes first (Cancel red, Proceed orange). Cancel: nothing opens.
+4. **Step 1:** Proceed: the source account's Claude opens and the launcher stays open. In Claude: Settings →
+   Memory → Export memory → Export: a `.zip` downloads. Drop it on the launcher's text box (or **Choose a file…**).
+   - A checklist appears, grouped by folder, without the `claude-memory-<date>/` folder in the names. Each file
+     shows its size in characters.
+   - Files under `projects/` start unchecked, everything else checked. The line under the list gives
+     "N of 41 files · X characters", and "imported in N parts" when over 100,000.
+   - Uncheck and check a file and a whole folder: the total and the preview box follow.
+   - Also try: a `.zip` that is not an export (a clear message), pasting text, a `.txt` file, Next with nothing
+     checked (a message). Nothing new appears in your Downloads or temp folders besides the `.zip` Claude saved.
+5. **Step 2, one part:** with fewer files checked (under 100,000 characters), Next: the target account's Claude
+   opens. In it: Settings → Memory → Import memory from other AI providers → Start import; Claude shows a prompt
+   for the other provider: ignore it, paste (Ctrl+V) and confirm. **Copy again** puts it back on the clipboard.
+   **Done**.
+6. **Step 2, in parts:** with everything checked (your 131,248 characters), Next: "Part 1 of 2 is on the
+   clipboard." Import it with Start import, then **Next part** → "Part 2 of 2", import it again, then **Done**.
+   Check in Claude that both parts arrived and that no memory was cut in the middle. Tell me if Claude refused a
+   second import or a long paste.
+7. **Privacy:** after Done (or Cancel, or closing the launcher mid-way), Ctrl+V in Notepad pastes nothing (if you
+   did not copy something else meanwhile). `sign-in-timings.log` has only `memories: …` step lines, no memory text.
+8. Tell me if Claude's menus are named differently from the steps shown (the texts are easy to change).

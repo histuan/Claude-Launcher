@@ -186,3 +186,43 @@ dialog p.error { color: var(--danger); }
 /* Card photo: a square PNG shown as a circle */
 img.avatar { object-fit: cover; background: var(--surface); }
 #details .dialog-buttons { margin-top: 16px; }
+
+/* Receive memories from… */
+.menu .menu-title { margin: 0; padding: 6px 10px 4px; font-size: 12px; color: var(--text-real-name); }
+.menu .menu-email { display: block; font-size: 12px; color: var(--text-email); }
+.dialog-buttons button.danger { background: var(--danger); color: var(--bg); font-weight: 600; }
+.dialog-buttons button[hidden] { display: none; }
+#memories { width: 440px; }
+#memories .how { margin: 0 0 12px; padding-left: 1.4em; font-size: 14px; }
+#memories .how li { padding: 2px 0; }
+#memories textarea {
+  width: 100%; margin-bottom: 8px; padding: 8px 10px; resize: vertical;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; font-size: 13px;
+}
+#memories textarea:focus, #memories textarea.drop { border-color: var(--accent); outline: none; }
+#memories textarea[hidden] { display: none; }
+dialog p.tip { font-size: 12px; color: var(--text-real-name); }
+#memories .link {
+  display: block; margin: 0 0 10px; padding: 0; border: 0; background: none;
+  color: var(--accent); font-size: 13px; cursor: pointer;
+}
+#memories .link:hover { color: var(--accent-hover); text-decoration: underline; }
+#memories .link[hidden] { display: none; }
+
+/* Receive memories: checklist of the exported .zip, parts in step 2 */
+#memories .files {
+  max-height: 150px; overflow-y: auto; margin: 0 0 6px; padding: 6px 8px;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 13px;
+}
+#memories .files[hidden] { display: none; }
+#memories .group + .group { margin-top: 6px; }
+#memories .files label { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+#memories .files .folder { font-weight: 600; color: var(--text); }
+#memories .files .file { padding-left: 20px; color: var(--text-email); }
+#memories .files .clip { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#memories .files .size { flex: none; font-variant-numeric: tabular-nums; color: var(--text-real-name); }
+/* not the full-width text input style of dialogs */
+#memories .files input { flex: none; width: auto; margin: 0; padding: 0; accent-color: var(--accent); }
+#memories p.total { margin: 0 0 8px; font-size: 12px; color: var(--text-email); }
+#memories textarea[readonly] { color: var(--text-email); }
+#memories p.part { color: var(--text); font-weight: 600; }

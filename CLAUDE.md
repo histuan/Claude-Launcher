@@ -89,6 +89,20 @@ one account per profile, with no signing out and back in.
   (download the installer from the Releases page or the PR artifact, install, what to check).
 - If something in the phase is impossible in the cloud, stop and explain instead of improvising.
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues of `histuan/Claude-Launcher`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the root (created when needed). See `docs/agents/domain.md`.
+
 ## Habits to avoid
 
 - (empty for now; add here whatever Thiago corrects)

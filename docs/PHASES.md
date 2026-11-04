@@ -181,7 +181,7 @@ Housekeeping first (2026-11-04):
   `WINDOWS.md` §5 as a possible later improvement.
 - Change photo: pick an image, save a resized copy to `userData/photos/<id>.png`; "back to the initial".
 
-## Phase 5.1 — Receive memories from…
+## Phase 5.1 — Receive memories from… ✅ (2026-11-04, version 0.5.1)
 
 A **guided assistant**, not an automatic transfer: memories live on Anthropic's servers and there is no official API,
 so the launcher only walks the person through copying the text from one account and importing it into another.
@@ -191,12 +191,28 @@ so the launcher only walks the person through copying the text from one account 
 - Warning dialog first (buttons **Cancel** in red, **Proceed** in orange): imported memories are **added** to the
   target's existing ones; they may duplicate or conflict; the import is experimental; for work accounts, check the
   organization's rules before moving memories between accounts.
-- **Step 1 — copy from the source account:** the launcher opens the source account. Instructions: Settings → Your
-  Claude → Manage → copy the memories. The person pastes the text into the assistant, or drops a `.txt`/`.md` file.
-  Tip shown: if Manage does not offer a copy, ask Claude "Write out all my memories verbatim." and copy the answer.
+- **Step 1 — copy from the source account:** the launcher opens the source account. Instructions: Settings →
+  Memory → Export memory → Export, which downloads a `.zip` of Markdown files (the memory files). The person drops
+  the `.zip` on the assistant or picks it ("Choose a file…"); fallbacks: paste the text, or a `.txt`/`.md` file.
+  Tip shown: if Export is not there, ask Claude "Write out all my memories verbatim." and paste the answer.
+- **The `.zip` (fix before the 0.5.1 test, `src/core/memoryZip.ts`):** read in memory only, never extracted to disk,
+  never logged. Only `.md` entries, joined with one heading per file (its path inside the zip, without Claude's
+  `claude-memory-<date>/` folder), in path order.
+  Paths with `..` are ignored; more than 500 entries, or more than 2 MB of real inflated text (not the declared
+  size), is refused; a broken zip gives a clear message. Dependency-free: the zip records are parsed by hand and
+  deflate goes through `DecompressionStream('deflate-raw')` (Chromium in the window, Node in the tests).
+- **Choosing and splitting (after the PC test: 41 files, 131,248 characters):** a checklist of the files grouped by
+  folder, each with its size in characters, and a running total. `projects/` starts unchecked (Project memories
+  would land in the other account's general memory). The text box previews the checked files (read-only). Over
+  100,000 characters, step 2 splits the checked files into parts of whole files, each under the limit: "Part 1 of
+  N", **Copy part** / **Next part**, one Start import each. A file is never cut; one alone over the limit gets a
+  message. Pasted text over the limit is reported with its length.
 - **Step 2 — import into the target account:** the launcher opens the target account and puts the text on the
-  clipboard. Instructions: Settings → Your Claude → Start import → paste → **Add to memory**. Buttons: **Copy again**
-  (puts the text back on the clipboard) and **Done**.
+  clipboard. Instructions: Settings → Memory → Import memory from other AI providers → Start import (Claude shows a
+  prompt meant for the other provider) → paste (Ctrl+V) → confirm. Buttons: **Copy again** (puts the text back on
+  the clipboard) and **Done**.
+- Menu names checked on Thiago's Claude Desktop (UI in Portuguese: Configurações → Memória → Exportar /
+  Iniciar importação); the support article's names (Your Claude, Manage, Add to memory) were outdated.
 - Privacy: the text is kept **only in memory**, never written to disk or logs, and cleared on **Done** or **Cancel**.
 - Tests: the warning comes first; the text never reaches a file or a log; Done and Cancel clear it; only signed-in
   accounts are offered as the source.

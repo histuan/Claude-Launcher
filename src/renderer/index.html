@@ -54,6 +54,25 @@
     </form>
   </dialog>
 
+  <dialog id="memories">
+    <h2 id="memories-title"></h2>
+    <p id="memories-body"></p>
+    <ol id="memories-steps" class="how"></ol>
+    <div id="memories-files" class="files" hidden></div>
+    <p id="memories-total" class="total"></p>
+    <textarea id="memories-text" rows="7" spellcheck="false" autocomplete="off"></textarea>
+    <button id="memories-file" class="link" type="button"></button>
+    <input id="memories-file-input" type="file" accept=".zip,.txt,.md" hidden>
+    <p id="memories-tip" class="tip"></p>
+    <p id="memories-part" class="part" role="status"></p>
+    <p id="memories-error" class="error" role="alert"></p>
+    <div class="dialog-buttons">
+      <button id="memories-cancel" type="button"></button>
+      <button id="memories-copy" type="button"></button>
+      <button id="memories-next" class="primary" type="button"></button>
+    </div>
+  </dialog>
+
   <input id="photo-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
 
   <dialog id="dialog">

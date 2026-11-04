@@ -2,6 +2,8 @@
 import type { ActionError, StartStep } from '../core/api.js';
 import type { CardBadge, CardStatus } from '../core/card.js';
 import type { DetailsError } from '../core/details.js';
+import type { MemoryTextError } from '../core/memories.js';
+import type { MemoryZipError } from '../core/memoryZip.js';
 import type { GreetingPeriod } from '../core/greeting.js';
 
 export const strings = {
@@ -38,6 +40,12 @@ export const strings = {
     close: 'Close this account',
     /** Tooltip of the greyed "Close this account". */
     closeOff: 'This account is not running',
+    receiveMemories: 'Receive memories from…',
+    /** Title above the list of source accounts. */
+    memoriesFrom: 'Receive memories from',
+    /** Tooltips of the greyed "Receive memories from…". */
+    memoriesSignedOut: 'Sign in to this account first',
+    memoriesNoSource: 'No other signed-in account to copy from',
   },
   comingSoon: 'Available in a later version',
   rename: {
@@ -163,6 +171,10 @@ export const strings = {
       title: 'Not enough disk space',
       body: 'Free at least 500 MB on the system drive, then try again.',
     },
+    notSignedIn: {
+      title: 'That account is not signed in',
+      body: 'Pick another account to copy the memories from.',
+    },
   } satisfies Record<ActionError, { title: string; body: string }>,
   ok: 'OK',
   cancel: 'Cancel',
@@ -187,6 +199,81 @@ export const strings = {
       emailMissing: 'Type the email of this Claude account.',
       emailInvalid: 'This does not look like an email address.',
     } satisfies Record<DetailsError, string>,
+  },
+  /** Receive memories from… (Phase 5.1): a guided copy and paste; the launcher never reads Claude's memories. */
+  memories: {
+    warning: {
+      title: 'Receive memories?',
+      body: (source: string, target: string) => `You will copy the memories of “${source}” and import them into `
+        + `“${target}”.\n\n`
+        + `• They are added to the memories “${target}” already has; nothing there is replaced.\n`
+        + '• They may duplicate or contradict what it already remembers.\n'
+        + '• Importing memories is experimental in Claude.\n'
+        + '• For work accounts, check your organization\'s rules before moving memories between accounts.',
+      proceed: 'Proceed',
+    },
+    copy: {
+      title: (source: string) => `Step 1 of 2 · Copy from “${source}”`,
+      body: (source: string) => `Claude opens with “${source}”. In it:`,
+      steps: [
+        'Settings → Memory',
+        'Export memory → Export (a .zip of your memory files downloads)',
+        'Drop the .zip below, or choose it with “Choose a file…”, then check the files to bring',
+      ],
+      opening: 'Opening Claude…',
+      placeholder: 'Drop the exported .zip here, or paste the memories (a .txt or .md file works too)',
+      chooseFile: 'Choose a file…',
+      reading: 'Reading the .zip…',
+      /** The .zip was read: its files are listed with a checkbox each; the box shows the checked ones. */
+      fromZip: (files: number, hasProjects: boolean) => (hasProjects
+        ? 'projects/ starts unchecked: Project memories would land in the general memory of the other account.'
+        : `${files} memory ${files === 1 ? 'file' : 'files'} from the .zip; the box shows the checked ones.`),
+      /** Checklist group of the files that are not in a folder. */
+      topLevel: 'Top level',
+      /** Running total under the checklist; parts > 1 = over the limit, imported in parts in step 2. */
+      total: (checked: number, files: number, chars: string, parts: number) => `${checked} of ${files} files · `
+        + `${chars} characters` + (parts > 1 ? ` · over 100,000: imported in ${parts} parts` : ''),
+      tip: 'Tip: if Export is not there, ask Claude “Write out all my memories verbatim.” and paste the answer.',
+      next: 'Next',
+    },
+    import: {
+      title: (target: string) => `Step 2 of 2 · Import into “${target}”`,
+      body: (target: string) => `Claude opens with “${target}”, and the memories are on the clipboard. In it:`,
+      steps: [
+        'Settings → Memory → Import memory from other AI providers → Start import',
+        'Claude shows a prompt for the other provider: you already have the memories, so paste them (Ctrl+V)',
+        'Confirm',
+      ],
+      /** Over the limit: whole files in parts, one Start import each. */
+      partsBody: (target: string, parts: number) => `Claude opens with “${target}”. The memories are in ${parts} parts `
+        + '(whole files, each under the limit): import them one at a time. For each part, in Claude:',
+      partOnClipboard: (part: number, parts: number) => `Part ${part} of ${parts} is on the clipboard.`,
+      copyAgain: 'Copy again',
+      copyPart: 'Copy part',
+      nextPart: 'Next part',
+      copied: 'The memories are on the clipboard again.',
+      partCopied: (part: number, parts: number) => `Part ${part} of ${parts} is on the clipboard again.`,
+      done: 'Done',
+    },
+    errors: {
+      empty: 'Paste the memories first, or drop the exported .zip.',
+      tooLong: 'The text is over the limit of 100,000 characters.',
+    } satisfies Record<MemoryTextError, string>,
+    /** Pasted text (or a .txt / .md file) cannot be split by file: nothing is cut. */
+    pastedTooLong: (chars: string) => `This text has ${chars} characters, over the limit of 100,000. Nothing was cut: `
+      + 'drop the exported .zip instead (it is imported in parts, by whole files), or shorten the text.',
+    noneChecked: 'Check at least one file.',
+    /** One file alone does not fit in a part; files are never cut. */
+    fileTooLong: (path: string, chars: string) => `“${path}” alone has ${chars} characters, over the limit of `
+      + '100,000, and a file is never cut. Uncheck it, or ask Claude to shorten that memory first.',
+    zipErrors: {
+      broken: 'This .zip could not be read. Export it again from Claude, or paste the memories.',
+      tooBig: 'This .zip has more than 2 MB of memory text (or is over 20 MB): it does not look like a memory export.',
+      tooManyEntries: 'This .zip has more than 500 files: it does not look like a memory export.',
+      noMemories: 'This .zip has no .md memory files.',
+      unsupported: 'This .zip uses a format the launcher cannot read (encrypted or Zip64). Paste the memories instead.',
+    } satisfies Record<MemoryZipError, string>,
+    fileType: 'Use the exported .zip, or a .txt or .md file.',
   },
   photo: {
     failed: {
