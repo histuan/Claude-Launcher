@@ -22,6 +22,7 @@ function setup(opts: { found?: string | null; checkFails?: boolean; downloadFail
       onProgress(55);
       if (opts.downloadFails) throw new Error('sha512 checksum mismatch');
       onProgress(100);
+      return { bytes: 92_345_678, mode: 'full' as const };
     },
     install: () => { s.installs++; },
     busy: () => s.busy.shift() ?? false,
@@ -82,6 +83,7 @@ test('Install: progress in whole percents, then a silent install', async () => {
   ]);
   assert.equal(s.installs, 1);
   assert.equal(updates.active, true);
+  assert.match(s.logs.at(-1)!, /^update: download 0\.6\.1: 92345678 bytes, \d+ ms, full; installing$/);
 });
 
 test('download error: a failed status, nothing installed, the launcher is free again', async () => {

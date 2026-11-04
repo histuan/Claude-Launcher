@@ -8,6 +8,16 @@ Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-04
+
+Self-update test release: update download log; no functional changes.
+
+### Added
+
+- `sign-in-timings.log` gets one line per update download: version, size in bytes, time in ms and whether it was a
+  **full** or a **differential** download (or **cached**, when the installer was already downloaded). No URLs or
+  tokens are logged.
+
 ## [0.6.0] - 2026-11-04
 
 Phase 5.2: the launcher updates itself.
@@ -356,7 +366,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/histuan/Claude-Launcher/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/histuan/Claude-Launcher/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/histuan/Claude-Launcher/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.5...v0.5.0
