@@ -82,7 +82,7 @@ test('4th: the old MSIX LocalCache path only if it holds cookies', async () => {
 });
 
 test('fail safe: no candidate with cookies → no profile; every checked path is reported', async () => {
-  // Thiago's PC case for the old code: the MSIX LocalCache folder exists but is empty.
+  // Case seen on a real PC for the old code: the MSIX LocalCache folder exists but is empty.
   const r = await resolveDefaultProfile(deps({ processes: running(REAL), processError: false, claudeDataNames: ['claude_abc123'] }));
   assert.equal(r.slot, null);
   assert.deepEqual(r.checked, [

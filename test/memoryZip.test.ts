@@ -62,10 +62,10 @@ test('normal export: .md entries in path order, trimmed, BOM dropped (deflate an
 test("Claude's claude-memory-<date>/ folder is dropped from the paths", async () => {
   const result = await readMemoryZip(zip([
     { name: 'claude-memory-2026-11-04/areas/claude-launcher.md', data: 'Electron app.' },
-    { name: 'claude-memory-2026-11-04/about.md', data: 'Thiago.' },
+    { name: 'claude-memory-2026-11-04/about.md', data: 'Alex.' },
   ]));
   assert.deepEqual(result, { files: [
-    { path: 'about.md', text: 'Thiago.' },
+    { path: 'about.md', text: 'Alex.' },
     { path: 'areas/claude-launcher.md', text: 'Electron app.' },
   ] });
 });

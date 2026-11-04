@@ -22,7 +22,7 @@ export interface SignInDeps {
   /**
    * Same list, plus whether one of them has a visible window. Used once, at the start: the main Claude is reopened at
    * the end only if it had a visible window (Claude runs hidden after its window is closed, with no tray icon on
-   * Thiago's PC: reopening it would pop up a window the person had closed). Without it: every running one counts.
+   * a real PC: reopening it would pop up a window the person had closed). Without it: every running one counts.
    */
   listDefaultWindows?(): Promise<{ pids: number[]; visible: boolean }>;
   /** Asks the processes to close (taskkill /T without /F). */

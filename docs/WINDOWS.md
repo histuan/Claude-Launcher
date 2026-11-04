@@ -1,9 +1,9 @@
 # Windows — verified facts and technical design
 
 Windows adaptation of the macOS guide "Run a Separate Claude Desktop App for Each Claude Account"
-(chadtimbl.in), plus what was verified on Thiago's PC and in third-party projects.
+(chadtimbl.in), plus what was verified on Windows 11 and in third-party projects.
 
-## 1. Verified on Thiago's PC (Phase 0, 2026-10-26, Claude 3.6556.2.0)
+## 1. Verified on Windows 11 (Phase 0, 2026-10-26, Claude 3.6556.2.0)
 
 | Test | Result |
 |---|---|
@@ -30,7 +30,7 @@ Windows adaptation of the macOS guide "Run a Separate Claude Desktop App for Eac
 | Close request (0.4.3 test, 2026-10-28) | `taskkill /PID <pid> /T` (no `/F`) **never** closes Claude: it only closes its window and keeps running. `sign-in-timings.log` showed "close main Claude: forced" every time (~8 s with the old ~5 s wait) |
 | Reopening Claude while it is being closed (0.4.3 test) | A new default-profile process appears; the 0.4.3 launcher kept trying to close for ~47 s ("still running") and then stopped |
 | Desktop sign-in without the cookie (0.4.3 test) | "cookie not written before the force-end: 35260 ms", then a forced end and the move: the account still opened **signed in** and its card did not say "Not signed in". The desktop app's sign-in lives in `config.json` (`oauth:tokenCache*`); waiting for the cookie flush is not needed |
-| Closing the window | Claude keeps running **with no window and no tray icon** (0.4.5 test, 2026-11-04: there is no tray icon on Thiago's PC): only Task Manager or "Close this account" in the launcher ends it |
+| Closing the window | Claude keeps running **with no window and no tray icon** (0.4.5 test, 2026-11-04: there was no tray icon on the test PC): only Task Manager or "Close this account" in the launcher ends it |
 | First open of a freshly signed-in profile | Claude may start without a window; spawning the same command again shows it (single-instance re-activation) |
 
 ## 2. macOS guide → Windows
@@ -142,7 +142,7 @@ Flow rules:
 
 ## 5. Account details (email and real name)
 
-**Decision (Phase 5, 2026-11-04): v1 uses manual details only.** Thiago ran `scripts/diagnose-accounts.ps1`
+**Decision (Phase 5, 2026-11-04): v1 uses manual details only.** `scripts/diagnose-accounts.ps1` was run
 (key names, paths and masked e-mails only) on his PC: the local profile files are **not a reliable source** of the
 account's e-mail and name, so option 1 is dropped and option 2 is left for later.
 

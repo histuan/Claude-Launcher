@@ -10,15 +10,15 @@ instance of the official app and stays signed in. Nothing more.
 ```
 ┌──────────────────────────────────────────────────────┐
 │                                                      │
-│        ✳  Good evening, Thiago                       │  ← original icon + serif greeting
+│        ✳  Good evening, Alex                         │  ← original icon + serif greeting
 │                                                      │
 │     ┌──────────┐  ┌──────────┐  ┌──────────┐         │
 │     │      ⋯   │  │      ⋯   │  │      ⋯   │         │  ← card menu
-│     │  ( T )   │  │  ( W )   │  │  (photo) │         │  ← chosen photo or initial
+│     │  ( A )   │  │  ( W )   │  │  (photo) │         │  ← chosen photo or initial
 │     │          │  │          │  │          │         │
 │     │ Main     │  │ Work     │  │ College  │         │  ← name the person gave
-│     │ thiago@… │  │ me@comp… │  │ t@unifor…│         │  ← email (light grey)
-│     │ Thiago U.│  │ Thiago G.│  │ Thiago   │         │  ← real account name (smaller, greyer)
+│     │ alex@ex… │  │ me@comp… │  │ a@school…│         │  ← email (light grey)
+│     │ Alex R.  │  │ Alex M.  │  │ Alex     │         │  ← real account name (smaller, greyer)
 │     │ ● Running│  │          │  │          │         │  ← only if the instance is running
 │     └──────────┘  └──────────┘  └──────────┘  →      │  ← scrolls sideways only if it does not fit
 │                                                      │
@@ -65,7 +65,7 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
 - **Close this account** — ends that account's Claude. The launcher **stays open** afterwards (intended: the person
   usually closes one account to do something else in the launcher).
 
-**Signed-out state (tested on Thiago's PC, 0.4.2):** signing out inside Claude does **not** change the `config.json`
+**Signed-out state (tested on Windows 11, 0.4.2):** signing out inside Claude does **not** change the `config.json`
 keys, and the cookie database is locked while Claude runs, so a signed-out account is only known once its profile is
 closed ("Not signed in" then appears on the card). The launcher does not try to detect it while the account runs.
 Confirmed again in the 0.4.5 test: every copy of the cookie database fails with `EBUSY` while Claude runs, and for a
@@ -106,7 +106,7 @@ Values marked "≈" are approximate: keep them as CSS variables in one place to 
 - Per-user NSIS installer, with a Start menu shortcut.
 - New versions come out on GitHub Releases (tag `vX.Y.Z`; `launcher-vX.Y.Z` up to 0.4.5), created automatically
   when a phase is merged into `main`, with `latest.yml` and the `.blockmap` next to the `.exe`.
-- **Self-update (since 0.6.0, scope change approved by Thiago):** `electron-updater`, GitHub provider (public repo, no
+- **Self-update (since 0.6.0, scope change):** `electron-updater`, GitHub provider (public repo, no
   token in the app). Once per start, after the cards are shown (never blocking them), the launcher checks the latest
   release. A newer one shows "Version X is available. Install now?" with **What's new** (release page), **Later**
   (asked again on the next start) and **Install** (download with a progress bar, silent install, the launcher opens
@@ -121,7 +121,7 @@ macOS and Linux; light theme; migrating scheduled tasks and MCP between profiles
 
 ## 7. v1 done criteria
 
-- Installs and opens on Thiago's Windows 10/11.
+- Installs and opens on Windows 10/11.
 - Opens the Main account and at least one extra account side by side, each in its own account.
 - Add account works with email sign-in and Google sign-in, and the main profile stays intact afterwards.
 - Closing the launcher in the middle of sign-in and reopening it restores the main profile.

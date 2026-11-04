@@ -1,12 +1,12 @@
 # Status
 
-**Current phase:** 0.6.2 — update polish, in a PR to `main`, waiting for Thiago's test and merge. Next: Phase 6 —
+**Current phase:** 0.6.2 — update polish, in a PR to `main`, waiting for the test on Windows and the merge. Next: Phase 6 —
 Polish and release (`docs/PHASES.md`), after the merge.
 
 ## Done
 
 - Full planning (`docs/SCOPE.md`, `docs/WINDOWS.md`, `docs/PHASES.md`).
-- Phase 0 on Thiago's PC (2026-10-26): isolated profile with `--user-data-dir` works on Claude 3.6556.2.0.
+- Phase 0 on Windows 11 (2026-10-26): isolated profile with `--user-data-dir` works on Claude 3.6556.2.0.
 - Phase 1 (2026-10-26): `package.json` (Electron 44, electron-builder 26, per-user NSIS), `src/` layout, window with
   placeholder text, `src/core/greeting.js` + test, workflow building the `.exe` on Windows.
 - Phase 1.5 (2026-10-26): renamed to **Multi-Account Launcher for Claude**, docs and interface in
@@ -85,7 +85,7 @@ Polish and release (`docs/PHASES.md`), after the merge.
   is available. Install now?" with What's new / Later / Install; download with progress, silent install, reopen;
   errors = short message + Releases link. Waits while a sign-in or the memory assistant runs; sign-in and memories
   are refused while an update downloads. Releases now carry `latest.yml` + `.blockmap` (checked on every CI run).
-  `scripts/install-latest.ps1` (placeholder until Thiago pastes his script). Screenshots (mocked):
+  `scripts/install-latest.ps1` (placeholder at first, then the real tester script). Screenshots (mocked):
   `docs/screenshots/phase-5.2-available.png`, `phase-5.2-downloading.png`, `phase-5.2-failed.png`.
 
 - 0.6.1: test release for the self-update. `sign-in-timings.log` gets `update: download <version>: <bytes> bytes,
@@ -115,17 +115,16 @@ Polish and release (`docs/PHASES.md`), after the merge.
 
 - Self-update: the first real test is 0.6.0 → 0.6.1 (0.5.1 and older have no updater; v0.5.1 has no `latest.yml`, so
   a 0.6.0 PR build only logs `update: check failed` until v0.6.0 is released). A failed check is never shown.
-- `scripts/install-latest.ps1` is a placeholder: Thiago replaces it with his
-  `%USERPROFILE%\Claude-Launcher-tools\install-latest.ps1`.
+- `scripts/install-latest.ps1` is the tester script (README → "For testers").
 - Unsigned `.exe`: electron-updater verifies the signature only when `publisherName` is set (it is not), so unsigned
   updates install. If the installer is ever signed, set `win.publisherName` at the same time.
 
 - E-mail and real name are typed by the person (`docs/WINDOWS.md` §5). Reading them via the `sessionKey` cookie and
   the claude.ai endpoint is a possible later improvement, not v1.
 - Startup (0.5.1): only the very first start (no cache yet) waits for the Windows name and main-profile lookups.
-- Memories: the menu paths are Thiago's translation of the Portuguese UI (Configurações → Memória → Exportar /
+- Memories: the menu paths are a translation of the Portuguese UI (Configurações → Memória → Exportar /
   Iniciar importação). If the English UI words them differently, only `strings.memories` changes. Export layout
-  (PC test): `claude-memory-<date>/<memory path>.md`, 41 files and 131,248 characters on Thiago's account.
+  (PC test): `claude-memory-<date>/<memory path>.md`, 41 files and 131,248 characters on a real account.
 - Not verified: whether Claude's Start import accepts a second import right after the first (the parts flow assumes
   it does), and whether a paste near 100,000 characters goes through in one go.
 - Not verified on the PC yet: the window query (`Get-Process` `MainWindowHandle` joined to `Win32_Process` by id),

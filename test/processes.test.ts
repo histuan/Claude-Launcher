@@ -7,15 +7,15 @@ import {
 } from '../src/core/processes.js';
 
 const APP = 'C:\\Program Files\\WindowsApps\\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe';
-const CLI = 'C:\\Users\\thiag\\AppData\\Local\\Claude-Data\\x\\claude-code\\2.1.0\\claude.exe';
+const CLI = 'C:\\Users\\alex\\AppData\\Local\\Claude-Data\\x\\claude-code\\2.1.0\\claude.exe';
 
 // Sample of what the PowerShell process query prints (ConvertTo-Json -Compress -InputObject @(...)).
 const SAMPLE = JSON.stringify([
   { ProcessId: 100, ExecutablePath: APP, CommandLine: `"${APP}"` },
   { ProcessId: 101, ExecutablePath: APP, CommandLine: `"${APP}" --type=renderer --user-data-dir=C:\\x` },
-  { ProcessId: 200, ExecutablePath: APP, CommandLine: `"${APP}" --user-data-dir=C:\\Users\\thiag\\ClaudeProfiles\\work` },
+  { ProcessId: 200, ExecutablePath: APP, CommandLine: `"${APP}" --user-data-dir=C:\\Users\\alex\\ClaudeProfiles\\work` },
   { ProcessId: 201, ExecutablePath: APP, CommandLine: `"${APP}" "--user-data-dir=C:\\Users\\a b\\ClaudeProfiles\\college"` },
-  { ProcessId: 300, ExecutablePath: CLI, CommandLine: `"${CLI}" --user-data-dir=C:\\Users\\thiag\\ClaudeProfiles\\other` },
+  { ProcessId: 300, ExecutablePath: CLI, CommandLine: `"${CLI}" --user-data-dir=C:\\Users\\alex\\ClaudeProfiles\\other` },
   { ProcessId: 301, ExecutablePath: CLI, CommandLine: 'claude' },
   { ProcessId: 400, ExecutablePath: null, CommandLine: null },
 ]);
@@ -23,7 +23,7 @@ const SAMPLE = JSON.stringify([
 test('keeps only Claude Desktop main processes, by exe path; reads --user-data-dir', () => {
   assert.deepEqual(parseClaudeProcesses(SAMPLE), [
     { pid: 100, profileDir: null },
-    { pid: 200, profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\work' },
+    { pid: 200, profileDir: 'C:\\Users\\alex\\ClaudeProfiles\\work' },
     { pid: 201, profileDir: 'C:\\Users\\a b\\ClaudeProfiles\\college' },
   ]);
 });
@@ -43,21 +43,21 @@ test('only the Claude Code CLI running: nothing is running', () => {
 
 test('maps processes to account ids (Main = no flag; paths compared without case or trailing slash)', () => {
   const work: Account = { id: 'work', label: 'Work', email: null, realName: null, photo: null,
-    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\work', signedIn: null };
-  const home: Account = { ...work, id: 'home', profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\home' };
+    profileDir: 'C:\\Users\\alex\\ClaudeProfiles\\work', signedIn: null };
+  const home: Account = { ...work, id: 'home', profileDir: 'C:\\Users\\alex\\ClaudeProfiles\\home' };
   const accounts = [...defaultConfig().accounts, work, home];
-  assert.deepEqual(runningAccountIds(accounts, [{ pid: 1, profileDir: 'c:/users/THIAG/ClaudeProfiles/Work/' }]), ['work']);
+  assert.deepEqual(runningAccountIds(accounts, [{ pid: 1, profileDir: 'c:/users/ALEX/ClaudeProfiles/Work/' }]), ['work']);
   assert.deepEqual(runningAccountIds(accounts, [{ pid: 1, profileDir: null }]), ['main']);
   assert.deepEqual(runningAccountIds(accounts, []), []);
 });
 
-const PROFILE = 'C:\\Users\\thiag\\AppData\\Local\\Claude-Data\\claude_pzs8sxrjxfjjc';
+const PROFILE = 'C:\\Users\\alex\\AppData\\Local\\Claude-Data\\claude_pzs8sxrjxfjjc';
 const ALL = JSON.stringify([
   { ProcessId: 100, ParentProcessId: 4, ExecutablePath: APP, CommandLine: `"${APP}"` },
   { ProcessId: 101, ParentProcessId: 100, ExecutablePath: APP, CommandLine: `"${APP}" --type=gpu-process "--user-data-dir=${PROFILE}"` },
   // An extra account: its children carry its own folder and must not be taken for the default one.
-  { ProcessId: 200, ParentProcessId: 4, ExecutablePath: APP, CommandLine: `"${APP}" --user-data-dir=C:\\Users\\thiag\\ClaudeProfiles\\work` },
-  { ProcessId: 201, ParentProcessId: 200, ExecutablePath: APP, CommandLine: `"${APP}" --type=renderer --user-data-dir=C:\\Users\\thiag\\ClaudeProfiles\\work` },
+  { ProcessId: 200, ParentProcessId: 4, ExecutablePath: APP, CommandLine: `"${APP}" --user-data-dir=C:\\Users\\alex\\ClaudeProfiles\\work` },
+  { ProcessId: 201, ParentProcessId: 200, ExecutablePath: APP, CommandLine: `"${APP}" --type=renderer --user-data-dir=C:\\Users\\alex\\ClaudeProfiles\\work` },
   { ProcessId: 300, ParentProcessId: 1, ExecutablePath: `${PROFILE}\\claude-code\\2.1.0\\claude.exe`, CommandLine: 'claude' },
   { ProcessId: 400, ParentProcessId: 1, ExecutablePath: `${PROFILE}-other\\x.exe`, CommandLine: null },
   { ProcessId: 500, ExecutablePath: null },
@@ -78,8 +78,8 @@ test('processes running from inside a folder (not a sibling with the same prefix
 test('pidsForProfile: null = default instance only; a folder matches only that profile', () => {
   const list = parseClaudeProcesses(SAMPLE);
   assert.deepEqual(pidsForProfile(list, null), [100]);
-  assert.deepEqual(pidsForProfile(list, 'c:/users/THIAG/claudeprofiles/work/'), [200]);
-  assert.deepEqual(pidsForProfile(list, 'C:\\Users\\thiag\\ClaudeProfiles\\nope'), []);
+  assert.deepEqual(pidsForProfile(list, 'c:/users/ALEX/claudeprofiles/work/'), [200]);
+  assert.deepEqual(pidsForProfile(list, 'C:\\Users\\alex\\ClaudeProfiles\\nope'), []);
 });
 
 test('window query: MainWindowHandle 0 or null = no window (Claude running without one)', () => {
@@ -94,6 +94,6 @@ test('window query: MainWindowHandle 0 or null = no window (Claude running witho
   assert.equal(windowPid(list, null), null);
   assert.equal(windowPid(list, 'C:\\P\\work'), 200);
   assert.equal(windowPid(list, 'C:\\P\\home'), null);
-  assert.equal(windowPid(parseClaudeProcesses(SAMPLE), 'C:\\Users\\thiag\\ClaudeProfiles\\work'), null,
+  assert.equal(windowPid(parseClaudeProcesses(SAMPLE), 'C:\\Users\\alex\\ClaudeProfiles\\work'), null,
     'the plain process query has no window information');
 });
