@@ -38,6 +38,9 @@ export interface LauncherConfig {
   /** Last main Claude profile found (0.5.1), only to show at once whether sign-in is available. A sign-in always
    * looks it up again. null = unknown (wait for the lookup). */
   defaultProfile: string | null;
+  /** 0.6.2: the last newer launcher version found, so the next start shows the notice at once (the check confirms
+   * or clears it). null = none known. */
+  knownUpdate: string | null;
 }
 
 export const isMain = (account: Account): boolean => account.profileDir === null;
@@ -49,7 +52,7 @@ export function profileDirFor(userProfile: string, id: string): string {
 }
 
 export function defaultConfig(): LauncherConfig {
-  return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }], claudeApp: null, windowsName: null, defaultProfile: null };
+  return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }], claudeApp: null, windowsName: null, defaultProfile: null, knownUpdate: null };
 }
 
 /** Only direct children of %USERPROFILE%\ClaudeProfiles may be created or deleted by the launcher. */
@@ -126,7 +129,12 @@ export function parseConfig(raw: unknown): LauncherConfig {
     claudeApp: parseCachedClaude(data.claudeApp),
     windowsName: text(data.windowsName),
     defaultProfile: text(data.defaultProfile) || null,
+    knownUpdate: text(data.knownUpdate) || null,
   };
+}
+
+export function setKnownUpdate(cfg: LauncherConfig, version: string | null): LauncherConfig {
+  return { ...cfg, knownUpdate: version };
 }
 
 export function setClaudeApp(cfg: LauncherConfig, app: CachedClaude): LauncherConfig {

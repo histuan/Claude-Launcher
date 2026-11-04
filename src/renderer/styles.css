@@ -11,6 +11,15 @@
   --text-email: #b7b5ad;
   --text-real-name: #8f8d86;
   --danger: #e5675c;
+  /* Shared buttons (0.6.2): hover = one step lighter, pressed = slightly darker than the resting colour */
+  --button: #3d3d3a;
+  --button-hover: #4a4a46;
+  --button-active: #353532;
+  --accent-active: #c4674a;
+  --danger-hover: #ec7f75;
+  --danger-active: #cf5a50;
+  --menu-active: #3d3d3a;
+  --transition: .12s;
   --font-serif: 'Source Serif 4 Variable', Georgia, serif;
   --font-sans: 'Inter Variable', 'Segoe UI', sans-serif;
   --titlebar-height: 36px;
@@ -114,18 +123,15 @@ main {
   color: var(--text-email); pointer-events: none;
 }
 
-.add {
-  padding: 10px 22px; border: 0; border-radius: 10px;
-  background: var(--accent); color: var(--bg); font-weight: 600; cursor: pointer;
-}
-.add:hover { background: var(--accent-hover); }
-.add[aria-disabled="true"] { opacity: .45; cursor: default; }
-.add[aria-disabled="true"]:hover { background: var(--accent); }
+.add { padding: 10px 22px; border-radius: 10px; }
 .note { margin: -24px 0 0; font-size: 12px; color: var(--text-real-name); text-align: center; }
-.version {
-  position: fixed; right: 12px; bottom: 8px; margin: 0; font-size: 11px; color: var(--text-real-name);
-  cursor: default; user-select: none; /* hover shows the log path (title) */
+/* Bottom-right: "Update to X" (after Later) and the version, a link to its release page (title = log path) */
+.corner {
+  position: fixed; right: 12px; bottom: 8px; display: flex; align-items: baseline; gap: 12px;
+  font-size: 11px; user-select: none;
 }
+.corner .text-link { font-size: 11px; }
+.text-link.version { color: var(--text-real-name); }
 
 /* Sign-in start steps: done ✓, current, next (dimmed) */
 .steps { margin: 4px 0 16px; padding: 0; list-style: none; font-size: 14px; }
@@ -146,14 +152,7 @@ main {
   border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
   box-shadow: 0 8px 24px rgb(0 0 0 / .35);
 }
-.menu button {
-  display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 6px;
-  background: none; text-align: left; font-size: 14px; cursor: pointer;
-}
-.menu button:hover, .menu button:focus-visible { background: var(--surface-hover); outline: none; }
-.menu button[aria-disabled="true"] { color: var(--text-real-name); cursor: default; }
-.menu button[aria-disabled="true"]:hover { background: none; }
-.menu .danger { color: var(--danger); }
+.menu button { display: block; width: 100%; padding: 8px 10px; border-radius: 6px; text-align: left; font-size: 14px; }
 
 /* Rename / remove dialog */
 dialog {
@@ -170,11 +169,8 @@ dialog input {
 }
 dialog input:focus { border-color: var(--accent); outline: none; }
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; }
-.dialog-buttons button { padding: 8px 16px; border: 0; border-radius: 8px; background: var(--border); cursor: pointer; }
-#dialog-confirm, .dialog-buttons .primary { background: var(--accent); color: var(--bg); font-weight: 600; }
-.dialog-buttons button:disabled { opacity: .5; cursor: progress; }
+.dialog-buttons button { padding: 8px 16px; border-radius: 8px; }
 dialog p { white-space: pre-line; overflow-wrap: anywhere; }
-#dialog-confirm.danger { background: var(--danger); }
 
 /* Add account / Edit details */
 .field { display: block; margin-bottom: 10px; font-size: 13px; color: var(--text-email); }
@@ -190,7 +186,6 @@ img.avatar { object-fit: cover; background: var(--surface); }
 /* Receive memories from… */
 .menu .menu-title { margin: 0; padding: 6px 10px 4px; font-size: 12px; color: var(--text-real-name); }
 .menu .menu-email { display: block; font-size: 12px; color: var(--text-email); }
-.dialog-buttons button.danger { background: var(--danger); color: var(--bg); font-weight: 600; }
 .dialog-buttons button[hidden] { display: none; }
 #memories { width: 440px; }
 #memories .how { margin: 0 0 12px; padding-left: 1.4em; font-size: 14px; }
@@ -205,18 +200,9 @@ dialog p.tip { font-size: 12px; color: var(--text-real-name); }
 /* Self-update dialog (Phase 5.2) */
 #update { width: min(440px, calc(100vw - 32px)); }
 #update progress { display: block; width: 100%; height: 8px; margin: 0 0 12px; accent-color: var(--accent); }
-#update progress[hidden], #update .link[hidden] { display: none; }
-#update .link {
-  margin: 0 0 12px; padding: 0; border: 0; background: none; color: var(--accent); cursor: pointer; font: inherit;
-}
-#update .link:hover { color: var(--accent-hover); text-decoration: underline; }
-
-#memories .link {
-  display: block; margin: 0 0 10px; padding: 0; border: 0; background: none;
-  color: var(--accent); font-size: 13px; cursor: pointer;
-}
-#memories .link:hover { color: var(--accent-hover); text-decoration: underline; }
-#memories .link[hidden] { display: none; }
+#update progress[hidden] { display: none; }
+#update .text-link { margin: 0 0 12px; }
+#memories .text-link { display: block; margin: 0 0 10px; font-size: 13px; }
 
 /* Receive memories: checklist of the exported .zip, parts in step 2 */
 #memories .files {
@@ -235,3 +221,41 @@ dialog p.tip { font-size: 12px; color: var(--text-real-name); }
 #memories p.total { margin: 0 0 8px; font-size: 12px; color: var(--text-email); }
 #memories textarea[readonly] { color: var(--text-email); }
 #memories p.part { color: var(--text); font-weight: 600; }
+
+/* ---------- Shared buttons (0.6.2) ----------
+   One hover for every button outside the cards, from the main screen's Add account: pointer cursor, a subtle
+   colour change in ~120 ms, slightly darker while pressed. Disabled buttons have no hover. The focus ring stays.
+   By default: any button in .dialog-buttons is secondary (.primary / .danger change it), any button in .menu is a
+   menu item, .text-link is a text link, .add is the main-screen primary button. */
+.dialog-buttons button, .add, .menu button, .text-link {
+  border: 0; cursor: pointer;
+  transition: background-color var(--transition), color var(--transition);
+}
+.dialog-buttons button { background: var(--button); color: var(--text); }
+.dialog-buttons button:hover:enabled { background: var(--button-hover); }
+.dialog-buttons button:active:enabled { background: var(--button-active); }
+
+.add, .dialog-buttons button.primary { background: var(--accent); color: var(--bg); font-weight: 600; }
+.add:hover:not([aria-disabled="true"]), .dialog-buttons button.primary:hover:enabled { background: var(--accent-hover); }
+.add:active:not([aria-disabled="true"]), .dialog-buttons button.primary:active:enabled { background: var(--accent-active); }
+.add[aria-disabled="true"] { opacity: .45; cursor: default; }
+
+.dialog-buttons button.danger { background: var(--danger); color: var(--bg); font-weight: 600; }
+.dialog-buttons button.danger:hover:enabled { background: var(--danger-hover); }
+.dialog-buttons button.danger:active:enabled { background: var(--danger-active); }
+.dialog-buttons button:disabled { opacity: .5; cursor: progress; }
+
+.menu button { background: none; color: var(--text); }
+.menu .danger { color: var(--danger); }
+.menu button:is(:hover, :focus-visible):not([aria-disabled="true"]) { background: var(--surface-hover); outline: none; }
+.menu button:active:not([aria-disabled="true"]) { background: var(--menu-active); }
+.menu button[aria-disabled="true"] { color: var(--text-real-name); cursor: default; }
+
+.text-link { padding: 0; background: none; color: var(--accent); }
+.text-link:hover:enabled { color: var(--accent-hover); text-decoration: underline; }
+.text-link:active:enabled { color: var(--accent-active); }
+.text-link[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-buttons button, .add, .menu button, .text-link, .card-open, .pencil { transition: none; }
+}

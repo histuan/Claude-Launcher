@@ -904,7 +904,7 @@ async function showResult(result: ActionResult): Promise<void> {
   }
 }
 
-// ---------- Self-update (Phase 5.2): What's new / Later / Install; nothing is ever forced ----------
+// ---------- Self-update (Phase 5.2, 0.6.2): What's new / Later / Install; nothing is ever forced ----------
 
 const updateDialog = byId<HTMLDialogElement>('update');
 const updateProgress = byId<HTMLProgressElement>('update-progress');
@@ -913,22 +913,36 @@ const updateReleases = byId<HTMLButtonElement>('update-releases');
 const updateNotes = byId<HTMLButtonElement>('update-notes');
 const updateLater = byId<HTMLButtonElement>('update-later');
 const updateInstall = byId<HTMLButtonElement>('update-install');
+const updateLink = byId<HTMLButtonElement>('update-link');
 updateNotes.textContent = strings.update.whatsNew;
 updateInstall.textContent = strings.update.install;
 updateReleases.textContent = strings.update.releases;
-/** Downloading or installing: the dialog cannot be closed (the download is not stopped half-way). */
+
 let updateRunning = false;
+/** The newer version on offer (dialog and corner link), or null. */
+let updateOffer: string | null = null;
+/** Later was chosen: a re-sent notice only updates the corner link, it does not open the dialog again. */
+let updateDeferred = false;
 
 updateNotes.addEventListener('click', () => void api.updates.openNotes());
 updateReleases.addEventListener('click', () => void api.updates.openReleases());
 updateLater.addEventListener('click', () => closeUpdate());
 updateInstall.addEventListener('click', () => void installUpdate());
+updateLink.addEventListener('click', () => void reopenUpdate());
 updateDialog.addEventListener('cancel', (e) => {
-  e.preventDefault(); // Esc = Later, except while it downloads
+  e.preventDefault(); // Esc = Later, never while downloading or installing
   if (!updateRunning) closeUpdate();
 });
+updateDialog.addEventListener('close', renderUpdateLink);
+
+/** "Update to X" next to the version label: only while a newer version is known and its dialog is closed. */
+function renderUpdateLink(): void {
+  updateLink.hidden = !updateOffer || updateRunning || updateDialog.open;
+  if (updateOffer) updateLink.textContent = strings.update.link(updateOffer);
+}
 
 function closeUpdate(): void {
+  updateDeferred = true;
   updateDialog.close();
   void api.updates.later();
 }
@@ -941,12 +955,35 @@ async function installUpdate(): Promise<void> {
   if (error) updateError.textContent = strings.update.busy;
 }
 
+/** The corner link: the same dialog again; during a sign-in or the memory assistant, the busy message. */
+async function reopenUpdate(): Promise<void> {
+  if (!updateOffer) return;
+  const error = await api.updates.show().catch(() => null);
+  renderUpdate({ phase: 'available', version: updateOffer });
+  if (error) updateError.textContent = strings.update.busy;
+}
+
 function showUpdate(status: UpdateStatus): void {
-  // Never on top of another dialog: it waits until that one is closed.
-  if (status.phase === 'available' && document.querySelector('dialog[open]')) {
-    setTimeout(() => showUpdate(status), 1_000);
+  if (status.phase === 'none') {
+    updateOffer = null;
+    if (updateDialog.open && !updateRunning) updateDialog.close();
+    renderUpdateLink();
     return;
   }
+  if (status.phase === 'available') {
+    updateOffer = status.version;
+    // After Later the corner link is enough. Never on top of another dialog: it waits until that one is closed.
+    if (updateDeferred && !updateDialog.open) return renderUpdateLink();
+    if (!updateDialog.open && document.querySelector('dialog[open]')) {
+      renderUpdateLink();
+      setTimeout(() => showUpdate(status), 1_000);
+      return;
+    }
+  }
+  renderUpdate(status);
+}
+
+function renderUpdate(status: Exclude<UpdateStatus, { phase: 'none' }>): void {
   updateRunning = status.phase === 'downloading' || status.phase === 'installing';
   byId('update-title').textContent = status.phase === 'failed'
     ? strings.update.failedTitle(status.version) : strings.update.title(status.version);
@@ -965,6 +1002,7 @@ function showUpdate(status: UpdateStatus): void {
     updateDialog.showModal();
     updateInstall.focus();
   }
+  renderUpdateLink();
 }
 
 api.updates.onStatus(showUpdate);
@@ -979,8 +1017,10 @@ add.textContent = `+ ${strings.addAccount}`;
 add.addEventListener('click', () => void addNew());
 
 state = await api.getState();
-byId('version').textContent = strings.version(state.version);
-byId('version').title = strings.logs(state.timingsLog);
+const version = byId('version');
+version.textContent = strings.version(state.version);
+version.title = strings.logs(state.timingsLog);
+version.addEventListener('click', () => void api.openVersionNotes());
 renderGreetingText();
 renderName();
 renderCards();

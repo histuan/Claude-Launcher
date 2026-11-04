@@ -23,7 +23,7 @@ export const strings = {
   badges: {
     main: 'Main',
   } satisfies Record<CardBadge, string>,
-  /** Bottom-left corner, e.g. "v0.4.3". */
+  /** Bottom-right corner, e.g. "v0.6.2": a link to that version's release page (0.6.2). */
   version: (version: string) => `v${version}`,
   /** Tooltip of the version label. */
   logs: (file: string) => `Logs: ${file}`,
@@ -275,7 +275,7 @@ export const strings = {
     } satisfies Record<MemoryZipError, string>,
     fileType: 'Use the exported .zip, or a .txt or .md file.',
   },
-  /** Self-update (Phase 5.2): asked once per start; nothing is ever forced. */
+  /** Self-update (Phase 5.2, 0.6.2): asked once per start; nothing is ever forced. */
   update: {
     title: (version: string) => `Version ${version} is available. Install now?`,
     body: 'The launcher closes, installs it and opens again by itself.',
@@ -283,12 +283,19 @@ export const strings = {
     later: 'Later',
     install: 'Install',
     downloading: (percent: number) => `Downloading… ${percent}%`,
-    installing: 'Installing… the launcher opens again in a moment.',
+    // The install is silent (no installer window): say how long the gap is.
+    installing: 'Installing… the launcher opens again in about 20 seconds.',
     busy: 'Finish the sign-in or the memory import first, then choose Install again.',
     failedTitle: (version: string) => `Couldn't update to version ${version}`,
     failed: 'The update could not be downloaded or installed. Nothing was changed.',
     releases: 'Download it from the Releases page',
     close: 'Close',
+    /** Discreet link next to the version label after Later, while a newer version is known. */
+    link: (version: string) => `Update to ${version}`,
+    /** Started while the update installer still runs. */
+    finishing: 'Finishing the update…',
+    finishingDetail: 'The launcher opens again by itself in a few seconds.',
+    ok: 'OK',
   },
   photo: {
     failed: {

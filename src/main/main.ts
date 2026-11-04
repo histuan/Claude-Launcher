@@ -5,10 +5,10 @@ import os from 'node:os';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
+import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget, UpdateStatus } from '../core/api.js';
 import {
   addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn,
-  setStartupCache,
+  setKnownUpdate, setStartupCache,
   type LauncherConfig,
 } from '../core/config.js';
 import { CachedLookup } from '../core/cachedLookup.js';
@@ -19,6 +19,8 @@ import { launchUntilWindow } from '../core/launch.js';
 import { memorySources } from '../core/memories.js';
 import { pidsForProfile, pidsInsideFolder, runningAccountIds, windowPid } from '../core/processes.js';
 import { claudeVersion, type Marker, type MarkerAccount } from '../core/signIn.js';
+import { installerRunning, mayBeInstalling } from '../core/updateInstall.js';
+import { releasePageUrl } from '../core/version.js';
 import { strings } from '../renderer/strings.js';
 import { closeProfile, removeProfile, type AccountProcessDeps } from './accountActions.js';
 import { ConfigStore } from './configStore.js';
@@ -37,7 +39,7 @@ import {
 } from './system/claudeProfile.js';
 import { readSessionCookie } from './system/cookies.js';
 import { createProfileDir, deleteProfileDir } from './system/profileFolders.js';
-import { githubUpdater } from './system/updater.js';
+import { githubUpdater, pendingInstaller } from './system/updater.js';
 import { runPowerShell, windowsDisplayName } from './system/windowsUser.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -128,6 +130,8 @@ async function runningIds(): Promise<string[]> {
 async function onCardsShown(): Promise<void> {
   if (cardsShown) return;
   cardsShown = true;
+  // The update check started with the app; its notice waits for the cards (never on top of the first screen).
+  if (updateStatus) win?.webContents.send('launcher:update', updateStatus);
   const ms = (n: number): string => `${Math.round(n)} ms`;
   logTiming(`startup: cards shown: ${ms(performance.now())} after the launcher started (app ready ${ms(startup.ready)}, `
     + `config ${ms(startup.config)}, window ${ms(startup.window)}, first state ${ms(startup.firstState)}: `
@@ -142,8 +146,6 @@ async function onCardsShown(): Promise<void> {
     logTiming(`startup: background refresh of the cached ${[name && 'Windows name', profile && 'main profile'].filter(Boolean).join(' and ')}: `
       + `${ms(performance.now() - t1)}`);
   }
-  // Last, so it never delays the cards or their checks.
-  if (app.isPackaged && onWindows) void updates.checkOnStart();
 }
 
 const accountProcesses: AccountProcessDeps = {
@@ -455,18 +457,59 @@ async function beginMemories(sourceId: string, targetId: string): Promise<Action
 
 const RELEASES_URL = 'https://github.com/histuan/Claude-Launcher/releases';
 let offeredVersion: string | null = null;
+/** The last update status: sent to the window once the cards are shown, then as it changes. */
+let updateStatus: UpdateStatus | null = null;
 
-/** Only the installed app checks (a dev build has no app-update.yml), and only once per start. */
-const updates = new SelfUpdate({
-  ...githubUpdater(),
-  busy: () => flow?.active === true || memories.step !== null,
-  wait: () => new Promise((resolve) => setTimeout(resolve, 5_000)),
-  send: (status) => {
-    offeredVersion = status.version;
-    win?.webContents.send('launcher:update', status);
-  },
-  log: logTiming,
-}, app.getVersion());
+/**
+ * Only the installed app checks (a dev build has no app-update.yml), once per start, from start() (0.6.2: as soon as
+ * the app is ready, in parallel with the first screen). Created in start(), after the config is loaded.
+ */
+let updates: SelfUpdate;
+
+function createUpdates(): SelfUpdate {
+  return new SelfUpdate({
+    ...githubUpdater(),
+    beforeInstall: () => new Promise((resolve) => setTimeout(resolve, 2_500)),
+    busy: () => flow?.active === true || memories.step !== null,
+    wait: () => new Promise((resolve) => setTimeout(resolve, 5_000)),
+    remember: async (version) => { await store.update((c) => setKnownUpdate(c, version)); },
+    send: (status) => {
+      offeredVersion = status.phase === 'none' ? null : status.version;
+      updateStatus = status;
+      if (cardsShown) win?.webContents.send('launcher:update', status);
+    },
+    log: logTiming,
+  }, app.getVersion(), store.current.knownUpdate);
+}
+
+/**
+ * 0.6.2: started while the update installer still runs (it would open the OLD version)? Only when electron-updater's
+ * pending update info is minutes old and the launcher was not started by the installer (--updated); then a process
+ * must run from that exact installer file. A failed query = open normally.
+ */
+async function updateInstalling(): Promise<boolean> {
+  const pending = await pendingInstaller(process.env.LOCALAPPDATA, process.resourcesPath);
+  if (!pending || !mayBeInstalling(pending.savedMs, Date.now(), process.argv)) return false;
+  try {
+    return installerRunning(await queryAllProcesses(runPowerShell), pending.installer);
+  } catch {
+    logTiming('update: installer query failed; opening normally');
+    return false;
+  }
+}
+
+/** "Finishing the update…": closes by itself after a few seconds; the installer opens the new version. */
+async function showFinishingUpdate(): Promise<void> {
+  logTiming('update: started while the update installer runs; not opening the old version');
+  await dialog.showMessageBox({
+    type: 'info',
+    title: strings.appName,
+    message: strings.update.finishing,
+    detail: strings.update.finishingDetail,
+    buttons: [strings.update.ok],
+    signal: AbortSignal.timeout(6_000),
+  }).catch(() => undefined);
+}
 
 function registerIpc(): void {
   ipcMain.handle('launcher:getState', () => state(store.current));
@@ -517,10 +560,12 @@ function registerIpc(): void {
   ipcMain.handle('launcher:runningAccounts', () => runningIds());
   ipcMain.handle('launcher:cardsShown', () => { void onCardsShown(); });
   ipcMain.handle('launcher:update:later', () => updates.later());
+  ipcMain.handle('launcher:update:show', () => updates.reopen());
   ipcMain.handle('launcher:update:install', () => updates.install());
   // Fixed URLs built here: the window never passes one.
   ipcMain.handle('launcher:update:openNotes', () => shell.openExternal(
-    offeredVersion ? `${RELEASES_URL}/tag/v${encodeURIComponent(offeredVersion)}` : RELEASES_URL));
+    offeredVersion ? releasePageUrl(RELEASES_URL, offeredVersion) : RELEASES_URL));
+  ipcMain.handle('launcher:openVersionNotes', () => shell.openExternal(releasePageUrl(RELEASES_URL, app.getVersion())));
   ipcMain.handle('launcher:update:openReleases', () => shell.openExternal(RELEASES_URL));
   ipcMain.handle('launcher:memories:begin', (_e, sourceId: unknown, targetId: unknown) => {
     if (!isText(sourceId) || !isText(targetId)) throw new Error('Invalid arguments');
@@ -576,6 +621,11 @@ function createWindow(): void {
 async function start(): Promise<void> {
   await app.whenReady();
   startup.ready = performance.now();
+  if (app.isPackaged && onWindows && await updateInstalling()) {
+    await showFinishingUpdate();
+    app.quit();
+    return;
+  }
   // Before anything else: an interrupted sign-in leaves a marker (WINDOWS.md §4).
   const marker = flow ? await flow.pending() : null;
   // First run: only Main. Phase 2 sample accounts (demo-*) are dropped by parseConfig.
@@ -608,9 +658,12 @@ async function start(): Promise<void> {
     save: async (dir) => { await store.update((c) => setStartupCache(c, { defaultProfile: dir })); },
     onChange: cardsChanged,
   });
+  updates = createUpdates();
   registerIpc();
   createWindow();
   startup.window = performance.now();
+  // In parallel with the first screen; the notice is sent only once the cards are shown.
+  if (app.isPackaged && onWindows) void updates.start();
 }
 
 start().catch((err: unknown) => {

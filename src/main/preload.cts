@@ -24,11 +24,13 @@ contextBridge.exposeInMainWorld('launcher', {
   removeAccount: (id: string, closeFirst?: boolean) => ipcRenderer.invoke('launcher:removeAccount', id, closeFirst === true),
   runningAccounts: () => ipcRenderer.invoke('launcher:runningAccounts'),
   cardsShown: () => ipcRenderer.invoke('launcher:cardsShown'),
+  openVersionNotes: () => ipcRenderer.invoke('launcher:openVersionNotes'),
   updates: {
     onStatus: (listener: (status: unknown) => void) => {
       ipcRenderer.on('launcher:update', (_e, status: unknown) => listener(status));
     },
     later: () => ipcRenderer.invoke('launcher:update:later'),
+    show: () => ipcRenderer.invoke('launcher:update:show'),
     install: () => ipcRenderer.invoke('launcher:update:install'),
     openNotes: () => ipcRenderer.invoke('launcher:update:openNotes'),
     openReleases: () => ipcRenderer.invoke('launcher:update:openReleases'),

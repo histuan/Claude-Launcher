@@ -22,7 +22,10 @@
     <p id="signin-note" class="note" hidden></p>
   </main>
 
-  <p id="version" class="version"></p>
+  <footer class="corner">
+    <button id="update-link" class="text-link" type="button" hidden></button>
+    <button id="version" class="text-link version" type="button"></button>
+  </footer>
 
   <div id="menu" class="menu" role="menu" hidden></div>
 
@@ -61,7 +64,7 @@
     <div id="memories-files" class="files" hidden></div>
     <p id="memories-total" class="total"></p>
     <textarea id="memories-text" rows="7" spellcheck="false" autocomplete="off"></textarea>
-    <button id="memories-file" class="link" type="button"></button>
+    <button id="memories-file" class="text-link" type="button"></button>
     <input id="memories-file-input" type="file" accept=".zip,.txt,.md" hidden>
     <p id="memories-tip" class="tip"></p>
     <p id="memories-part" class="part" role="status"></p>
@@ -78,7 +81,7 @@
     <p id="update-body"></p>
     <progress id="update-progress" max="100" value="0" hidden></progress>
     <p id="update-error" class="error" role="alert"></p>
-    <button id="update-releases" class="link" type="button" hidden></button>
+    <button id="update-releases" class="text-link" type="button" hidden></button>
     <div class="dialog-buttons">
       <button id="update-notes" type="button"></button>
       <button id="update-later" type="button"></button>
@@ -95,7 +98,7 @@
       <input id="dialog-input" type="text" maxlength="40" autocomplete="off" spellcheck="false">
       <div class="dialog-buttons">
         <button id="dialog-cancel" type="button"></button>
-        <button id="dialog-confirm" type="submit" value="confirm"></button>
+        <button id="dialog-confirm" class="primary" type="submit" value="confirm"></button>
       </div>
     </form>
   </dialog>
