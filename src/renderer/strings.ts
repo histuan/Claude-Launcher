@@ -107,6 +107,10 @@ export const strings = {
       title: 'Claude is not installed',
       body: 'Install the Claude desktop app, then try again.',
     },
+    lookupFailed: {
+      title: 'Couldn\'t find Claude in time',
+      body: 'Try again.',
+    },
     launchFailed: {
       title: 'Could not open Claude',
       body: 'Something went wrong while starting Claude. Try again.',
@@ -144,12 +148,11 @@ export const strings = {
     },
     noWindow: {
       title: 'Claude is starting in the background',
-      body: 'Claude started, but its window has not appeared yet. Look for the Claude icon in the system tray, next to '
-        + 'the clock, or click the card again.',
+      body: 'Claude started, but its window has not appeared yet. Wait a few seconds, then click the card again.',
     },
     closeFailed: {
       title: 'Could not close this account',
-      body: 'Claude is still running with this account. Try again, or quit it from the Claude icon in the system tray.',
+      body: 'Claude is still running with this account. Try again, or end it in Task Manager.',
     },
     disk: {
       title: 'Not enough disk space',

@@ -62,7 +62,7 @@ async function world(t: { after: (fn: () => Promise<void>) => void }, opts: { ki
     userProfile,
     markerFile: w.markerFile,
     listDefaultPids: async () => [...w.pids],
-    // By default Claude only hides to the tray on a close request (what it does when its window is closed).
+    // By default Claude only closes its window on a close request (what it does when its window is closed).
     closeGracefully: async (pids) => {
       w.calls.push(`graceful:${pids.join(',')}`);
       if (opts.gracefulWorks) w.pids = [];

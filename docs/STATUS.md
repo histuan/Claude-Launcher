@@ -9,6 +9,10 @@ Then Claude updated to **4.4212.0.0**: a sign-in on an existing card was not det
 4.x no longer writes the `oauth:tokenCache` keys. This PR now detects a **new** account-related key name
 (`oauth:*`, `lastKnownAccountUuid`, `*Account*`) compared with the keys present when the sign-in window opened
 (`docs/WINDOWS.md` §1 and §4), and logs the Claude version and the key that triggered it.
+Then (2026-11-04, Claude **4.16336.0.0**) Sign in said "Claude is not installed": starting PowerShell exceeded the 5 s
+timeout. The `Claude.exe` path is now cached in the launcher config (file check only; re-resolved when missing), the
+lookup has ~15 s and one retry, and a timeout shows "Couldn't find Claude in time. Try again.". No "tray" in texts any
+more: Claude has no tray icon on this PC.
 Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Receive memories from… (`docs/PHASES.md`).
 
 ## Done
@@ -149,10 +153,15 @@ Phase 4.4 (0.4.5). Sign-in still moves your main Claude profile for a moment: ke
    path). Copy the lines that start with `card check` (only account ids, decisions and error codes; never cookie
    data). Expected after step 2: `card check <id>: cookie not found`. If you see `cookie DB unreadable (…) for ~10 s
    -> kept: …`, the file stayed locked longer than ~10 s: tell me.
-5. **Sign-in on Claude 4.4212:** on a card with **Not signed in**, click **Sign in** and sign in in the Claude window
+5. **Sign-in on Claude 4.x:** on a card with **Not signed in**, click **Sign in** and sign in in the Claude window
    that opens, **without** pressing anything in the launcher. Within a few seconds the dialog goes to "saving", then
    (after Claude's cookie write, up to ~45 s) **done**; the account opens signed in and its card has no "Not signed
    in". Try **Add account** the same way. If it does not finish by itself, press **I've signed in**.
-6. **Send me** the sign-in lines of `sign-in-timings.log` from that try: `start: Claude version: 4.4212.0.0`,
+6. **Send me** the sign-in lines of `sign-in-timings.log` from that try: `start: find Claude.exe: …`,
+   `start: Claude version: 4.16336.0.0`,
    `start: account keys when the window opened: …`, `detect: new account key: …` (key names only, never values) and
    the `finish:` lines.
+7. **Claude.exe cache:** the first Sign in or card click after installing may still take a few seconds (one lookup,
+   logged as `find Claude.exe: lookup: N ms`). Every click after that starts at once (`start: find Claude.exe: cache`).
+   You should never see "Claude is not installed" while Claude is installed; if PowerShell is very slow you may see
+   "Couldn't find Claude in time. Try again." instead.

@@ -17,7 +17,7 @@ test('window already visible: one launch, confirmed', async () => {
   assert.ok(c.now() <= 500);
 });
 
-test('starts in the tray: launched again once after ~3 s, then the window shows', async () => {
+test('starts without a window: launched again once after ~3 s, then the window shows', async () => {
   const c = clock();
   let launches = 0;
   let relaunchAt = -1;

@@ -48,7 +48,7 @@ export type SignInTarget = { label: string } | { accountId: string };
 
 /** Keys of strings.errors. */
 export type ActionError =
-  | 'notInstalled' | 'launchFailed' | 'running' | 'folder'
+  | 'notInstalled' | 'lookupFailed' | 'launchFailed' | 'running' | 'folder'
   // Phase 4.1: Claude started without a window; an account that would not close
   | 'noWindow' | 'closeFailed'
   // sign-in

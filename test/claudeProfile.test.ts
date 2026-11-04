@@ -53,6 +53,14 @@ test('1st: a trailing separator is dropped; a --user-data-dir that is not a Clau
   assert.ok(r2.errors.some((e) => e.includes(odd)), r2.errors.join('\n'));
 });
 
+test('2nd: a known PackageFamilyName (launcher cache) skips the PowerShell call', async () => {
+  const d = deps({ files: [`${REAL}\\Network\\Cookies`] });
+  d.run = async () => { throw new Error('PowerShell must not run'); };
+  const r = await resolveDefaultProfile({ ...d, knownFamily: 'Claude_abc123' });
+  assert.equal(r.slot, REAL);
+  assert.deepEqual(r.errors, []);
+});
+
 test('2nd: Claude-Data\\<PackageFamilyName lowercased> (Claude not running)', async () => {
   const r = await resolveDefaultProfile(deps({ family: 'Claude_ABC123', files: [`${REAL}\\Network\\Cookies`] }));
   assert.equal(r.slot, REAL);

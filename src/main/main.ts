@@ -6,8 +6,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
 import {
-  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setGreetingName, type LauncherConfig,
+  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setGreetingName,
+  type LauncherConfig,
 } from '../core/config.js';
+import { findClaudeApp, lookupError, type ClaudeLookup } from '../core/claudeApp.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
 import { pidsForProfile, pidsInsideFolder, runningAccountIds, windowPid } from '../core/processes.js';
@@ -19,7 +21,7 @@ import { SignedInTracker } from './signedIn.js';
 import { SignInFlow, type StartError } from './signInFlow.js';
 import {
   bringToFront, launchClaude, listClaudeProcesses, queryAllProcesses, queryClaudeProcesses, queryClaudeProcessList, queryClaudeWindows,
-  resolveClaudeExe,
+  lookUpClaudeApp,
 } from './system/claudeApp.js';
 import {
   closeProcessesGracefully, describeProfileLookup, freeBytes, isProcessAlive, killProcesses, markerFileFor,
@@ -87,14 +89,33 @@ const accountProcesses: AccountProcessDeps = {
 };
 
 /**
+ * Claude.exe: the cached path while the file exists (no PowerShell), else Get-AppxPackage (~15 s, one retry); a new
+ * result is saved in the launcher config. A lookup that did not complete is never reported as "not installed".
+ */
+async function findClaude(): Promise<ClaudeLookup> {
+  if (!onWindows) return { state: 'notInstalled' };
+  const t0 = Date.now();
+  const found = await findClaudeApp({
+    cached: store.current.claudeApp,
+    exists: existsSync,
+    lookUp: () => lookUpClaudeApp(runPowerShell, process.env, existsSync),
+    save: async (app) => { await store.update((c) => setClaudeApp(c, app)); },
+  });
+  const how = found.state === 'found' ? found.source : found.state === 'failed' ? `failed (${found.reason})` : 'not installed';
+  if (!(found.state === 'found' && found.source === 'cache')) logTiming(`find Claude.exe: ${how}: ${Date.now() - t0} ms`);
+  return found;
+}
+
+/**
  * Opens Claude for the account and closes the launcher once its window is visible (SCOPE §4.1). A fresh profile may
- * start in the tray only: launchUntilWindow spawns it once more. No window after ~8 s: the launcher stays open.
+ * start without a window: launchUntilWindow spawns it once more. No window after ~8 s: the launcher stays open.
  */
 async function openAccount(id: string): Promise<ActionResult> {
   const account = store.current.accounts.find((a) => a.id === id);
   if (!account) return result(store.current);
-  const exe = onWindows ? await resolveClaudeExe(runPowerShell, process.env, existsSync) : null;
-  if (!exe) return result(store.current, 'notInstalled');
+  const claude = await findClaude();
+  if (claude.state !== 'found') return result(store.current, lookupError(claude));
+  const { exe } = claude.app;
   try {
     if (account.profileDir !== null) await createProfileDir(account.profileDir, userProfile);
     let pid: number | null = null;
@@ -137,9 +158,9 @@ let lastSignInOutcome: SignInStatus | null = null;
 let statusWork: Promise<void> = Promise.resolve();
 
 async function openDefaultClaude(): Promise<void> {
-  const exe = await resolveClaudeExe(runPowerShell, process.env, existsSync);
-  if (!exe) throw new Error('Claude is not installed');
-  await launchClaude(exe, null);
+  const claude = await findClaude();
+  if (claude.state !== 'found') throw new Error(claude.state === 'failed' ? `Claude.exe lookup failed: ${claude.reason}` : 'Claude is not installed');
+  await launchClaude(claude.app.exe, null);
 }
 
 /**
@@ -189,11 +210,12 @@ async function onSignInStatus(status: SignInStatus): Promise<void> {
  * Finds the default profile (see resolveDefaultProfile) and writes the folders checked to sign-in-check.log.
  * null = not found with confidence: sign-in stays off, opening accounts keeps working.
  */
-async function lookUpDefaultProfile(): Promise<string | null> {
+async function lookUpDefaultProfile(knownFamily?: string | null): Promise<string | null> {
   if (!onWindows) return null;
   const found = await resolveDefaultProfile({
     run: runPowerShell,
     env: process.env,
+    knownFamily,
     listClaudeProcesses: () => queryClaudeProcessList(runPowerShell),
     exists: existsSync,
     listDir: (dir) => readdirSync(dir),
@@ -241,12 +263,16 @@ async function startSignIn(target: SignInTarget): Promise<ActionResult> {
   const t0 = Date.now();
   logTiming(`--- ${'label' in target ? 'Add account' : 'Sign in'}`);
   // Looked up again now: the running Claude is the most reliable source. Both PowerShell queries run in parallel.
-  signInSlot = lookUpDefaultProfile();
-  const [slot, exe] = await Promise.all([signInSlot, resolveClaudeExe(runPowerShell, process.env, existsSync)]);
-  logTiming(`start: find the main profile and Claude.exe: ${Date.now() - t0} ms`);
-  if (exe) logTiming(`start: Claude version: ${claudeVersion(exe) ?? 'unknown'}`);
+  // Claude.exe first (usually the cache, instant): its PackageFamilyName spares the profile lookup a PowerShell call.
+  const claude = await findClaude();
+  logTiming(`start: find Claude.exe: ${claude.state === 'found' ? claude.source : claude.state}: ${Date.now() - t0} ms`);
+  if (claude.state !== 'found') return result(store.current, lookupError(claude));
+  logTiming(`start: Claude version: ${claudeVersion(claude.app.exe) ?? 'unknown'}`);
+  const t1 = Date.now();
+  signInSlot = lookUpDefaultProfile(claude.app.family);
+  const slot = await signInSlot;
+  logTiming(`start: find the main profile: ${Date.now() - t1} ms`);
   if (!slot) return result(store.current, 'noProfile');
-  if (!exe) return result(store.current, 'notInstalled');
 
   let account: MarkerAccount;
   if ('label' in target) {
@@ -403,7 +429,8 @@ async function start(): Promise<void> {
   // First run: only Main. Phase 2 sample accounts (demo-*) are dropped by parseConfig.
   await store.load(defaultConfig);
   if (marker) await recoverSignIn(marker);
-  signInSlot = lookUpDefaultProfile(); // after the recovery, which may put the main profile back
+  // After the recovery, which may put the main profile back. Also fills the Claude.exe cache on the first run.
+  signInSlot = findClaude().then((c) => lookUpDefaultProfile(c.state === 'found' ? c.app.family : undefined));
   registerIpc();
   createWindow();
 }

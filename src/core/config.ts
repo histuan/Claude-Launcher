@@ -1,6 +1,7 @@
 // Launcher config (JSON in userData). Pure functions: they never mutate the input.
 // The Main account is the default Claude profile: profileDir null, always first, cannot be removed.
 import path from 'node:path';
+import { isDesktopExe } from './processes.js';
 
 export const CONFIG_VERSION = 1;
 export const MAX_NAME_LENGTH = 40;
@@ -16,11 +17,19 @@ export interface Account {
   profileDir: string | null;
 }
 
+/** Last resolved Claude.exe and its PackageFamilyName (saves a slow PowerShell start on every click). */
+export interface CachedClaude {
+  exe: string;
+  family: string | null;
+}
+
 export interface LauncherConfig {
   version: number;
   /** Name typed by the person; null = use the Windows name. */
   greetingName: string | null;
   accounts: Account[];
+  /** null = not looked up yet. Used only while the exe still exists (an update changes the folder). */
+  claudeApp: CachedClaude | null;
 }
 
 export const isMain = (account: Account): boolean => account.profileDir === null;
@@ -32,7 +41,7 @@ export function profileDirFor(userProfile: string, id: string): string {
 }
 
 export function defaultConfig(): LauncherConfig {
-  return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }] };
+  return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }], claudeApp: null };
 }
 
 /** Only direct children of %USERPROFILE%\ClaudeProfiles may be created or deleted by the launcher. */
@@ -56,6 +65,14 @@ function slugFor(label: string): string {
 }
 
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
+
+/** Only an MSIX Claude.exe path is trusted from disk: anything else is dropped (looked up again). */
+function parseCachedClaude(value: unknown): CachedClaude | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const v = value as Record<string, unknown>;
+  const exe = text(v.exe);
+  return exe && isDesktopExe(exe) ? { exe, family: text(v.family) || null } : null;
+}
 
 function cleanName(value: string | null): string | null {
   const name = (value ?? '').trim().slice(0, MAX_NAME_LENGTH);
@@ -97,7 +114,12 @@ export function parseConfig(raw: unknown): LauncherConfig {
     version: CONFIG_VERSION,
     greetingName: cleanName(text(data.greetingName)),
     accounts: [main ?? { ...MAIN }, ...others],
+    claudeApp: parseCachedClaude(data.claudeApp),
   };
+}
+
+export function setClaudeApp(cfg: LauncherConfig, app: CachedClaude): LauncherConfig {
+  return { ...cfg, claudeApp: { ...app } };
 }
 
 export function setGreetingName(cfg: LauncherConfig, name: string | null): LauncherConfig {

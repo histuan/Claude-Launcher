@@ -41,7 +41,7 @@ export interface SignInDeps {
   minFreeBytes?: number;
   sleep?: (ms: number) => Promise<void>;
   /**
-   * Start and cancel: how long a close request gets before the force-end (~1 s). Claude only hides to the tray on a
+   * Start and cancel: how long a close request gets before the force-end (~1 s). Claude only closes its window on a
    * close request (0.4.3 test), so this is kept short.
    */
   gracefulMs?: number;
@@ -236,7 +236,7 @@ export class SignInFlow {
     try {
       this.deps.onStatus({ phase: 'saving' });
       const t0 = this.now();
-      // A close request never works (Claude hides to the tray), so Claude is force-ended, but only after its cookie
+      // A close request never works (Claude only closes its window and keeps running), so Claude is force-ended, but only after its cookie
       // database write: a forced end loses what is not committed yet. No write within the cap: nothing moves.
       const written = await this.waitForCookieWrite(marker.slot);
       this.log(`finish: wait for the cookie write: ${written ? 'written' : 'cap'}`, t0);

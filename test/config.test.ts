@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  afterSignIn, removeAccount, renameAccount, setGreetingName, type Account,
+  afterSignIn, removeAccount, renameAccount, setClaudeApp, setGreetingName, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
@@ -130,4 +130,18 @@ test('after a sign-in: the new card is added once; an existing card is left as i
 test('parseConfig drops an old cookiePending flag (a build of 0.4.4 wrote it)', () => {
   const cfg = parseConfig({ accounts: [acc('main', null), { ...acc('work', 'C:\\P\\work'), cookiePending: true }] });
   assert.equal('cookiePending' in cfg.accounts[1], false);
+});
+
+test('Claude.exe cache: kept only for an MSIX Claude.exe path; default and bad values give null', () => {
+  const exe = 'C:\\Program Files\\WindowsApps\\Claude_4.16336.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe';
+  assert.equal(defaultConfig().claudeApp, null);
+  const good = { accounts: [], claudeApp: { exe, family: 'Claude_pzs8sxrjxfjjc' } };
+  assert.deepEqual(parseConfig(good).claudeApp, { exe, family: 'Claude_pzs8sxrjxfjjc' });
+  assert.deepEqual(parseConfig({ accounts: [], claudeApp: { exe } }).claudeApp, { exe, family: null });
+  for (const bad of [{ exe: 'C:\\Temp\\evil.exe' }, { exe: 42 }, 'x', null, undefined]) {
+    assert.equal(parseConfig({ accounts: [], claudeApp: bad }).claudeApp, null, JSON.stringify(bad));
+  }
+  const cfg = setClaudeApp(defaultConfig(), { exe, family: null });
+  assert.deepEqual(cfg.claudeApp, { exe, family: null });
+  assert.deepEqual(cfg.accounts, defaultConfig().accounts);
 });

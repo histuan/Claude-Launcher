@@ -32,6 +32,14 @@ Phase 4.4: the card check after a sign-out inside Claude (0.4.4 showed the card 
   (`Claude-Data\claude_*` or `LocalCache\Roaming\Claude`, trailing `\` dropped) before anything is stashed, so the
   crash-recovery marker can always be read back. If the marker cannot be written, nothing is moved and the main
   Claude is opened again. A failed save of the new card no longer leaves the sign-in dialog on "saving".
+- **Sign in** no longer says "Claude is not installed" when Claude is installed. Starting PowerShell took more than the
+  5 s timeout on a busy PC. The launcher now remembers the `Claude.exe` path (and its PackageFamilyName) in its config
+  and only checks that the file exists, so most clicks start no PowerShell at all. It looks Claude up again only when
+  the file is gone (Claude updated) or nothing is remembered yet, with a ~15 s timeout and one retry. A lookup that does
+  not finish shows "Couldn't find Claude in time. Try again."; "Claude is not installed" appears only when the lookup
+  finished and found no Claude.
+- Texts no longer mention a tray icon: Claude has none on Windows here. When its window closes it keeps running with
+  no icon, and only Task Manager or **Close this account** ends it.
 
 ### Added
 

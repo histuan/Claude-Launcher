@@ -36,6 +36,8 @@ export interface DefaultProfile {
 export interface ProfileLookupDeps {
   run: RunPowerShell;
   env: Record<string, string | undefined>;
+  /** PackageFamilyName already known (launcher cache): skips the PowerShell call. */
+  knownFamily?: string | null;
   listClaudeProcesses(): Promise<RawProcess[]>;
   exists(file: string): boolean;
   listDir(dir: string): string[];
@@ -72,7 +74,7 @@ export async function resolveDefaultProfile(deps: ProfileLookupDeps): Promise<De
 
   let family: string | null = null;
   try {
-    family = await packageFamilyName(deps.run);
+    family = deps.knownFamily ?? await packageFamilyName(deps.run);
   } catch (err) {
     errors.push(`Get-AppxPackage: ${(err as Error).message}`);
   }
@@ -132,7 +134,7 @@ const execQuiet: ExecFn = (file, args) => new Promise((resolve) => {
 
 /**
  * Asks the given processes and their children to close (taskkill /T without /F: a close message, like clicking ×).
- * Claude may only hide to the tray; callers force-end what is still running after a few seconds.
+ * Claude may only close its window and keep running; callers force-end what is still running after a few seconds.
  */
 export async function closeProcessesGracefully(pids: number[], exec: ExecFn = execQuiet): Promise<void> {
   for (const pid of pids) await exec('taskkill', ['/PID', String(pid), '/T']);
