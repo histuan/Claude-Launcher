@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -46,7 +46,8 @@ jobs:
           path: dist/*.exe
           if-no-files-found: error
 
-      # On a push to main (a merged PR): release launcher-v<package.json version>, once per version.
+      # On a push to main (a merged PR): release v<package.json version>, once per version.
+      # Since 0.5.0 the tag and the title are "v<version>"; the old launcher-v* tags stay as they are.
       - name: Create release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
@@ -54,7 +55,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version=$(node -p "require('./package.json').version")
-          tag="launcher-v$version"
+          tag="v$version"
           if git ls-remote --exit-code --tags origin "refs/tags/$tag" > /dev/null; then
             echo "$tag already exists; nothing to release."
             exit 0
@@ -71,5 +72,5 @@ jobs:
           fi
           # Since 0.3.0 (the first usable version) every release is a regular one, marked as latest.
           gh release create "$tag" dist/*.exe --target "$GITHUB_SHA" \
-            --title "Multi-Account Launcher for Claude $version" \
+            --title "$tag" \
             --notes-file release-notes.md --latest

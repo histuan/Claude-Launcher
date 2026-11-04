@@ -100,7 +100,7 @@ Values marked "≈" are approximate: keep them as CSS variables in one place to 
 ## 5. Installation and updates
 
 - Per-user NSIS installer, with a Start menu shortcut.
-- No automatic updates in v1: new versions come out on GitHub Releases (tag `launcher-vX.Y.Z`), created automatically
+- No automatic updates in v1: new versions come out on GitHub Releases (tag `vX.Y.Z`; `launcher-vX.Y.Z` up to 0.4.5), created automatically
   when a phase is merged into `main`.
 - The `.exe` is not signed: the README explains SmartScreen ("More info → Run anyway") and Smart App Control.
 
