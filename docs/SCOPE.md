@@ -104,14 +104,20 @@ Values marked "≈" are approximate: keep them as CSS variables in one place to 
 ## 5. Installation and updates
 
 - Per-user NSIS installer, with a Start menu shortcut.
-- No automatic updates in v1: new versions come out on GitHub Releases (tag `vX.Y.Z`; `launcher-vX.Y.Z` up to 0.4.5), created automatically
-  when a phase is merged into `main`.
+- New versions come out on GitHub Releases (tag `vX.Y.Z`; `launcher-vX.Y.Z` up to 0.4.5), created automatically
+  when a phase is merged into `main`, with `latest.yml` and the `.blockmap` next to the `.exe`.
+- **Self-update (since 0.6.0, scope change approved by Thiago):** `electron-updater`, GitHub provider (public repo, no
+  token in the app). Once per start, after the cards are shown (never blocking them), the launcher checks the latest
+  release. A newer one shows "Version X is available. Install now?" with **What's new** (release page), **Later**
+  (asked again on the next start) and **Install** (download with a progress bar, silent install, the launcher opens
+  again). Errors show a short message with a link to the Releases page; nothing is ever forced. Never checks or
+  installs while a sign-in or the memory assistant is in progress. Logs only versions and timings.
 - The `.exe` is not signed: the README explains SmartScreen ("More info → Run anyway") and Smart App Control.
 
 ## 6. Out of v1
 
 macOS and Linux; light theme; migrating scheduled tasks and MCP between profiles; automatic account photo
-(only once Claude desktop has a profile photo); per-account usage meter; automatic updates; other interface languages.
+(only once Claude desktop has a profile photo); per-account usage meter; other interface languages. (Self-update moved into v1 in Phase 5.2.)
 
 ## 7. v1 done criteria
 

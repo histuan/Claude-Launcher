@@ -22,6 +22,22 @@ accounts by itself.
 The installer is not signed, so Windows SmartScreen will warn you: choose **More info → Run anyway**.
 It installs per user and does not need administrator rights.
 
+Since 0.6.0 the launcher updates itself: when a newer release is out, it asks once per start (**Later** or
+**Install**; nothing is forced). Older versions are updated by installing the new `.exe` by hand.
+
+## For testers: installing a PR build
+
+Pull Request builds are not on the Releases page; each PR's Actions run has the installer as the artifact
+**launcher-installer**. [`scripts/install-latest.ps1`](./scripts/install-latest.ps1) installs the latest one. Save it
+(for example in `%USERPROFILE%\Claude-Launcher-tools\`) and run it in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Claude-Launcher-tools\install-latest.ps1"
+```
+
+A PR build has the same version number as the release it becomes, so the self-update does not offer that release
+again after the merge.
+
 ## How it works
 
 The Claude desktop app is built on Electron, which accepts Chromium's `--user-data-dir` flag. Each account gets its own

@@ -1,6 +1,6 @@
 {
   "name": "claude-launcher",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "description": "Windows launcher that opens the Claude desktop app in isolated profiles, one account per profile.",
   "type": "module",
@@ -37,6 +37,13 @@
       "out/src/**/*",
       "package.json"
     ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "histuan",
+        "repo": "Claude-Launcher"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
@@ -52,5 +59,8 @@
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico"
     }
+  },
+  "dependencies": {
+    "electron-updater": "~6.8.11"
   }
 }

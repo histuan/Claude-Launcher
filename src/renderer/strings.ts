@@ -275,6 +275,21 @@ export const strings = {
     } satisfies Record<MemoryZipError, string>,
     fileType: 'Use the exported .zip, or a .txt or .md file.',
   },
+  /** Self-update (Phase 5.2): asked once per start; nothing is ever forced. */
+  update: {
+    title: (version: string) => `Version ${version} is available. Install now?`,
+    body: 'The launcher closes, installs it and opens again by itself.',
+    whatsNew: 'What\'s new',
+    later: 'Later',
+    install: 'Install',
+    downloading: (percent: number) => `Downloading… ${percent}%`,
+    installing: 'Installing… the launcher opens again in a moment.',
+    busy: 'Finish the sign-in or the memory import first, then choose Install again.',
+    failedTitle: (version: string) => `Couldn't update to version ${version}`,
+    failed: 'The update could not be downloaded or installed. Nothing was changed.',
+    releases: 'Download it from the Releases page',
+    close: 'Close',
+  },
   photo: {
     failed: {
       title: 'Could not use this image',

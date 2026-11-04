@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import { existsSync, readdirSync } from 'node:fs';
 import { appendFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -23,6 +23,7 @@ import { strings } from '../renderer/strings.js';
 import { closeProfile, removeProfile, type AccountProcessDeps } from './accountActions.js';
 import { ConfigStore } from './configStore.js';
 import { MemoryTransfer } from './memoryTransfer.js';
+import { SelfUpdate } from './selfUpdate.js';
 import { deletePhoto, readPhoto, savePhoto } from './photos.js';
 import { SignedInTracker } from './signedIn.js';
 import { SignInFlow, type StartError } from './signInFlow.js';
@@ -36,6 +37,7 @@ import {
 } from './system/claudeProfile.js';
 import { readSessionCookie } from './system/cookies.js';
 import { createProfileDir, deleteProfileDir } from './system/profileFolders.js';
+import { githubUpdater } from './system/updater.js';
 import { runPowerShell, windowsDisplayName } from './system/windowsUser.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -140,6 +142,8 @@ async function onCardsShown(): Promise<void> {
     logTiming(`startup: background refresh of the cached ${[name && 'Windows name', profile && 'main profile'].filter(Boolean).join(' and ')}: `
       + `${ms(performance.now() - t1)}`);
   }
+  // Last, so it never delays the cards or their checks.
+  if (app.isPackaged && onWindows) void updates.checkOnStart();
 }
 
 const accountProcesses: AccountProcessDeps = {
@@ -320,7 +324,7 @@ const START_ERRORS: Record<StartError, ActionError> = {
 
 async function startSignIn(target: SignInTarget): Promise<ActionResult> {
   if (!flow) return result(store.current, 'noProfile');
-  if (flow.active) return result(store.current, 'pending');
+  if (flow.active || updates.active) return result(store.current, 'pending');
   const t0 = Date.now();
   logTiming(`--- ${'label' in target ? 'Add account' : 'Sign in'}`);
   // Looked up again now: the running Claude is the most reliable source. Both PowerShell queries run in parallel.
@@ -439,13 +443,30 @@ const memories = new MemoryTransfer({
 });
 
 async function beginMemories(sourceId: string, targetId: string): Promise<ActionError | null> {
-  if (flow?.active) return 'pending';
+  if (flow?.active || updates.active) return 'pending';
   const cfg = store.current;
   const sources = memorySources(cfg.accounts, targetId, signedInTracker.cards(cfg.accounts, lastRunning));
   if (!sources.some((a) => a.id === sourceId)) return 'notSignedIn';
   await memories.begin(sourceId, targetId);
   return null;
 }
+
+// ---------- Self-update (Phase 5.2) ----------
+
+const RELEASES_URL = 'https://github.com/histuan/Claude-Launcher/releases';
+let offeredVersion: string | null = null;
+
+/** Only the installed app checks (a dev build has no app-update.yml), and only once per start. */
+const updates = new SelfUpdate({
+  ...githubUpdater(),
+  busy: () => flow?.active === true || memories.step !== null,
+  wait: () => new Promise((resolve) => setTimeout(resolve, 5_000)),
+  send: (status) => {
+    offeredVersion = status.version;
+    win?.webContents.send('launcher:update', status);
+  },
+  log: logTiming,
+}, app.getVersion());
 
 function registerIpc(): void {
   ipcMain.handle('launcher:getState', () => state(store.current));
@@ -495,6 +516,12 @@ function registerIpc(): void {
   });
   ipcMain.handle('launcher:runningAccounts', () => runningIds());
   ipcMain.handle('launcher:cardsShown', () => { void onCardsShown(); });
+  ipcMain.handle('launcher:update:later', () => updates.later());
+  ipcMain.handle('launcher:update:install', () => updates.install());
+  // Fixed URLs built here: the window never passes one.
+  ipcMain.handle('launcher:update:openNotes', () => shell.openExternal(
+    offeredVersion ? `${RELEASES_URL}/tag/v${encodeURIComponent(offeredVersion)}` : RELEASES_URL));
+  ipcMain.handle('launcher:update:openReleases', () => shell.openExternal(RELEASES_URL));
   ipcMain.handle('launcher:memories:begin', (_e, sourceId: unknown, targetId: unknown) => {
     if (!isText(sourceId) || !isText(targetId)) throw new Error('Invalid arguments');
     return beginMemories(sourceId, targetId);

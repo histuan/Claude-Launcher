@@ -1,7 +1,6 @@
 # Status
 
-**Current phase:** 5.1 — Receive memories from… (0.5.1), in a PR to `main` (Closes #17), waiting for Thiago's test and
-merge. Extra: the Windows name and the main profile folder are cached in the config (first screen without PowerShell).
+**Current phase:** 5.2 — Self-update (0.6.0), in a PR to `main`, waiting for Thiago's test and merge.
 Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
 
 ## Done
@@ -81,11 +80,26 @@ Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
   `docs/screenshots/phase-5.1-warning.png`, `docs/screenshots/phase-5.1-step1.png` (checklist),
   `docs/screenshots/phase-5.1-parts.png` (step 2 in parts).
 
+- Phase 5.2 (0.6.0): **self-update** (`src/main/selfUpdate.ts`, `src/main/system/updater.ts`): `electron-updater`,
+  GitHub provider, one check per start after the cards are shown (installed app on Windows only); dialog "Version X
+  is available. Install now?" with What's new / Later / Install; download with progress, silent install, reopen;
+  errors = short message + Releases link. Waits while a sign-in or the memory assistant runs; sign-in and memories
+  are refused while an update downloads. Releases now carry `latest.yml` + `.blockmap` (checked on every CI run).
+  `scripts/install-latest.ps1` (placeholder until Thiago pastes his script). Screenshots (mocked):
+  `docs/screenshots/phase-5.2-available.png`, `phase-5.2-downloading.png`, `phase-5.2-failed.png`.
+
 ## Missing
 
 - Phase 6 (`docs/PHASES.md`).
 
 ## Notes for the next phases
+
+- Self-update: the first real test is 0.6.0 → 0.6.1 (0.5.1 and older have no updater; v0.5.1 has no `latest.yml`, so
+  a 0.6.0 PR build only logs `update: check failed` until v0.6.0 is released). A failed check is never shown.
+- `scripts/install-latest.ps1` is a placeholder: Thiago replaces it with his
+  `%USERPROFILE%\Claude-Launcher-tools\install-latest.ps1`.
+- Unsigned `.exe`: electron-updater verifies the signature only when `publisherName` is set (it is not), so unsigned
+  updates install. If the installer is ever signed, set `win.publisherName` at the same time.
 
 - E-mail and real name are typed by the person (`docs/WINDOWS.md` §5). Reading them via the `sessionKey` cookie and
   the claude.ai endpoint is a possible later improvement, not v1.
@@ -146,34 +160,21 @@ Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
 
 ## How to test
 
-Phase 5.1 (0.5.1). Use two accounts you don't mind adding memories to (or a test account as the target).
+Phase 5.2 (0.6.0). The real test is 0.6.0 → 0.6.1, after the merge.
 
-0. Get `Claude-Launcher-Setup-0.5.1.exe`: before the merge, from this PR's latest Actions run (artifact
-   **launcher-installer**); after the merge, from the **Releases** page (tag **`v0.5.1`**). Install over 0.5.0. The
-   version label (bottom-right) says **v0.5.1**.
-1. **Faster start:** open the launcher twice. From the second start on, the greeting name and the cards appear at
-   once. Send me the `startup:` lines of `sign-in-timings.log` (hover the version label for the path): "waited for
-   the Windows name" and "for the profile lookup" should be ~0 ms, and a `startup: background refresh …` line follows.
-2. **Menu:** ⋯ on a signed-in card → **Receive memories from…** → the list shows the other signed-in accounts
-   only (not signed-out ones, not the card itself). On a "Not signed in" card the item is greyed.
-3. **Warning:** pick a source: the warning comes first (Cancel red, Proceed orange). Cancel: nothing opens.
-4. **Step 1:** Proceed: the source account's Claude opens and the launcher stays open. In Claude: Settings →
-   Memory → Export memory → Export: a `.zip` downloads. Drop it on the launcher's text box (or **Choose a file…**).
-   - A checklist appears, grouped by folder, without the `claude-memory-<date>/` folder in the names. Each file
-     shows its size in characters.
-   - Files under `projects/` start unchecked, everything else checked. The line under the list gives
-     "N of 41 files · X characters", and "imported in N parts" when over 100,000.
-   - Uncheck and check a file and a whole folder: the total and the preview box follow.
-   - Also try: a `.zip` that is not an export (a clear message), pasting text, a `.txt` file, Next with nothing
-     checked (a message). Nothing new appears in your Downloads or temp folders besides the `.zip` Claude saved.
-5. **Step 2, one part:** with fewer files checked (under 100,000 characters), Next: the target account's Claude
-   opens. In it: Settings → Memory → Import memory from other AI providers → Start import; Claude shows a prompt
-   for the other provider: ignore it, paste (Ctrl+V) and confirm. **Copy again** puts it back on the clipboard.
-   **Done**.
-6. **Step 2, in parts:** with everything checked (your 131,248 characters), Next: "Part 1 of 2 is on the
-   clipboard." Import it with Start import, then **Next part** → "Part 2 of 2", import it again, then **Done**.
-   Check in Claude that both parts arrived and that no memory was cut in the middle. Tell me if Claude refused a
-   second import or a long paste.
-7. **Privacy:** after Done (or Cancel, or closing the launcher mid-way), Ctrl+V in Notepad pastes nothing (if you
-   did not copy something else meanwhile). `sign-in-timings.log` has only `memories: …` step lines, no memory text.
-8. Tell me if Claude's menus are named differently from the steps shown (the texts are easy to change).
+1. **Install 0.6.0 by hand:** before the merge, the PR's latest Actions run (artifact **launcher-installer**, or
+   `scripts/install-latest.ps1`); after the merge, `Claude-Launcher-Setup-0.6.0.exe` from the Releases page (tag
+   **`v0.6.0`**, which must also list `latest.yml` and `Claude-Launcher-Setup-0.6.0.exe.blockmap`). Version label:
+   **v0.6.0**.
+2. **No update:** open the launcher. Cards appear as fast as before and no dialog shows. `sign-in-timings.log` (hover
+   the version label for the path) has `update: check: none newer than 0.6.0 (… ms)` after the `startup:` lines
+   (before v0.6.0 is released: `update: check failed (… ms)`, also with no dialog).
+3. **0.6.0 → 0.6.1:** when the next PR is merged and `v0.6.1` is released, open 0.6.0:
+   - "Version 0.6.1 is available. Install now?" shows after the cards, never before them.
+   - **What's new** opens the v0.6.1 release page in the browser; the dialog stays.
+   - **Later**: the launcher works normally. Close it and open it again: it asks again.
+   - **Install**: a progress bar, then the launcher closes and opens again by itself (no installer window, no
+     admin prompt) with **v0.6.1** in the corner. Accounts, names and photos are all still there.
+4. **Error:** with 0.6.0 and the dialog showing, turn Wi-Fi off and click Install: "Couldn't update to version
+   0.6.1", with a link to the Releases page and Close; the launcher keeps working.
+5. Send me the `update:` lines of `sign-in-timings.log` (versions and timings only).

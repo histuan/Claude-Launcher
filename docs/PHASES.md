@@ -217,6 +217,25 @@ so the launcher only walks the person through copying the text from one account 
 - Tests: the warning comes first; the text never reaches a file or a log; Done and Cancel clear it; only signed-in
   accounts are offered as the source.
 
+## Phase 5.2 — Self-update (2026-11-04, version 0.6.0)
+
+Scope change approved by Thiago (`SCOPE.md` §5–§6): the launcher updates itself.
+
+- `electron-updater` with the GitHub provider (public repo, no token in the app); `publish` in `package.json` makes
+  electron-builder write `app-update.yml` into the app and `latest.yml` + `.blockmap` into `dist/`. The release step
+  uploads `latest.yml` and the `.blockmap` next to the `.exe` (checked on every CI run).
+- On startup, after the cards show (never blocking them): one check. Newer release → dialog "Version X is available.
+  Install now?" with **What's new** (opens the release page), **Later** (works normally, asks again next start) and
+  **Install** (download with a progress bar, silent install, the launcher reopens). Errors: a short message with a
+  link to the Releases page; nothing is ever forced. A failed check (offline, no `latest.yml`) is only logged.
+- Never checks or installs while a sign-in or the memory assistant is in progress (the check waits until they end;
+  Install is refused); sign-in and memories are refused while an update downloads.
+- Code: `src/main/selfUpdate.ts` (logic, injected updater), `src/main/system/updater.ts` (electron-updater).
+  Strings in `strings.update`. Logs: `update: …` lines with versions and timings only.
+- Testers: `scripts/install-latest.ps1` (Thiago's script) installs the latest PR build; documented in the README.
+- Tests (mocked updater): no update, update found, Later, Install with progress, download error, busy.
+- 0.6.0 is installed by hand; the real test is 0.6.0 → 0.6.1 after the merge.
+
 ## Phase 6 — Polish and release
 
 - `README.md` (what it is, how to install, SmartScreen, limitations, credits, notice that it is not affiliated with Anthropic).
