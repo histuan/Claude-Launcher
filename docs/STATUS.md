@@ -1,6 +1,11 @@
 # Status
 
-**Current phase:** 4.4 — Card check after a sign-out (0.4.5), in a PR to `main`, waiting for Thiago's test and merge.
+**Current phase:** 5 — Account details and photo (issue #2), **in progress**. Housekeeping done (Node 24, `v<version>`
+tags, startup timing, remembered signed-in state, reopen the main Claude only if it had a visible window).
+`scripts/diagnose-accounts.ps1` written; **waiting for Thiago to run it and paste the output** in the session before
+the e-mail/name detection is written.
+
+**Previous:** 4.4 — Card check after a sign-out (0.4.5), merged (PR #15).
 0.4.4 (PR #14, merged) tested on the PC: sign-in works (`finish: wait for the cookie write: written: 24965 ms`, the new
 account opens signed in); but after a sign-out inside Claude the card still looked signed in. First 0.4.5 build
 tested too: its log proved the cookie database is locked (`EBUSY`) while Claude runs and for a few seconds after
@@ -99,14 +104,14 @@ Next: Phase 5 — Account details and photo (issue #2), then Phase 5.1 — Recei
 - Email and name detected automatically with manual fallback; photo chosen by the person, initial by default.
 - Original icon and free serif font (no logo and no official Claude font).
 - Dark theme only in v1; the launcher closes by itself after opening an account.
-- TypeScript with plain `tsc` (no bundler); a small `scripts/copy-assets.mjs` copies the renderer's HTML/CSS into `out/`.
+- TypeScript with plain `tsc` (no bundler); a small `scripts/copy-assets.ts` copies the renderer's HTML/CSS into `out/`.
 - `src/core` returns language-neutral keys (e.g. `greetingFor()` → `'morning'`); texts come from `strings.ts`.
 - Config: Main is the account with `profileDir: null`, always first, never removed; its `label` is `null` until renamed
   (shows `strings.mainAccount`). Other accounts: `profileDir` = `%USERPROFILE%\ClaudeProfiles\<id>` (from the env var).
   Names are trimmed and capped at 40 characters. An unreadable config is renamed to `config.json.corrupt-<time>`.
 - Greeting name: Enter **or leaving the field** saves, Esc cancels, empty restores the Windows name.
 - Fonts: `@fontsource-variable/source-serif-4` and `@fontsource-variable/inter` (variable weight), copied with their
-  OFL licenses into `out/` by `scripts/copy-assets.mjs`.
+  OFL licenses into `out/` by `scripts/copy-assets.ts`.
 - Icon: `npm run icon` renders `build/icon.svg` with Playwright (not a project dependency) into `build/icon.ico`.
 - Profile ids come from the card name (ASCII slug, e.g. "Trabalho Ágil" → `trabalho-agil`), unique, never a Windows
   device name nor a folder that already exists; the folder name is the id. The launcher only creates or deletes folders

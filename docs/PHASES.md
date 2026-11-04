@@ -161,6 +161,18 @@ After testing 0.4.2 on the PC (all 7 tests passed).
 
 Read: `WINDOWS.md` §5, `SCOPE.md` §2.2–2.3.
 
+Housekeeping first (2026-11-04):
+
+- Node 24 in the workflow and `"engines": { "node": ">=24" }` in `package.json`. `scripts/*.mjs` → `.ts`, run directly
+  by Node 24 (type stripping, no ts-node/tsx), type-checked by `npm run typecheck` (`scripts/tsconfig.json`).
+- From 0.5.0 on, tags and release titles are `v<version>` (e.g. `v0.5.0`). Old `launcher-v*` tags stay as they are.
+- Startup timing: log how long the launcher takes to show the cards (`sign-in-timings.log`, `startup: …`). Cookie
+  checks run in the background after the cards are shown; the screen never waits for them.
+- Remember the last known signed-in state of each account in the config (`signedIn`) and show it at once on
+  startup; the background check updates it.
+- After a sign-in, reopen the main Claude only if it had a **visible** window before the sign-in started. Running
+  hidden (no tray icon on Thiago's PC) or not running: leave it closed.
+
 - First: diagnostic script (only keys and paths, never token values) for Thiago to run and paste the output.
   Stop the phase here if the output does not exist yet.
 - Then: detection in the order of section 5, with manual fallback. Also update the Main card.
@@ -190,4 +202,4 @@ so the launcher only walks the person through copying the text from one account 
 
 - `README.md` (what it is, how to install, SmartScreen, limitations, credits, notice that it is not affiliated with Anthropic).
 - Review the done criteria (`SCOPE.md` §7). Version `1.0.0` in `package.json` → the merge creates the Release
-  `launcher-v1.0.0`.
+  `v1.0.0`.
