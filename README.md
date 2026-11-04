@@ -68,11 +68,6 @@ If the launcher is interrupted, the next start offers to restore your main profi
 - Add, rename and remove accounts
 - Windows only for now; macOS and Linux later
 
-## Credits
-
-- Original idea and macOS guide: [chadtimbl.in](https://chadtimbl.in/writings/claude-workflow-tips.html#multiple-accounts)
-- Windows sign-in approach based on [Zoltak-Dev/ai-multi-instance](https://github.com/Zoltak-Dev/ai-multi-instance) (MIT)
-
 ## License
 
 [MIT](./LICENSE) © 2026 Thiago Uchoa Gomes. You can use, copy, change and share this code freely, including in
