@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  afterSignIn, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn, setStartupCache, type Account,
+  afterSignIn, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setKnownUpdate, setSignedIn, setStartupCache, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
@@ -200,4 +200,11 @@ test('startup cache (0.5.1): Windows name and main profile kept from disk; bad v
   assert.equal(set.windowsName, 'Ana');
   assert.equal(setStartupCache(set, { defaultProfile: dir }).windowsName, 'Ana');
   assert.equal(setStartupCache(setStartupCache(set, { defaultProfile: dir }), { defaultProfile: null }).defaultProfile, null);
+});
+
+test('0.6.2: the known update version is kept, and cleared with null', () => {
+  const cfg = setKnownUpdate(defaultConfig(), '0.6.3');
+  assert.equal(parseConfig(JSON.parse(JSON.stringify(cfg))).knownUpdate, '0.6.3');
+  assert.equal(setKnownUpdate(cfg, null).knownUpdate, null);
+  assert.equal(parseConfig({ accounts: [], knownUpdate: 42 }).knownUpdate, null);
 });

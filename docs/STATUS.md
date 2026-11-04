@@ -1,7 +1,7 @@
 # Status
 
-**Current phase:** 0.6.1 — self-update test release (update download log), in a PR to `main`, waiting for Thiago's
-test and merge. Next: Phase 6 — Polish and release (`docs/PHASES.md`), after the merge.
+**Current phase:** 0.6.2 — update polish, in a PR to `main`, waiting for Thiago's test and merge. Next: Phase 6 —
+Polish and release (`docs/PHASES.md`), after the merge.
 
 ## Done
 
@@ -95,6 +95,18 @@ test and merge. Next: Phase 6 — Polish and release (`docs/PHASES.md`), after t
   installer copies itself to `%LOCALAPPDATA%\claude-launcher-updater\installer.exe` on every install (that is the
   "old file" of the next differential download), and CI checks that each release has the `.blockmap`.
 
+- 0.6.2: update polish. The check starts when the app is ready (in parallel with the first screen; the notice waits
+  for the cards); the last newer version found is kept in the config (`knownUpdate`) and shown at once on the next
+  start, then the check confirms or clears it (an unconfirmed one is checked again on Install). After **Later**, an
+  "Update to X" link next to the version reopens the dialog. The version label opens its release page. Started during
+  an install: `%LOCALAPPDATA%\claude-launcher-updater\pending\update-info.json` under ~10 min old and not started
+  with `--updated` → process query; a process running from that exact installer = "Finishing the update…" (closes by
+  itself after ~6 s) and quit (`src/core/updateInstall.ts`). Install stays **silent**: on an update run
+  (`--updated`) electron-builder's assisted NSIS installer skips the license/folder pages but always shows the Finish
+  page (a click), so the dialog says "Installing… the launcher opens again in about 20 seconds" for ~2.5 s before
+  quitting. One shared button style in `styles.css` (end of file). Screenshots (mocked):
+  `docs/screenshots/0.6.2-hover-before-after.png`, `docs/screenshots/0.6.2-corner-links.png`.
+
 ## Missing
 
 - Phase 6 (`docs/PHASES.md`).
@@ -166,6 +178,32 @@ test and merge. Next: Phase 6 — Polish and release (`docs/PHASES.md`), after t
   Minimum free space 500 MB on the drive of the default profile. The Add card is created only when the sign-in succeeds.
 
 ## How to test
+
+0.6.2 (update polish, 0.6.1 → 0.6.2). Needs v0.6.2 on the Releases page, so it starts **after this PR is merged**.
+Start with 0.6.1 installed (version label **v0.6.1**). Note: steps 1–5 run the **0.6.1** code (the old version does
+the check and the install), so the new behaviour shows from 0.6.2 on; the full test is the next update (0.6.2 → 0.6.3).
+
+1. Open the launcher: the 0.6.1 dialog "Version 0.6.2 is available" appears after the cards. **Install**: progress →
+   the launcher closes, ~20 s with no window, then **v0.6.2** opens.
+2. While those ~20 s run, opening the launcher may still open the old 0.6.1 (it is 0.6.1 code); that is expected
+   only for this update.
+3. Log (`%APPDATA%\claude-launcher\sign-in-timings.log`, hover the version label for the path): the `update:` line
+   shows bytes, ms and the mode; this one should say **differential** (0.6.1 was installed by the updater).
+4. On **v0.6.2**: hover every dialog and menu button (Add account → Cancel / Continue; ⋯ menu items; Edit details;
+   Receive memories → Cancel / Proceed / Next / Copy part / Done; the update dialog): pointer, a subtle colour change,
+   slightly darker while the mouse is pressed. Tab still shows the orange focus ring.
+5. Click **v0.6.2** (bottom-right): the browser opens the v0.6.2 release page.
+
+When v0.6.3 exists (0.6.2 → 0.6.3, the full test of this release):
+
+6. Open the launcher: the notice appears quickly (the check starts with the window). **Later** → "Update to 0.6.3"
+   appears next to the version. Close and reopen: the notice is shown at once (remembered), and stays.
+7. Click **Update to 0.6.3** → the same dialog → **Install**: progress, then "Installing… the launcher opens again
+   in about 20 seconds", the launcher closes and reopens as v0.6.3.
+8. During those ~20 s, open the launcher from the Start menu: "Finishing the update…" shows and closes by itself;
+   the old version does not open. The log has `update: started while the update installer runs; …`.
+
+### 0.6.1 (kept for reference)
 
 0.6.1 (self-update test, 0.6.0 → 0.6.1). Needs v0.6.1 on the Releases page, so it starts **after this PR is merged**.
 Start with 0.6.0 installed (version label **v0.6.0**).

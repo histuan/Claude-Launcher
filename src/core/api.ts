@@ -29,7 +29,9 @@ export type UpdateStatus =
   /** Downloaded: the launcher closes, installs silently and opens again. */
   | { phase: 'installing'; version: string }
   /** The download or the install failed: a short message with a link to the Releases page. */
-  | { phase: 'failed'; version: string };
+  | { phase: 'failed'; version: string }
+  /** 0.6.2: the remembered version shown at once is not newer any more (the check cleared it). */
+  | { phase: 'none' };
 
 export interface LauncherState {
   /** Greeting name from Windows (already cleaned). */
@@ -115,11 +117,15 @@ export interface LauncherApi {
   };
   /** The first cards are on screen: logs the startup time and starts the cookie checks (background). */
   cardsShown(): Promise<void>;
-  /** Self-update (Phase 5.2): checked once per start, after the cards are shown; nothing is ever forced. */
+  /** 0.6.2: the version label opens the installed version's release page (URL built in the main process). */
+  openVersionNotes(): Promise<void>;
+  /** Self-update (Phase 5.2, 0.6.2): checked once per start, never blocking the cards; nothing is ever forced. */
   updates: {
     onStatus(listener: (status: UpdateStatus) => void): void;
-    /** Later: asked again on the next start. */
+    /** Later: the corner link keeps the offer; asked again on the next start. */
     later(): Promise<void>;
+    /** The corner link "Update to X": error pending while a sign-in or the memory assistant is in progress. */
+    show(): Promise<ActionError | null>;
     /** Error pending while a sign-in or the memory assistant is in progress (nothing downloads). */
     install(): Promise<ActionError | null>;
     /** "What's new": the offered version's release page, in the browser. */

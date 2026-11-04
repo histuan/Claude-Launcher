@@ -8,6 +8,30 @@ Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-04
+
+Update polish.
+
+### Added
+
+- **"Update to X"** link next to the version label (bottom-right) after **Later**: it reopens the same dialog
+  (What's new / Later / Install) and exists only while a newer version is known. During a sign-in or the memory
+  assistant it shows the "busy" message.
+- The **version label** opens the release page of the installed version (URL built in the main process).
+- **"Finishing the update…"**: a launcher started while the update installer still runs quits instead of opening the
+  old version (electron-updater's pending update info, then a process running from that installer file).
+- One **shared button style** (secondary, primary, danger, menu item, text link) based on the main-screen hover:
+  pointer, subtle colour change in ~120 ms, darker while pressed, no hover when disabled, no transition with reduced
+  motion. Every dialog and menu button uses it.
+
+### Changed
+
+- The update check starts as soon as the app is ready, in parallel with the first screen (still never blocking the
+  cards). The last newer version found is kept in the config: the next start shows the notice at once and the check
+  confirms or clears it.
+- "Installing… the launcher opens again in about 20 seconds.", shown for ~2.5 s before the launcher closes. The
+  install stays silent: with `oneClick: false` an update run still stops on the installer's Finish page.
+
 ## [0.6.1] - 2026-11-04
 
 Self-update test release: update download log; no functional changes.
@@ -366,7 +390,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/histuan/Claude-Launcher/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/histuan/Claude-Launcher/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/histuan/Claude-Launcher/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/histuan/Claude-Launcher/compare/v0.5.0...v0.5.1
