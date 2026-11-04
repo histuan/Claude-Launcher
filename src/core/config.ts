@@ -15,6 +15,8 @@ export interface Account {
   photo: string | null;
   /** Claude --user-data-dir. null = Main (default profile, no flag). */
   profileDir: string | null;
+  /** Last known signed-in state (shown at once on startup; the background cookie check updates it). null = unknown. */
+  signedIn: boolean | null;
 }
 
 /** Last resolved Claude.exe and its PackageFamilyName (saves a slow PowerShell start on every click). */
@@ -34,7 +36,7 @@ export interface LauncherConfig {
 
 export const isMain = (account: Account): boolean => account.profileDir === null;
 
-const MAIN: Account = { id: 'main', label: null, email: null, realName: null, photo: null, profileDir: null };
+const MAIN: Account = { id: 'main', label: null, email: null, realName: null, photo: null, profileDir: null, signedIn: null };
 
 export function profileDirFor(userProfile: string, id: string): string {
   return path.win32.join(userProfile, 'ClaudeProfiles', id);
@@ -100,6 +102,7 @@ export function parseConfig(raw: unknown): LauncherConfig {
       realName: text(a.realName),
       photo: text(a.photo),
       profileDir: text(a.profileDir),
+      signedIn: typeof a.signedIn === 'boolean' ? a.signedIn : null,
     };
     if (isMain(account)) {
       if (main) continue; // only one account may use the default profile
@@ -135,14 +138,25 @@ export function renameAccount(cfg: LauncherConfig, id: string, label: string): L
   return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? { ...a, label: name } : a)) };
 }
 
-/** After a successful sign-in: adds the new card (once); an existing card stays as it is. */
+/** After a successful sign-in: adds the new card (once) or marks the existing one as signed in. */
 export function afterSignIn(
   cfg: LauncherConfig,
   account: { id: string; label: string; profileDir: string; isNew: boolean },
 ): LauncherConfig {
   const { id, label, profileDir, isNew } = account;
-  if (!isNew || cfg.accounts.some((a) => a.id === id)) return cfg;
-  return { ...cfg, accounts: [...cfg.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] };
+  if (!isNew) return setSignedIn(cfg, id, true);
+  if (cfg.accounts.some((a) => a.id === id)) return cfg;
+  return {
+    ...cfg,
+    accounts: [...cfg.accounts, { id, label, email: null, realName: null, photo: null, profileDir, signedIn: true }],
+  };
+}
+
+/** Remembers the last known signed-in state of an extra account (unchanged config if it is already that). */
+export function setSignedIn(cfg: LauncherConfig, id: string, signedIn: boolean): LauncherConfig {
+  const target = cfg.accounts.find((a) => a.id === id);
+  if (!target || isMain(target) || target.signedIn === signedIn) return cfg;
+  return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? { ...a, signedIn } : a)) };
 }
 
 export function removeAccount(cfg: LauncherConfig, id: string): LauncherConfig {
@@ -169,6 +183,6 @@ export function addAccount(
     !used.has(id) && !DEMO_IDS.has(id) && !WINDOWS_DEVICE.test(id) && !folderTaken(profileDirFor(userProfile, id));
   let id = base;
   for (let n = 2; !free(id); n++) id = `${base}-${n}`;
-  const account: Account = { id, label: name, email: null, realName: null, photo: null, profileDir: profileDirFor(userProfile, id) };
+  const account: Account = { id, label: name, email: null, realName: null, photo: null, profileDir: profileDirFor(userProfile, id), signedIn: null };
   return { config: { ...cfg, accounts: [...cfg.accounts, account] }, account };
 }

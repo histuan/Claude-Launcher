@@ -21,4 +21,5 @@ contextBridge.exposeInMainWorld('launcher', {
   closeAccount: (id: string) => ipcRenderer.invoke('launcher:closeAccount', id),
   removeAccount: (id: string, closeFirst?: boolean) => ipcRenderer.invoke('launcher:removeAccount', id, closeFirst === true),
   runningAccounts: () => ipcRenderer.invoke('launcher:runningAccounts'),
+  cardsShown: () => ipcRenderer.invoke('launcher:cardsShown'),
 });

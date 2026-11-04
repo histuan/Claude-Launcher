@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  afterSignIn, removeAccount, renameAccount, setClaudeApp, setGreetingName, type Account,
+  afterSignIn, removeAccount, renameAccount, setClaudeApp, setGreetingName, setSignedIn, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
-  ({ id, label, email: null, realName: null, photo: null, profileDir });
+  ({ id, label, email: null, realName: null, photo: null, profileDir, signedIn: null });
 
 test('default config has only the Main account (profileDir null)', () => {
   const cfg = defaultConfig();
@@ -32,7 +32,7 @@ test('parseConfig keeps valid data and normalises missing fields', () => {
     accounts: [{ id: 'main', label: null, profileDir: null }, { id: 'w', label: 'Work', email: 'a@b.c', profileDir: 'D:\\p\\w' }],
   });
   assert.equal(cfg.greetingName, 'Thi');
-  assert.deepEqual(cfg.accounts[1], { id: 'w', label: 'Work', email: 'a@b.c', realName: null, photo: null, profileDir: 'D:\\p\\w' });
+  assert.deepEqual(cfg.accounts[1], { id: 'w', label: 'Work', email: 'a@b.c', realName: null, photo: null, profileDir: 'D:\\p\\w', signedIn: null });
 });
 
 test('parseConfig puts Main first, adds it if missing, drops duplicates', () => {
@@ -84,7 +84,7 @@ test('add: id from the name, folder under ClaudeProfiles, appended last', () => 
   assert.ok(result);
   assert.deepEqual(result.account, {
     id: 'trabalho-agil', label: 'Trabalho Ágil!', email: null, realName: null, photo: null,
-    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\trabalho-agil',
+    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\trabalho-agil', signedIn: null,
   });
   assert.deepEqual(result.config.accounts.map((a) => a.id), ['main', 'trabalho-agil']);
 });
@@ -118,13 +118,26 @@ test('only direct children of %USERPROFILE%\\ClaudeProfiles count as launcher pr
   assert.equal(isLauncherProfileDir('', HOME), false);
 });
 
-test('after a sign-in: the new card is added once; an existing card is left as it is', () => {
+test('after a sign-in: the new card is added once (signed in); an existing card is marked signed in', () => {
   const work = { id: 'work', label: 'Work', profileDir: 'C:\\P\\work', isNew: true };
   const base = parseConfig({ accounts: [acc('main', null)] });
   const added = afterSignIn(base, work);
-  assert.deepEqual(added.accounts[1], acc('work', 'C:\\P\\work', 'Work'));
+  assert.deepEqual(added.accounts[1], { ...acc('work', 'C:\\P\\work', 'Work'), signedIn: true });
   assert.equal(afterSignIn(added, work).accounts.length, 2, 'never added twice');
-  assert.equal(afterSignIn(added, { ...work, isNew: false }), added);
+  assert.equal(afterSignIn(added, { ...work, isNew: false }), added, 'already signed in: unchanged');
+  const out = setSignedIn(added, 'work', false);
+  assert.equal(afterSignIn(out, { ...work, isNew: false }).accounts[1]?.signedIn, true);
+});
+
+test('last known signed-in state: kept from disk, saved per extra account, never on Main', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null), { ...acc('w', 'D:\\w'), signedIn: false }, { ...acc('x', 'D:\\x'), signedIn: 'yes' }] });
+  assert.deepEqual(cfg.accounts.map((a) => a.signedIn), [null, false, null], 'only a boolean is kept');
+  const saved = setSignedIn(cfg, 'w', true);
+  assert.equal(saved.accounts[1]?.signedIn, true);
+  assert.equal(cfg.accounts[1]?.signedIn, false, 'input not mutated');
+  assert.equal(setSignedIn(saved, 'w', true), saved, 'same state: same config (no write)');
+  assert.equal(setSignedIn(saved, 'main', true), saved);
+  assert.equal(setSignedIn(saved, 'nope', true), saved);
 });
 
 test('parseConfig drops an old cookiePending flag (a build of 0.4.4 wrote it)', () => {

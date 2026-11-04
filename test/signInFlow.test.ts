@@ -103,6 +103,30 @@ async function signInInClaude(w: World, flow: SignInFlow, withCookie = true): Pr
   await flow.poll(); // keys → settle → force-end the sign-in Claude → move
 }
 
+test('(0.5.0) main Claude running hidden (window closed, no tray icon): not reopened after the sign-in', async (t) => {
+  const w = await world(t);
+  w.deps.listDefaultWindows = async () => ({ pids: [...w.pids], visible: false });
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  assert.equal(w.pids.includes(11), false, 'still closed for the sign-in');
+  await signInInClaude(w, flow);
+  assert.deepEqual(last(w), { phase: 'done', account: w.account });
+  assert.equal(w.launches, 1, 'only the sign-in Claude was opened');
+  assert.ok(w.logs.some((l) => l.includes('start: main Claude: running hidden')));
+});
+
+test('(0.5.0) main Claude with a visible window: reopened after the sign-in and after a cancel', async (t) => {
+  for (const cancel of [false, true]) {
+    const w = await world(t);
+    w.deps.listDefaultWindows = async () => ({ pids: [...w.pids], visible: true });
+    const flow = new SignInFlow(w.deps);
+    assert.equal(await flow.start(w.slot, w.account), null);
+    if (cancel) await flow.cancel();
+    else await signInInClaude(w, flow);
+    assert.equal(w.launches, 2, cancel ? 'reopened after Cancel' : 'reopened after the sign-in');
+  }
+});
+
 test('success: session moved to the account folder, main profile restored, main Claude reopened', async (t) => {
   const w = await world(t);
   const flow = new SignInFlow(w.deps);

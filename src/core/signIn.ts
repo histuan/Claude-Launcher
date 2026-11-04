@@ -21,6 +21,7 @@ export interface Marker {
   stash: string;
   /** Whether a default profile existed and is (or is about to be) stashed. */
   stashed: boolean;
+  /** The main Claude is reopened at the end: it was running with a visible window (0.5.0; before: running at all). */
   mainWasRunning: boolean;
   account: MarkerAccount;
   startedAt: number;

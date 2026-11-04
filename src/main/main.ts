@@ -2,11 +2,12 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { existsSync, readdirSync } from 'node:fs';
 import { appendFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
+import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
 import {
-  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setGreetingName,
+  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setGreetingName, setSignedIn,
   type LauncherConfig,
 } from '../core/config.js';
 import { findClaudeApp, lookupError, type ClaudeLookup } from '../core/claudeApp.js';
@@ -51,22 +52,41 @@ let win: BrowserWindow | null = null;
 
 /**
  * "Not signed in": only a valid sessionKey cookie decides (never the config.json keys). Running accounts are not read
- * (their cookie database is locked); a closed one is retried for ~10 s while still locked, then the window redraws.
- * Each final decision goes to sign-in-timings.log ("card check <id>: cookie not found"), never cookie data.
+ * (their cookie database is locked); a closed one is retried for ~10 s while still locked. Each final decision goes
+ * to sign-in-timings.log ("card check <id>: cookie not found"), never cookie data. The cards show the last known
+ * state (saved in the config) at once; the reads start only after the cards are on screen and run in the background.
  */
 const signedInTracker = new SignedInTracker({
   sessionCookie: (dir) => readSessionCookie(dir),
   log: (line) => logTiming(line),
   onChange: () => win?.webContents.send('launcher:cardsChanged'),
+  save: (id, signedIn) => {
+    store.update((c) => setSignedIn(c, id, signedIn)).catch((err: unknown) =>
+      console.warn(`Could not save the signed-in state: ${(err as Error).message}`));
+  },
 });
+/** Cookie checks wait for the first cards on screen (startup), then run after every state. */
+let cardsShown = false;
+/** Last result of the process query (the renderer polls it every ~3 s). */
+let lastRunning: string[] = [];
+
+/** Startup timings (ms since the process started), logged once when the cards are on screen. */
+const startup = { ready: 0, config: 0, window: 0, firstState: 0, name: 0, profile: 0 };
 
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
+  const first = startup.firstState === 0;
+  const t0 = performance.now();
+  const name = await defaultName;
+  const t1 = performance.now();
+  const signInAvailable = (await signInSlot) !== null;
+  if (first) Object.assign(startup, { name: t1 - t0, profile: performance.now() - t1, firstState: performance.now() });
+  if (cardsShown) signedInTracker.check(cfg.accounts, lastRunning);
   return {
-    defaultName: await defaultName,
+    defaultName: name,
     greetingName: cfg.greetingName,
     accounts: cfg.accounts,
-    ...(await signedInTracker.cards(cfg.accounts, await runningIds())),
-    signInAvailable: (await signInSlot) !== null,
+    ...signedInTracker.cards(cfg.accounts, lastRunning),
+    signInAvailable,
     signInLog,
     timingsLog,
     signIn: signInStatus,
@@ -80,7 +100,22 @@ async function result(cfg: LauncherConfig, error: ActionError | null = null): Pr
 
 async function runningIds(): Promise<string[]> {
   if (!onWindows) return [];
-  return runningAccountIds(store.current.accounts, await listClaudeProcesses(runPowerShell));
+  lastRunning = runningAccountIds(store.current.accounts, await listClaudeProcesses(runPowerShell));
+  return lastRunning;
+}
+
+/** The renderer drew the first cards: log the startup time, then start the cookie checks (in the background). */
+async function onCardsShown(): Promise<void> {
+  if (cardsShown) return;
+  cardsShown = true;
+  const ms = (n: number): string => `${Math.round(n)} ms`;
+  logTiming(`startup: cards shown: ${ms(performance.now())} after the launcher started (app ready ${ms(startup.ready)}, `
+    + `config ${ms(startup.config)}, window ${ms(startup.window)}, first state ${ms(startup.firstState)}: `
+    + `waited for the Windows name ${ms(startup.name)}, for the profile lookup ${ms(startup.profile)})`);
+  const t0 = performance.now();
+  const running = await runningIds();
+  logTiming(`startup: process query: ${ms(performance.now() - t0)}`);
+  signedInTracker.check(store.current.accounts, running);
 }
 
 const accountProcesses: AccountProcessDeps = {
@@ -236,6 +271,11 @@ const flow = onWindows && markerFile ? new SignInFlow({
   markerFile,
   // Only the default instance: extra accounts (own --user-data-dir) stay open during Add account.
   listDefaultPids: async () => pidsForProfile(await queryClaudeProcesses(runPowerShell), null),
+  // One query with window handles: only a main Claude with a visible window is reopened after the sign-in.
+  listDefaultWindows: async () => {
+    const procs = await queryClaudeWindows(runPowerShell);
+    return { pids: pidsForProfile(procs, null), visible: windowPid(procs, null) !== null };
+  },
   closeGracefully: (pids) => closeProcessesGracefully(pids),
   kill: (pids) => killProcesses(pids),
   isAlive: (pid) => isProcessAlive(pid),
@@ -389,6 +429,7 @@ function registerIpc(): void {
     return removeExisting(id, closeFirst === true);
   });
   ipcMain.handle('launcher:runningAccounts', () => runningIds());
+  ipcMain.handle('launcher:cardsShown', () => { void onCardsShown(); });
 }
 
 function createWindow(): void {
@@ -424,15 +465,19 @@ function createWindow(): void {
 
 async function start(): Promise<void> {
   await app.whenReady();
+  startup.ready = performance.now();
   // Before anything else: an interrupted sign-in leaves a marker (WINDOWS.md §4).
   const marker = flow ? await flow.pending() : null;
   // First run: only Main. Phase 2 sample accounts (demo-*) are dropped by parseConfig.
   await store.load(defaultConfig);
+  signedInTracker.seed(store.current.accounts);
+  startup.config = performance.now();
   if (marker) await recoverSignIn(marker);
   // After the recovery, which may put the main profile back. Also fills the Claude.exe cache on the first run.
   signInSlot = findClaude().then((c) => lookUpDefaultProfile(c.state === 'found' ? c.app.family : undefined));
   registerIpc();
   createWindow();
+  startup.window = performance.now();
 }
 
 start().catch((err: unknown) => {

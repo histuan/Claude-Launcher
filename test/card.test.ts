@@ -6,7 +6,7 @@ import type { Account } from '../src/core/config.js';
 import { strings } from '../src/renderer/strings.js';
 
 const account = (over: Partial<Account>): Account =>
-  ({ id: 'x', label: null, email: null, realName: null, photo: null, profileDir: null, ...over });
+  ({ id: 'x', label: null, email: null, realName: null, photo: null, profileDir: null, signedIn: null, ...over });
 
 test('Main badge: on Main, also after a rename; never on other accounts', () => {
   assert.equal(cardBadge(account({ id: 'main' })), 'main');

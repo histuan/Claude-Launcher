@@ -156,7 +156,7 @@ async function pollRunning(): Promise<void> {
   setTimeout(() => void pollRunning(), 3000);
 }
 
-/** A card check that needed retries (cookie database still locked after a close) is final. */
+/** A background card check changed something (last known state corrected, "Checking…" on or off). */
 api.onCardsChanged(() => void refreshCards(running).catch(() => undefined));
 
 // Full text in a tooltip only when it is cut with an ellipsis.
@@ -458,6 +458,9 @@ renderGreetingText();
 renderName();
 renderCards();
 renderSignInAvailability();
+// Right after the cards are in the page: the startup time is logged and the cookie checks start (background).
+// Not requestAnimationFrame: the window is still hidden until ready-to-show, where frames may not run.
+setTimeout(() => void api.cardsShown(), 0);
 setInterval(renderGreetingText, 30_000); // follows the morning/afternoon/evening boundary
 void pollRunning();
 if (state.signIn) showSignIn(state.signIn); // a sign-in resumed on startup

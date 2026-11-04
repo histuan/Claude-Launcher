@@ -75,10 +75,12 @@ export interface LauncherApi {
   /** "Wait longer" after notSaved: another ~45 s wait for the cookie write. */
   waitLongerSignIn(): Promise<void>;
   onSignIn(listener: (status: SignInStatus) => void): void;
-  /** A card check that needed retries is final: get the state again and redraw the cards. */
+  /** A background card check changed something ("Checking…", "Not signed in"): get the state again and redraw. */
   onCardsChanged(listener: () => void): void;
   /** closeFirst: "Close and remove" on a running account; without it a running account gives error running. */
   removeAccount(id: string, closeFirst?: boolean): Promise<ActionResult>;
   /** Ids of the accounts whose Claude is running. */
   runningAccounts(): Promise<string[]>;
+  /** The first cards are on screen: logs the startup time and starts the cookie checks (background). */
+  cardsShown(): Promise<void>;
 }
