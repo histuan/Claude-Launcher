@@ -40,7 +40,7 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
 
 ### 2.2 Cards
 
-- Portrait rectangles (~160 × 200 px at 100 % scale; Windows scaling enlarges them), rounded corners (~16 px),
+- Portrait rectangles (~160 × 216 px at 100 % scale since 0.5.0; Windows scaling enlarges them), rounded corners (~16 px),
   ~20 px gap between them. Content vertically centred.
 - Top: round avatar (~64 px), centred. Photo chosen by the person or, if none, the initial of the card name.
 - Below, in this order: **card name** (larger), **email** (light grey), **real account name** (smaller, fainter grey).
@@ -56,6 +56,8 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
 ### 2.3 Card ⋯ menu
 
 - **Rename** — changes the card name.
+- **Edit details** — the account's e-mail (required) and real name (optional), typed by the person (every card,
+  Main included). **Add account** asks for them too (`docs/WINDOWS.md` §5).
 - **Change photo** — picks an image from the PC (png/jpg/webp), cropped to a circle; option "back to the initial".
 - **Remove** — with confirmation. Deletes that account's profile folder. Not available on the Main card.
 - **Close this account** — ends that account's Claude. The launcher **stays open** afterwards (intended: the person
@@ -100,7 +102,7 @@ Values marked "≈" are approximate: keep them as CSS variables in one place to 
 ## 5. Installation and updates
 
 - Per-user NSIS installer, with a Start menu shortcut.
-- No automatic updates in v1: new versions come out on GitHub Releases (tag `launcher-vX.Y.Z`), created automatically
+- No automatic updates in v1: new versions come out on GitHub Releases (tag `vX.Y.Z`; `launcher-vX.Y.Z` up to 0.4.5), created automatically
   when a phase is merged into `main`.
 - The `.exe` is not signed: the README explains SmartScreen ("More info → Run anyway") and Smart App Control.
 

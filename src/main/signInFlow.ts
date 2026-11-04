@@ -19,6 +19,12 @@ export interface SignInDeps {
   markerFile: string;
   /** Main processes of the default Claude instance (no --user-data-dir). */
   listDefaultPids(): Promise<number[]>;
+  /**
+   * Same list, plus whether one of them has a visible window. Used once, at the start: the main Claude is reopened at
+   * the end only if it had a visible window (Claude runs hidden after its window is closed, with no tray icon on
+   * Thiago's PC: reopening it would pop up a window the person had closed). Without it: every running one counts.
+   */
+  listDefaultWindows?(): Promise<{ pids: number[]; visible: boolean }>;
   /** Asks the processes to close (taskkill /T without /F). */
   closeGracefully(pids: number[]): Promise<void>;
   /** Force-ends the processes and their children (taskkill /T /F). */
@@ -114,8 +120,13 @@ export class SignInFlow {
     if ((await this.deps.freeBytes(path.parse(slot).root)) < (this.deps.minFreeBytes ?? 500 * 1024 ** 2)) return 'disk';
 
     this.step('closing');
-    const pids = await this.deps.listDefaultPids();
-    const mainWasRunning = pids.length > 0;
+    const found = this.deps.listDefaultWindows
+      ? await this.deps.listDefaultWindows()
+      : { pids: await this.deps.listDefaultPids(), visible: true };
+    const { pids } = found;
+    // "Reopen the main Claude at the end": only when it was running with a visible window.
+    const mainWasRunning = pids.length > 0 && found.visible;
+    this.log(`start: main Claude: ${pids.length === 0 ? 'not running' : found.visible ? 'running with a window' : 'running hidden'}`, t0);
     // A default Claude that was not there before (the person opened it again) stops the start at once.
     const closed = await this.closeDefault({ pids, stopOnNew: true });
     this.log(`start: close main Claude: ${closed || 'still running'}`, t0);

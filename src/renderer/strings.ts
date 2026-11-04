@@ -1,6 +1,7 @@
 // Every user-facing text lives here, so other languages can be added later.
 import type { ActionError, StartStep } from '../core/api.js';
 import type { CardBadge, CardStatus } from '../core/card.js';
+import type { DetailsError } from '../core/details.js';
 import type { GreetingPeriod } from '../core/greeting.js';
 
 export const strings = {
@@ -28,7 +29,10 @@ export const strings = {
   accountOptions: (name: string) => `Options for ${name}`,
   menu: {
     rename: 'Rename',
+    editDetails: 'Edit details',
     changePhoto: 'Change photo',
+    /** Shown only when the card has a photo. */
+    removePhoto: 'Back to the initial',
     remove: 'Remove',
     signIn: 'Sign in',
     close: 'Close this account',
@@ -51,14 +55,15 @@ export const strings = {
   },
   add: {
     title: 'Add account',
-    body: "Your main Claude closes while you sign in, then reopens by itself. Don't close the launcher until it finishes.",
+    body: "Your main Claude closes while you sign in (it reopens afterwards if its window was open). "
+      + "Don't close the launcher until it finishes.",
     confirm: 'Continue',
   },
   signIn: {
     title: (name: string) => `Sign in to “${name}”`,
-    body: "Your main Claude closes while you sign in, then reopens by itself. Don't close the launcher until it finishes.",
+    body: "Your main Claude closes while you sign in (it reopens afterwards if its window was open). "
+      + "Don't close the launcher until it finishes.",
     start: 'Continue',
-    notSignedIn: 'Not signed in',
     waiting: {
       title: 'Use the new Claude window to sign in',
       body: 'A blank Claude window opened. Sign in there with the account for this card (email or Google). '
@@ -167,5 +172,26 @@ export const strings = {
     running: 'Running',
     runningSignedOut: 'Running · Not signed in',
     checking: 'Checking…',
+    signedOut: 'Not signed in',
   } satisfies Record<CardStatus, string>,
+  /** Add account and Edit details (WINDOWS.md §5: typed by the person, not read from Claude). */
+  details: {
+    editTitle: (name: string) => `Details of “${name}”`,
+    editBody: 'Type them as they appear in Claude (Settings → Account). The launcher does not read them from Claude.',
+    cardName: 'Card name',
+    email: 'Email',
+    realName: 'Account name (optional)',
+    save: 'Save',
+    nameMissing: 'Type a name for the card.',
+    errors: {
+      emailMissing: 'Type the email of this Claude account.',
+      emailInvalid: 'This does not look like an email address.',
+    } satisfies Record<DetailsError, string>,
+  },
+  photo: {
+    failed: {
+      title: 'Could not use this image',
+      body: 'Pick a PNG, JPG or WebP image.',
+    },
+  },
 } as const;

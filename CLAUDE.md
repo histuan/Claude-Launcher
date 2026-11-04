@@ -37,7 +37,8 @@ one account per profile, with no signing out and back in.
   (issues are titled `[launcher] Phase N — …`).
 - Each phase bumps `version` in `package.json` to `0.N.0` (Phases 1.5 and 1.6 kept `0.1.0`) and adds its section to `CHANGELOG.md`
   (*Keep a Changelog*: move the `Unreleased` items into the new version section).
-- On merge to `main`, the workflow creates the tag `launcher-v<version>` and a GitHub Release with the installer and the
+- On merge to `main`, the workflow creates the tag `v<version>` (since 0.5.0; older ones are `launcher-v<version>`)
+  and a GitHub Release titled `v<version>` with the installer and the
   notes from `CHANGELOG.md`, published as a regular release marked as latest (0.1.0 and 0.2.0 were pre-releases). The PR run uploads the installer as an artifact.
 - Thiago tests and merges. The next phase starts only after the merge.
 

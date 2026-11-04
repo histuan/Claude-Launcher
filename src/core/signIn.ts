@@ -10,6 +10,9 @@ export interface MarkerAccount {
   profileDir: string;
   /** true = Add account (the card is created at the end); false = Sign in on an existing card. */
   isNew: boolean;
+  /** Add account: the details typed in the dialog, saved on the new card at the end. */
+  email?: string | null;
+  realName?: string | null;
 }
 
 export interface Marker {
@@ -21,6 +24,7 @@ export interface Marker {
   stash: string;
   /** Whether a default profile existed and is (or is about to be) stashed. */
   stashed: boolean;
+  /** The main Claude is reopened at the end: it was running with a visible window (0.5.0; before: running at all). */
   mainWasRunning: boolean;
   account: MarkerAccount;
   startedAt: number;
@@ -56,7 +60,10 @@ export function parseMarker(raw: unknown): Marker | null {
     stash: m.stash,
     stashed: m.stashed === true,
     mainWasRunning: m.mainWasRunning === true,
-    account: { id: a.id, label: a.label, profileDir: a.profileDir, isNew: a.isNew === true },
+    account: {
+      id: a.id, label: a.label, profileDir: a.profileDir, isNew: a.isNew === true,
+      ...(str(a.email) ? { email: a.email } : {}), ...(str(a.realName) ? { realName: a.realName } : {}),
+    },
     startedAt: typeof m.startedAt === 'number' ? m.startedAt : 0,
   };
 }

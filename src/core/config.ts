@@ -1,6 +1,7 @@
 // Launcher config (JSON in userData). Pure functions: they never mutate the input.
 // The Main account is the default Claude profile: profileDir null, always first, cannot be removed.
 import path from 'node:path';
+import { checkDetails } from './details.js';
 import { isDesktopExe } from './processes.js';
 
 export const CONFIG_VERSION = 1;
@@ -15,6 +16,8 @@ export interface Account {
   photo: string | null;
   /** Claude --user-data-dir. null = Main (default profile, no flag). */
   profileDir: string | null;
+  /** Last known signed-in state (shown at once on startup; the background cookie check updates it). null = unknown. */
+  signedIn: boolean | null;
 }
 
 /** Last resolved Claude.exe and its PackageFamilyName (saves a slow PowerShell start on every click). */
@@ -34,7 +37,7 @@ export interface LauncherConfig {
 
 export const isMain = (account: Account): boolean => account.profileDir === null;
 
-const MAIN: Account = { id: 'main', label: null, email: null, realName: null, photo: null, profileDir: null };
+const MAIN: Account = { id: 'main', label: null, email: null, realName: null, photo: null, profileDir: null, signedIn: null };
 
 export function profileDirFor(userProfile: string, id: string): string {
   return path.win32.join(userProfile, 'ClaudeProfiles', id);
@@ -100,6 +103,7 @@ export function parseConfig(raw: unknown): LauncherConfig {
       realName: text(a.realName),
       photo: text(a.photo),
       profileDir: text(a.profileDir),
+      signedIn: typeof a.signedIn === 'boolean' ? a.signedIn : null,
     };
     if (isMain(account)) {
       if (main) continue; // only one account may use the default profile
@@ -135,14 +139,38 @@ export function renameAccount(cfg: LauncherConfig, id: string, label: string): L
   return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? { ...a, label: name } : a)) };
 }
 
-/** After a successful sign-in: adds the new card (once); an existing card stays as it is. */
+/** After a successful sign-in: adds the new card (once) or marks the existing one as signed in. */
 export function afterSignIn(
   cfg: LauncherConfig,
-  account: { id: string; label: string; profileDir: string; isNew: boolean },
+  account: { id: string; label: string; profileDir: string; isNew: boolean; email?: string | null; realName?: string | null },
 ): LauncherConfig {
   const { id, label, profileDir, isNew } = account;
-  if (!isNew || cfg.accounts.some((a) => a.id === id)) return cfg;
-  return { ...cfg, accounts: [...cfg.accounts, { id, label, email: null, realName: null, photo: null, profileDir }] };
+  if (!isNew) return setSignedIn(cfg, id, true);
+  if (cfg.accounts.some((a) => a.id === id)) return cfg;
+  const details = checkDetails(account.email ?? '', account.realName ?? '');
+  const email = 'error' in details ? null : details.email;
+  const realName = 'error' in details ? null : details.realName;
+  return { ...cfg, accounts: [...cfg.accounts, { id, label, email, realName, photo: null, profileDir, signedIn: true }] };
+}
+
+/** "Edit details" (any card, Main included). An invalid e-mail leaves the config as it is. */
+export function setDetails(cfg: LauncherConfig, id: string, email: string, realName: string): LauncherConfig {
+  const details = checkDetails(email, realName);
+  if ('error' in details || !cfg.accounts.some((a) => a.id === id)) return cfg;
+  return { ...cfg, accounts: cfg.accounts.map((a) => (a.id === id ? { ...a, ...details } : a)) };
+}
+
+/** Photo file name in userData/photos (null = back to the initial). */
+export function setPhoto(cfg: LauncherConfig, id: string, photo: string | null): LauncherConfig {
+  if (!cfg.accounts.some((a) => a.id === id)) return cfg;
+  return { ...cfg, accounts: cfg.accounts.map((a) => (a.id === id ? { ...a, photo } : a)) };
+}
+
+/** Remembers the last known signed-in state of an extra account (unchanged config if it is already that). */
+export function setSignedIn(cfg: LauncherConfig, id: string, signedIn: boolean): LauncherConfig {
+  const target = cfg.accounts.find((a) => a.id === id);
+  if (!target || isMain(target) || target.signedIn === signedIn) return cfg;
+  return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? { ...a, signedIn } : a)) };
 }
 
 export function removeAccount(cfg: LauncherConfig, id: string): LauncherConfig {
@@ -169,6 +197,6 @@ export function addAccount(
     !used.has(id) && !DEMO_IDS.has(id) && !WINDOWS_DEVICE.test(id) && !folderTaken(profileDirFor(userProfile, id));
   let id = base;
   for (let n = 2; !free(id); n++) id = `${base}-${n}`;
-  const account: Account = { id, label: name, email: null, realName: null, photo: null, profileDir: profileDirFor(userProfile, id) };
+  const account: Account = { id, label: name, email: null, realName: null, photo: null, profileDir: profileDirFor(userProfile, id), signedIn: null };
   return { config: { ...cfg, accounts: [...cfg.accounts, account] }, account };
 }

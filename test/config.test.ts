@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  afterSignIn, removeAccount, renameAccount, setClaudeApp, setGreetingName, type Account,
+  afterSignIn, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
-  ({ id, label, email: null, realName: null, photo: null, profileDir });
+  ({ id, label, email: null, realName: null, photo: null, profileDir, signedIn: null });
 
 test('default config has only the Main account (profileDir null)', () => {
   const cfg = defaultConfig();
@@ -32,7 +32,7 @@ test('parseConfig keeps valid data and normalises missing fields', () => {
     accounts: [{ id: 'main', label: null, profileDir: null }, { id: 'w', label: 'Work', email: 'a@b.c', profileDir: 'D:\\p\\w' }],
   });
   assert.equal(cfg.greetingName, 'Thi');
-  assert.deepEqual(cfg.accounts[1], { id: 'w', label: 'Work', email: 'a@b.c', realName: null, photo: null, profileDir: 'D:\\p\\w' });
+  assert.deepEqual(cfg.accounts[1], { id: 'w', label: 'Work', email: 'a@b.c', realName: null, photo: null, profileDir: 'D:\\p\\w', signedIn: null });
 });
 
 test('parseConfig puts Main first, adds it if missing, drops duplicates', () => {
@@ -84,7 +84,7 @@ test('add: id from the name, folder under ClaudeProfiles, appended last', () => 
   assert.ok(result);
   assert.deepEqual(result.account, {
     id: 'trabalho-agil', label: 'Trabalho Ágil!', email: null, realName: null, photo: null,
-    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\trabalho-agil',
+    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\trabalho-agil', signedIn: null,
   });
   assert.deepEqual(result.config.accounts.map((a) => a.id), ['main', 'trabalho-agil']);
 });
@@ -118,13 +118,26 @@ test('only direct children of %USERPROFILE%\\ClaudeProfiles count as launcher pr
   assert.equal(isLauncherProfileDir('', HOME), false);
 });
 
-test('after a sign-in: the new card is added once; an existing card is left as it is', () => {
+test('after a sign-in: the new card is added once (signed in); an existing card is marked signed in', () => {
   const work = { id: 'work', label: 'Work', profileDir: 'C:\\P\\work', isNew: true };
   const base = parseConfig({ accounts: [acc('main', null)] });
   const added = afterSignIn(base, work);
-  assert.deepEqual(added.accounts[1], acc('work', 'C:\\P\\work', 'Work'));
+  assert.deepEqual(added.accounts[1], { ...acc('work', 'C:\\P\\work', 'Work'), signedIn: true });
   assert.equal(afterSignIn(added, work).accounts.length, 2, 'never added twice');
-  assert.equal(afterSignIn(added, { ...work, isNew: false }), added);
+  assert.equal(afterSignIn(added, { ...work, isNew: false }), added, 'already signed in: unchanged');
+  const out = setSignedIn(added, 'work', false);
+  assert.equal(afterSignIn(out, { ...work, isNew: false }).accounts[1]?.signedIn, true);
+});
+
+test('last known signed-in state: kept from disk, saved per extra account, never on Main', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null), { ...acc('w', 'D:\\w'), signedIn: false }, { ...acc('x', 'D:\\x'), signedIn: 'yes' }] });
+  assert.deepEqual(cfg.accounts.map((a) => a.signedIn), [null, false, null], 'only a boolean is kept');
+  const saved = setSignedIn(cfg, 'w', true);
+  assert.equal(saved.accounts[1]?.signedIn, true);
+  assert.equal(cfg.accounts[1]?.signedIn, false, 'input not mutated');
+  assert.equal(setSignedIn(saved, 'w', true), saved, 'same state: same config (no write)');
+  assert.equal(setSignedIn(saved, 'main', true), saved);
+  assert.equal(setSignedIn(saved, 'nope', true), saved);
 });
 
 test('parseConfig drops an old cookiePending flag (a build of 0.4.4 wrote it)', () => {
@@ -144,4 +157,31 @@ test('Claude.exe cache: kept only for an MSIX Claude.exe path; default and bad v
   const cfg = setClaudeApp(defaultConfig(), { exe, family: null });
   assert.deepEqual(cfg.claudeApp, { exe, family: null });
   assert.deepEqual(cfg.accounts, defaultConfig().accounts);
+});
+
+test('Add account: the typed details go on the new card; an invalid e-mail is not saved', () => {
+  const base = parseConfig({ accounts: [acc('main', null)] });
+  const work = { id: 'work', label: 'Work', profileDir: 'C:\\P\\work', isNew: true };
+  const added = afterSignIn(base, { ...work, email: ' me@work.com ', realName: 'Thiago G.' });
+  assert.equal(added.accounts[1]?.email, 'me@work.com');
+  assert.equal(added.accounts[1]?.realName, 'Thiago G.');
+  assert.equal(afterSignIn(base, { ...work, email: 'nope' }).accounts[1]?.email, null);
+});
+
+test('Edit details: any card (Main too); invalid e-mail or unknown id leaves the config as it is', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null), acc('w', 'D:\\w')] });
+  const main = setDetails(cfg, 'main', 'thiago@gmail.com', ' Thiago U. ');
+  assert.deepEqual([main.accounts[0]?.email, main.accounts[0]?.realName], ['thiago@gmail.com', 'Thiago U.']);
+  assert.equal(setDetails(main, 'main', 'thiago@gmail.com', '').accounts[0]?.realName, null, 'real name can be cleared');
+  assert.equal(setDetails(cfg, 'w', 'bad', 'x'), cfg);
+  assert.equal(setDetails(cfg, 'nope', 'a@b.cd', 'x'), cfg);
+  assert.equal(cfg.accounts[0]?.email, null, 'input not mutated');
+});
+
+test('photo: set and back to the initial', () => {
+  const cfg = parseConfig({ accounts: [acc('main', null)] });
+  const withPhoto = setPhoto(cfg, 'main', 'main.png');
+  assert.equal(withPhoto.accounts[0]?.photo, 'main.png');
+  assert.equal(setPhoto(withPhoto, 'main', null).accounts[0]?.photo, null);
+  assert.equal(setPhoto(cfg, 'nope', 'x.png'), cfg);
 });

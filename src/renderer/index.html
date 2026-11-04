@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; img-src 'self' data:">
   <title></title>
   <link rel="stylesheet" href="fonts/inter/wght.css">
   <link rel="stylesheet" href="fonts/source-serif-4/wght.css">
@@ -35,6 +35,26 @@
       <button id="signin-confirm" class="primary" type="button"></button>
     </div>
   </dialog>
+
+  <dialog id="details">
+    <form method="dialog">
+      <h2 id="details-title"></h2>
+      <p id="details-body"></p>
+      <label id="details-name-row" class="field"><span id="details-name-label"></span>
+        <input id="details-name" type="text" maxlength="40" autocomplete="off" spellcheck="false"></label>
+      <label class="field"><span id="details-email-label"></span>
+        <input id="details-email" type="text" maxlength="254" autocomplete="off" spellcheck="false" inputmode="email"></label>
+      <label class="field"><span id="details-real-name-label"></span>
+        <input id="details-real-name" type="text" maxlength="60" autocomplete="off" spellcheck="false"></label>
+      <p id="details-error" class="error" role="alert"></p>
+      <div class="dialog-buttons">
+        <button id="details-cancel" type="button"></button>
+        <button id="details-confirm" class="primary" type="submit" value="confirm"></button>
+      </div>
+    </form>
+  </dialog>
+
+  <input id="photo-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
 
   <dialog id="dialog">
     <form method="dialog">

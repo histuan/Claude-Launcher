@@ -6,7 +6,7 @@ import type { Account } from '../src/core/config.js';
 import { strings } from '../src/renderer/strings.js';
 
 const account = (over: Partial<Account>): Account =>
-  ({ id: 'x', label: null, email: null, realName: null, photo: null, profileDir: null, ...over });
+  ({ id: 'x', label: null, email: null, realName: null, photo: null, profileDir: null, signedIn: null, ...over });
 
 test('Main badge: on Main, also after a rename; never on other accounts', () => {
   assert.equal(cardBadge(account({ id: 'main' })), 'main');
@@ -21,7 +21,7 @@ test('version label: "v" + the app version', () => {
 
 test('card status: Running, Running · Not signed in (last known), Checking… when closed, or nothing', () => {
   assert.equal(cardStatus(false, false), null);
-  assert.equal(cardStatus(false, true), null, 'a closed card shows Not signed in in its text line instead');
+  assert.equal(cardStatus(false, true), 'signedOut', 'closed and signed out (0.5.0: in the status line)');
   assert.equal(cardStatus(true, false), 'running');
   assert.equal(cardStatus(true, true), 'runningSignedOut');
   assert.equal(cardStatus(false, true, true), 'checking', 'cookie database still locked after a close');
@@ -29,4 +29,5 @@ test('card status: Running, Running · Not signed in (last known), Checking… w
   assert.equal(strings.status.checking, 'Checking…');
   assert.equal(strings.status.running, 'Running');
   assert.equal(strings.status.runningSignedOut, 'Running · Not signed in');
+  assert.equal(strings.status.signedOut, 'Not signed in');
 });

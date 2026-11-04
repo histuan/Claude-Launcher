@@ -43,7 +43,7 @@ test('only the Claude Code CLI running: nothing is running', () => {
 
 test('maps processes to account ids (Main = no flag; paths compared without case or trailing slash)', () => {
   const work: Account = { id: 'work', label: 'Work', email: null, realName: null, photo: null,
-    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\work' };
+    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\work', signedIn: null };
   const home: Account = { ...work, id: 'home', profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\home' };
   const accounts = [...defaultConfig().accounts, work, home];
   assert.deepEqual(runningAccountIds(accounts, [{ pid: 1, profileDir: 'c:/users/THIAG/ClaudeProfiles/Work/' }]), ['work']);

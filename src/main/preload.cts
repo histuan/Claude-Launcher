@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('launcher', {
   getState: () => ipcRenderer.invoke('launcher:getState'),
   setGreetingName: (name: string | null) => ipcRenderer.invoke('launcher:setGreetingName', name),
   renameAccount: (id: string, label: string) => ipcRenderer.invoke('launcher:renameAccount', id, label),
+  setDetails: (id: string, email: string, realName: string) => ipcRenderer.invoke('launcher:setDetails', id, email, realName),
+  setPhoto: (id: string, dataUrl: string | null) => ipcRenderer.invoke('launcher:setPhoto', id, dataUrl),
   openAccount: (id: string) => ipcRenderer.invoke('launcher:openAccount', id),
   startSignIn: (target: unknown) => ipcRenderer.invoke('launcher:startSignIn', target),
   confirmSignIn: () => ipcRenderer.invoke('launcher:confirmSignIn'),
@@ -21,4 +23,5 @@ contextBridge.exposeInMainWorld('launcher', {
   closeAccount: (id: string) => ipcRenderer.invoke('launcher:closeAccount', id),
   removeAccount: (id: string, closeFirst?: boolean) => ipcRenderer.invoke('launcher:removeAccount', id, closeFirst === true),
   runningAccounts: () => ipcRenderer.invoke('launcher:runningAccounts'),
+  cardsShown: () => ipcRenderer.invoke('launcher:cardsShown'),
 });

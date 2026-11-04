@@ -1,24 +1,27 @@
 {
   "name": "claude-launcher",
-  "version": "0.4.5",
+  "version": "0.5.0",
   "private": true,
   "description": "Windows launcher that opens the Claude desktop app in isolated profiles, one account per profile.",
   "type": "module",
   "main": "out/src/main/main.js",
   "author": "histuan",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && tsc -p . && node scripts/copy-assets.mjs",
-    "typecheck": "tsc -p . --noEmit",
+    "build": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && tsc -p . && node scripts/copy-assets.ts",
+    "typecheck": "tsc -p . --noEmit && tsc -p scripts",
     "test": "npm run build && node --test \"out/test/**/*.test.js\"",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --win --publish never",
-    "icon": "node scripts/make-icon.mjs"
+    "icon": "node scripts/make-icon.ts"
   },
   "devDependencies": {
     "@fontsource-variable/inter": "^5.3.0",
     "@fontsource-variable/source-serif-4": "^5.3.1",
-    "@types/node": "^22.20.5",
+    "@types/node": "^24.19.2",
     "electron": "^44.9.3",
     "electron-builder": "^26.18.0",
     "typescript": "^7.0.2"

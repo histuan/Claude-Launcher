@@ -1,0 +1,17 @@
+{
+  // Type check only (`npm run typecheck`): Node 24 runs these .ts files directly (type stripping, no ts-node/tsx),
+  // so only erasable TypeScript syntax is allowed.
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "noEmit": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
+  "include": ["*.ts"]
+}

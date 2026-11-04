@@ -2,14 +2,16 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { existsSync, readdirSync } from 'node:fs';
 import { appendFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
+import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
 import {
-  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setGreetingName,
+  addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn,
   type LauncherConfig,
 } from '../core/config.js';
 import { findClaudeApp, lookupError, type ClaudeLookup } from '../core/claudeApp.js';
+import { checkDetails } from '../core/details.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
 import { pidsForProfile, pidsInsideFolder, runningAccountIds, windowPid } from '../core/processes.js';
@@ -17,6 +19,7 @@ import { claudeVersion, type Marker, type MarkerAccount } from '../core/signIn.j
 import { strings } from '../renderer/strings.js';
 import { closeProfile, removeProfile, type AccountProcessDeps } from './accountActions.js';
 import { ConfigStore } from './configStore.js';
+import { deletePhoto, readPhoto, savePhoto } from './photos.js';
 import { SignedInTracker } from './signedIn.js';
 import { SignInFlow, type StartError } from './signInFlow.js';
 import {
@@ -43,6 +46,9 @@ const store = new ConfigStore(path.join(app.getPath('userData'), 'config.json'))
 const signInLog = path.join(app.getPath('userData'), 'sign-in-check.log');
 /** Step timings of Add account / Sign in (paths and durations only, no secrets). Appended; restarted past 64 KB. */
 const timingsLog = path.join(app.getPath('userData'), 'sign-in-timings.log');
+/** Card photos: userData/photos/<id>.png, kept in memory as data URLs for the window. */
+const photosDir = path.join(app.getPath('userData'), 'photos');
+const photos = new Map<string, string>();
 const defaultName: Promise<string> = onWindows
   ? windowsDisplayName(process.env, runPowerShell)
   : Promise.resolve(cleanDisplayName('', process.env.USERNAME ?? process.env.USER));
@@ -51,22 +57,45 @@ let win: BrowserWindow | null = null;
 
 /**
  * "Not signed in": only a valid sessionKey cookie decides (never the config.json keys). Running accounts are not read
- * (their cookie database is locked); a closed one is retried for ~10 s while still locked, then the window redraws.
- * Each final decision goes to sign-in-timings.log ("card check <id>: cookie not found"), never cookie data.
+ * (their cookie database is locked); a closed one is retried for ~10 s while still locked. Each final decision goes
+ * to sign-in-timings.log ("card check <id>: cookie not found"), never cookie data. The cards show the last known
+ * state (saved in the config) at once; the reads start only after the cards are on screen and run in the background.
  */
 const signedInTracker = new SignedInTracker({
   sessionCookie: (dir) => readSessionCookie(dir),
   log: (line) => logTiming(line),
   onChange: () => win?.webContents.send('launcher:cardsChanged'),
+  save: (id, signedIn) => {
+    store.update((c) => setSignedIn(c, id, signedIn)).catch((err: unknown) =>
+      console.warn(`Could not save the signed-in state: ${(err as Error).message}`));
+  },
 });
+/** Cookie checks wait for the first cards on screen (startup), then run after every state. */
+let cardsShown = false;
+/** Last result of the process query (the renderer polls it every ~3 s). */
+let lastRunning: string[] = [];
+
+/** Startup timings (ms since the process started), logged once when the cards are on screen. */
+const startup = { ready: 0, config: 0, window: 0, firstState: 0, name: 0, profile: 0 };
 
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
+  const first = startup.firstState === 0;
+  const t0 = performance.now();
+  const name = await defaultName;
+  const t1 = performance.now();
+  const signInAvailable = (await signInSlot) !== null;
+  if (first) Object.assign(startup, { name: t1 - t0, profile: performance.now() - t1, firstState: performance.now() });
+  if (cardsShown) signedInTracker.check(cfg.accounts, lastRunning);
   return {
-    defaultName: await defaultName,
+    defaultName: name,
     greetingName: cfg.greetingName,
     accounts: cfg.accounts,
-    ...(await signedInTracker.cards(cfg.accounts, await runningIds())),
-    signInAvailable: (await signInSlot) !== null,
+    photos: Object.fromEntries(cfg.accounts.flatMap((a) => {
+      const url = a.photo ? photos.get(a.id) : undefined;
+      return url ? [[a.id, url]] : [];
+    })),
+    ...signedInTracker.cards(cfg.accounts, lastRunning),
+    signInAvailable,
     signInLog,
     timingsLog,
     signIn: signInStatus,
@@ -80,7 +109,22 @@ async function result(cfg: LauncherConfig, error: ActionError | null = null): Pr
 
 async function runningIds(): Promise<string[]> {
   if (!onWindows) return [];
-  return runningAccountIds(store.current.accounts, await listClaudeProcesses(runPowerShell));
+  lastRunning = runningAccountIds(store.current.accounts, await listClaudeProcesses(runPowerShell));
+  return lastRunning;
+}
+
+/** The renderer drew the first cards: log the startup time, then start the cookie checks (in the background). */
+async function onCardsShown(): Promise<void> {
+  if (cardsShown) return;
+  cardsShown = true;
+  const ms = (n: number): string => `${Math.round(n)} ms`;
+  logTiming(`startup: cards shown: ${ms(performance.now())} after the launcher started (app ready ${ms(startup.ready)}, `
+    + `config ${ms(startup.config)}, window ${ms(startup.window)}, first state ${ms(startup.firstState)}: `
+    + `waited for the Windows name ${ms(startup.name)}, for the profile lookup ${ms(startup.profile)})`);
+  const t0 = performance.now();
+  const running = await runningIds();
+  logTiming(`startup: process query: ${ms(performance.now() - t0)}`);
+  signedInTracker.check(store.current.accounts, running);
 }
 
 const accountProcesses: AccountProcessDeps = {
@@ -236,6 +280,11 @@ const flow = onWindows && markerFile ? new SignInFlow({
   markerFile,
   // Only the default instance: extra accounts (own --user-data-dir) stay open during Add account.
   listDefaultPids: async () => pidsForProfile(await queryClaudeProcesses(runPowerShell), null),
+  // One query with window handles: only a main Claude with a visible window is reopened after the sign-in.
+  listDefaultWindows: async () => {
+    const procs = await queryClaudeWindows(runPowerShell);
+    return { pids: pidsForProfile(procs, null), visible: windowPid(procs, null) !== null };
+  },
   closeGracefully: (pids) => closeProcessesGracefully(pids),
   kill: (pids) => killProcesses(pids),
   isAlive: (pid) => isProcessAlive(pid),
@@ -277,8 +326,11 @@ async function startSignIn(target: SignInTarget): Promise<ActionResult> {
   let account: MarkerAccount;
   if ('label' in target) {
     const added = addAccount(store.current, target.label, userProfile, existsSync);
-    if (!added?.account.profileDir || !added.account.label) return result(store.current);
-    account = { id: added.account.id, label: added.account.label, profileDir: added.account.profileDir, isNew: true };
+    const details = checkDetails(target.email, target.realName);
+    if (!added?.account.profileDir || !added.account.label || 'error' in details) return result(store.current);
+    account = {
+      id: added.account.id, label: added.account.label, profileDir: added.account.profileDir, isNew: true, ...details,
+    };
   } else {
     const card = store.current.accounts.find((a) => a.id === target.accountId);
     if (!card || card.profileDir === null) return result(store.current);
@@ -354,6 +406,8 @@ async function removeExisting(id: string, closeFirst: boolean): Promise<ActionRe
   }
   if (error) return result(store.current, error);
   signedInTracker.forget(id);
+  photos.delete(id);
+  await deletePhoto(photosDir, id).catch((err: unknown) => console.warn(`Could not delete the photo: ${(err as Error).message}`));
   return result(await store.update((c) => removeAccount(c, id)));
 }
 
@@ -367,13 +421,30 @@ function registerIpc(): void {
     if (!isText(id) || !isText(label)) throw new Error('Invalid arguments');
     return state(await store.update((c) => renameAccount(c, id, label)));
   });
+  ipcMain.handle('launcher:setDetails', async (_e, id: unknown, email: unknown, realName: unknown) => {
+    if (!isText(id) || !isText(email) || !isText(realName)) throw new Error('Invalid arguments');
+    return state(await store.update((c) => setDetails(c, id, email, realName)));
+  });
+  ipcMain.handle('launcher:setPhoto', async (_e, id: unknown, dataUrl: unknown) => {
+    if (!isText(id) || (dataUrl !== null && !isText(dataUrl))) throw new Error('Invalid arguments');
+    if (!store.current.accounts.some((a) => a.id === id)) return state(store.current);
+    if (dataUrl === null) {
+      photos.delete(id);
+      await deletePhoto(photosDir, id);
+      return state(await store.update((c) => setPhoto(c, id, null)));
+    }
+    const name = await savePhoto(photosDir, id, dataUrl);
+    if (!name) throw new Error('Not a valid photo');
+    photos.set(id, dataUrl);
+    return state(await store.update((c) => setPhoto(c, id, name)));
+  });
   ipcMain.handle('launcher:openAccount', (_e, id: unknown) => {
     if (!isText(id)) throw new Error('Invalid arguments');
     return openAccount(id);
   });
   ipcMain.handle('launcher:startSignIn', (_e, target: unknown) => {
     const t = (typeof target === 'object' && target !== null ? target : {}) as Record<string, unknown>;
-    if (isText(t.label)) return startSignIn({ label: t.label });
+    if (isText(t.label) && isText(t.email)) return startSignIn({ label: t.label, email: t.email, realName: isText(t.realName) ? t.realName : '' });
     if (isText(t.accountId)) return startSignIn({ accountId: t.accountId });
     throw new Error('Invalid arguments');
   });
@@ -389,6 +460,7 @@ function registerIpc(): void {
     return removeExisting(id, closeFirst === true);
   });
   ipcMain.handle('launcher:runningAccounts', () => runningIds());
+  ipcMain.handle('launcher:cardsShown', () => { void onCardsShown(); });
 }
 
 function createWindow(): void {
@@ -424,15 +496,24 @@ function createWindow(): void {
 
 async function start(): Promise<void> {
   await app.whenReady();
+  startup.ready = performance.now();
   // Before anything else: an interrupted sign-in leaves a marker (WINDOWS.md §4).
   const marker = flow ? await flow.pending() : null;
   // First run: only Main. Phase 2 sample accounts (demo-*) are dropped by parseConfig.
   await store.load(defaultConfig);
+  signedInTracker.seed(store.current.accounts);
+  // Small files (256 × 256 PNG), read once so the cards never wait for them.
+  await Promise.all(store.current.accounts.map(async (a) => {
+    const url = a.photo ? await readPhoto(photosDir, a.photo) : null;
+    if (url) photos.set(a.id, url);
+  }));
+  startup.config = performance.now();
   if (marker) await recoverSignIn(marker);
   // After the recovery, which may put the main profile back. Also fills the Claude.exe cache on the first run.
   signInSlot = findClaude().then((c) => lookUpDefaultProfile(c.state === 'found' ? c.app.family : undefined));
   registerIpc();
   createWindow();
+  startup.window = performance.now();
 }
 
 start().catch((err: unknown) => {

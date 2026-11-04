@@ -21,7 +21,7 @@ const sizes = [256, 128, 64, 48, 32, 16];
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
-const pngs = [];
+const pngs: Buffer[] = [];
 for (const size of sizes) {
   await page.setViewportSize({ width: size, height: size });
   await page.setContent(`<style>html,body{margin:0;background:transparent}svg{display:block;width:${size}px;height:${size}px}</style>${svg}`);

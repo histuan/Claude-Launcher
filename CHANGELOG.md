@@ -4,9 +4,35 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-Releases are tagged `launcher-vX.Y.Z`.
+Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
+
+## [0.5.0] - 2026-11-04
+
+Phase 5: account details and photo, plus housekeeping.
+
+### Added
+
+- **Add account** asks for the account's e-mail (required) and real name (optional) besides the card name; they
+  show on the card. **Edit details** in the ⋯ menu changes them on any card, Main included. The launcher does not
+  read them from Claude (local files were not a reliable source; `docs/WINDOWS.md` §5).
+- **Change photo** in the ⋯ menu: pick a PNG, JPG or WebP image; the centre square is kept, scaled to 256 × 256 and
+  shown as a circle (`userData/photos/<id>.png`). **Back to the initial** removes it.
+- Startup time in `sign-in-timings.log` (`startup: cards shown: … ms …`, with the time of each step).
+- `scripts/diagnose-accounts.ps1`: read-only report of where a Claude profile keeps account details (key names,
+  paths and masked e-mails only).
+
+### Changed
+
+- The cards show the last known signed-in state (saved in the config) at once; the cookie checks run in the
+  background after the cards are on screen and update them.
+- After a sign-in, the main Claude is reopened only if it had a visible window before the sign-in started (not when
+  it was running hidden or not running).
+- "Not signed in" moved to the card's status line (the e-mail line now always shows the e-mail). Cards are 16 px
+  taller.
+- Node 24 (workflow and `engines`); `scripts/*.mjs` are now TypeScript run directly by Node and type-checked.
+- Release tags and titles are `v<version>` (e.g. `v0.5.0`); older `launcher-v*` tags stay.
 
 ## [0.4.5] - 2026-10-28
 
@@ -282,7 +308,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.5...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.5...v0.5.0
 [0.4.5]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.4...launcher-v0.4.5
 [0.4.4]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...launcher-v0.4.4
 [0.4.3]: https://github.com/histuan/Claude-Launcher/compare/launcher-v0.4.2...launcher-v0.4.3
