@@ -33,6 +33,11 @@ export interface LauncherConfig {
   accounts: Account[];
   /** null = not looked up yet. Used only while the exe still exists (an update changes the folder). */
   claudeApp: CachedClaude | null;
+  /** Last Windows display name (0.5.1): the greeting shows it at once; refreshed after the cards are shown. */
+  windowsName: string | null;
+  /** Last main Claude profile found (0.5.1), only to show at once whether sign-in is available. A sign-in always
+   * looks it up again. null = unknown (wait for the lookup). */
+  defaultProfile: string | null;
 }
 
 export const isMain = (account: Account): boolean => account.profileDir === null;
@@ -44,7 +49,7 @@ export function profileDirFor(userProfile: string, id: string): string {
 }
 
 export function defaultConfig(): LauncherConfig {
-  return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }], claudeApp: null };
+  return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }], claudeApp: null, windowsName: null, defaultProfile: null };
 }
 
 /** Only direct children of %USERPROFILE%\ClaudeProfiles may be created or deleted by the launcher. */
@@ -119,11 +124,19 @@ export function parseConfig(raw: unknown): LauncherConfig {
     greetingName: cleanName(text(data.greetingName)),
     accounts: [main ?? { ...MAIN }, ...others],
     claudeApp: parseCachedClaude(data.claudeApp),
+    windowsName: text(data.windowsName),
+    defaultProfile: text(data.defaultProfile) || null,
   };
 }
 
 export function setClaudeApp(cfg: LauncherConfig, app: CachedClaude): LauncherConfig {
   return { ...cfg, claudeApp: { ...app } };
+}
+
+export function setStartupCache(
+  cfg: LauncherConfig, values: { windowsName?: string; defaultProfile?: string | null },
+): LauncherConfig {
+  return { ...cfg, ...values };
 }
 
 export function setGreetingName(cfg: LauncherConfig, name: string | null): LauncherConfig {

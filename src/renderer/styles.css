@@ -186,3 +186,19 @@ dialog p.error { color: var(--danger); }
 /* Card photo: a square PNG shown as a circle */
 img.avatar { object-fit: cover; background: var(--surface); }
 #details .dialog-buttons { margin-top: 16px; }
+
+/* Receive memories from… */
+.menu .menu-title { margin: 0; padding: 6px 10px 4px; font-size: 12px; color: var(--text-real-name); }
+.menu .menu-email { display: block; font-size: 12px; color: var(--text-email); }
+.dialog-buttons button.danger { background: var(--danger); color: var(--bg); font-weight: 600; }
+.dialog-buttons button[hidden] { display: none; }
+#memories { width: 440px; }
+#memories .how { margin: 0 0 12px; padding-left: 1.4em; font-size: 14px; }
+#memories .how li { padding: 2px 0; }
+#memories textarea {
+  width: 100%; margin-bottom: 8px; padding: 8px 10px; resize: vertical;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; font-size: 13px;
+}
+#memories textarea:focus, #memories textarea.drop { border-color: var(--accent); outline: none; }
+#memories textarea[hidden] { display: none; }
+dialog p.tip { font-size: 12px; color: var(--text-real-name); }

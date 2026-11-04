@@ -54,7 +54,9 @@ export type ActionError =
   // Phase 4.1: Claude started without a window; an account that would not close
   | 'noWindow' | 'closeFailed'
   // sign-in
-  | 'noProfile' | 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk';
+  | 'noProfile' | 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk'
+  // Receive memories from… (Phase 5.1): the source is no longer signed in
+  | 'notSignedIn';
 
 export interface ActionResult {
   state: LauncherState;
@@ -87,6 +89,19 @@ export interface LauncherApi {
   removeAccount(id: string, closeFirst?: boolean): Promise<ActionResult>;
   /** Ids of the accounts whose Claude is running. */
   runningAccounts(): Promise<string[]>;
+  /** Receive memories from… (Phase 5.1). The text stays only in the main process's memory until Done / Cancel. */
+  memories: {
+    /** The warning is shown: nothing opens yet. Error notSignedIn if the source is not offered any more. */
+    begin(sourceId: string, targetId: string): Promise<ActionError | null>;
+    /** Proceed: opens the source account (the launcher stays open). */
+    proceed(): Promise<ActionError | null>;
+    /** Puts the pasted text on the clipboard and opens the target account. */
+    useText(text: string): Promise<ActionError | null>;
+    copyAgain(): Promise<void>;
+    /** Done or Cancel: the text is forgotten (and taken off the clipboard if it is still there). */
+    finish(): Promise<void>;
+    cancel(): Promise<void>;
+  };
   /** The first cards are on screen: logs the startup time and starts the cookie checks (background). */
   cardsShown(): Promise<void>;
 }

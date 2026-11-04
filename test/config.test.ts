@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   addAccount, CONFIG_VERSION, defaultConfig, isLauncherProfileDir, parseConfig, profileDirFor,
-  afterSignIn, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn, type Account,
+  afterSignIn, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn, setStartupCache, type Account,
 } from '../src/core/config.js';
 
 const acc = (id: string, profileDir: string | null, label: string | null = id): Account =>
@@ -184,4 +184,20 @@ test('photo: set and back to the initial', () => {
   assert.equal(withPhoto.accounts[0]?.photo, 'main.png');
   assert.equal(setPhoto(withPhoto, 'main', null).accounts[0]?.photo, null);
   assert.equal(setPhoto(cfg, 'nope', 'x.png'), cfg);
+});
+
+test('startup cache (0.5.1): Windows name and main profile kept from disk; bad values give null', () => {
+  assert.equal(defaultConfig().windowsName, null);
+  assert.equal(defaultConfig().defaultProfile, null);
+  const dir = 'C:\\Users\\u\\AppData\\Local\\Claude-Data\\claude_1';
+  const cfg = parseConfig({ accounts: [], windowsName: 'Thiago', defaultProfile: dir });
+  assert.equal(cfg.windowsName, 'Thiago');
+  assert.equal(cfg.defaultProfile, dir);
+  const bad = parseConfig({ accounts: [], windowsName: 3, defaultProfile: '' });
+  assert.equal(bad.windowsName, null);
+  assert.equal(bad.defaultProfile, null);
+  const set = setStartupCache(defaultConfig(), { windowsName: 'Ana' });
+  assert.equal(set.windowsName, 'Ana');
+  assert.equal(setStartupCache(set, { defaultProfile: dir }).windowsName, 'Ana');
+  assert.equal(setStartupCache(setStartupCache(set, { defaultProfile: dir }), { defaultProfile: null }).defaultProfile, null);
 });

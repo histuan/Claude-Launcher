@@ -2,6 +2,7 @@
 import type { ActionError, StartStep } from '../core/api.js';
 import type { CardBadge, CardStatus } from '../core/card.js';
 import type { DetailsError } from '../core/details.js';
+import type { MemoryTextError } from '../core/memories.js';
 import type { GreetingPeriod } from '../core/greeting.js';
 
 export const strings = {
@@ -38,6 +39,12 @@ export const strings = {
     close: 'Close this account',
     /** Tooltip of the greyed "Close this account". */
     closeOff: 'This account is not running',
+    receiveMemories: 'Receive memories from…',
+    /** Title above the list of source accounts. */
+    memoriesFrom: 'Receive memories from',
+    /** Tooltips of the greyed "Receive memories from…". */
+    memoriesSignedOut: 'Sign in to this account first',
+    memoriesNoSource: 'No other signed-in account to copy from',
   },
   comingSoon: 'Available in a later version',
   rename: {
@@ -163,6 +170,10 @@ export const strings = {
       title: 'Not enough disk space',
       body: 'Free at least 500 MB on the system drive, then try again.',
     },
+    notSignedIn: {
+      title: 'That account is not signed in',
+      body: 'Pick another account to copy the memories from.',
+    },
   } satisfies Record<ActionError, { title: string; body: string }>,
   ok: 'OK',
   cancel: 'Cancel',
@@ -187,6 +198,41 @@ export const strings = {
       emailMissing: 'Type the email of this Claude account.',
       emailInvalid: 'This does not look like an email address.',
     } satisfies Record<DetailsError, string>,
+  },
+  /** Receive memories from… (Phase 5.1): a guided copy and paste; the launcher never reads Claude's memories. */
+  memories: {
+    warning: {
+      title: 'Receive memories?',
+      body: (source: string, target: string) => `You will copy the memories of “${source}” and import them into `
+        + `“${target}”.\n\n`
+        + `• They are added to the memories “${target}” already has; nothing there is replaced.\n`
+        + '• They may duplicate or contradict what it already remembers.\n'
+        + '• Importing memories is experimental in Claude.\n'
+        + '• For work accounts, check your organization\'s rules before moving memories between accounts.',
+      proceed: 'Proceed',
+    },
+    copy: {
+      title: (source: string) => `Step 1 of 2 · Copy from “${source}”`,
+      body: (source: string) => `Claude opens with “${source}”. In it:`,
+      steps: ['Settings → Your Claude → Manage', 'Copy the memories', 'Paste them below'],
+      opening: 'Opening Claude…',
+      placeholder: 'Paste the memories here, or drop a .txt or .md file',
+      tip: 'Tip: if Manage does not offer a copy, ask Claude “Write out all my memories verbatim.” and copy the answer.',
+      next: 'Next',
+    },
+    import: {
+      title: (target: string) => `Step 2 of 2 · Import into “${target}”`,
+      body: (target: string) => `Claude opens with “${target}”, and the memories are on the clipboard. In it:`,
+      steps: ['Settings → Your Claude → Start import', 'Paste', 'Add to memory'],
+      copyAgain: 'Copy again',
+      copied: 'The memories are on the clipboard again.',
+      done: 'Done',
+    },
+    errors: {
+      empty: 'Paste the memories first, or drop a .txt or .md file.',
+      tooLong: 'This text is too long for a list of memories (over 100,000 characters).',
+    } satisfies Record<MemoryTextError, string>,
+    fileType: 'Drop a .txt or .md file.',
   },
   photo: {
     failed: {

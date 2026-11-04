@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain } from 'electron';
 import { existsSync, readdirSync } from 'node:fs';
 import { appendFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -8,17 +8,21 @@ import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget } from '../core/api.js';
 import {
   addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn,
+  setStartupCache,
   type LauncherConfig,
 } from '../core/config.js';
+import { CachedLookup } from '../core/cachedLookup.js';
 import { findClaudeApp, lookupError, type ClaudeLookup } from '../core/claudeApp.js';
 import { checkDetails } from '../core/details.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
+import { memorySources } from '../core/memories.js';
 import { pidsForProfile, pidsInsideFolder, runningAccountIds, windowPid } from '../core/processes.js';
 import { claudeVersion, type Marker, type MarkerAccount } from '../core/signIn.js';
 import { strings } from '../renderer/strings.js';
 import { closeProfile, removeProfile, type AccountProcessDeps } from './accountActions.js';
 import { ConfigStore } from './configStore.js';
+import { MemoryTransfer } from './memoryTransfer.js';
 import { deletePhoto, readPhoto, savePhoto } from './photos.js';
 import { SignedInTracker } from './signedIn.js';
 import { SignInFlow, type StartError } from './signInFlow.js';
@@ -49,9 +53,14 @@ const timingsLog = path.join(app.getPath('userData'), 'sign-in-timings.log');
 /** Card photos: userData/photos/<id>.png, kept in memory as data URLs for the window. */
 const photosDir = path.join(app.getPath('userData'), 'photos');
 const photos = new Map<string, string>();
-const defaultName: Promise<string> = onWindows
-  ? windowsDisplayName(process.env, runPowerShell)
-  : Promise.resolve(cleanDisplayName('', process.env.USERNAME ?? process.env.USER));
+/**
+ * Windows display name and main Claude profile (both PowerShell, ~0.5 s together): the last values are kept in the
+ * config, so the first screen does not wait for them; they are looked up again once the cards are shown (0.5.1).
+ * Set in start(), after the config is loaded.
+ */
+let windowsName: CachedLookup<string>;
+let mainProfile: CachedLookup<string | null>;
+const cardsChanged = (): void => win?.webContents.send('launcher:cardsChanged');
 
 let win: BrowserWindow | null = null;
 
@@ -64,7 +73,7 @@ let win: BrowserWindow | null = null;
 const signedInTracker = new SignedInTracker({
   sessionCookie: (dir) => readSessionCookie(dir),
   log: (line) => logTiming(line),
-  onChange: () => win?.webContents.send('launcher:cardsChanged'),
+  onChange: cardsChanged,
   save: (id, signedIn) => {
     store.update((c) => setSignedIn(c, id, signedIn)).catch((err: unknown) =>
       console.warn(`Could not save the signed-in state: ${(err as Error).message}`));
@@ -81,9 +90,9 @@ const startup = { ready: 0, config: 0, window: 0, firstState: 0, name: 0, profil
 async function state(cfg: LauncherConfig): Promise<LauncherState> {
   const first = startup.firstState === 0;
   const t0 = performance.now();
-  const name = await defaultName;
+  const name = await windowsName.get();
   const t1 = performance.now();
-  const signInAvailable = (await signInSlot) !== null;
+  const signInAvailable = (await mainProfile.get()) !== null;
   if (first) Object.assign(startup, { name: t1 - t0, profile: performance.now() - t1, firstState: performance.now() });
   if (cardsShown) signedInTracker.check(cfg.accounts, lastRunning);
   return {
@@ -125,6 +134,12 @@ async function onCardsShown(): Promise<void> {
   const running = await runningIds();
   logTiming(`startup: process query: ${ms(performance.now() - t0)}`);
   signedInTracker.check(store.current.accounts, running);
+  const t1 = performance.now();
+  const [name, profile] = await Promise.all([windowsName.refresh(), mainProfile.refresh()]);
+  if (name || profile) {
+    logTiming(`startup: background refresh of the cached ${[name && 'Windows name', profile && 'main profile'].filter(Boolean).join(' and ')}: `
+      + `${ms(performance.now() - t1)}`);
+  }
 }
 
 const accountProcesses: AccountProcessDeps = {
@@ -154,7 +169,7 @@ async function findClaude(): Promise<ClaudeLookup> {
  * Opens Claude for the account and closes the launcher once its window is visible (SCOPE §4.1). A fresh profile may
  * start without a window: launchUntilWindow spawns it once more. No window after ~8 s: the launcher stays open.
  */
-async function openAccount(id: string): Promise<ActionResult> {
+async function openAccount(id: string, quitAfter = true): Promise<ActionResult> {
   const account = store.current.accounts.find((a) => a.id === id);
   if (!account) return result(store.current);
   const claude = await findClaude();
@@ -174,7 +189,7 @@ async function openAccount(id: string): Promise<ActionResult> {
     console.warn(`Could not open Claude: ${(err as Error).message}`);
     return result(store.current, 'launchFailed');
   }
-  setTimeout(() => app.quit(), 0); // after the reply reaches the window
+  if (quitAfter) setTimeout(() => app.quit(), 0); // after the reply reaches the window
   return result(store.current);
 }
 
@@ -271,9 +286,6 @@ async function lookUpDefaultProfile(knownFamily?: string | null): Promise<string
   return found.slot;
 }
 
-/** Last lookup result (the startup one until a sign-in starts). */
-let signInSlot: Promise<string | null> = Promise.resolve(null);
-
 const markerFile = markerFileFor(process.env);
 const flow = onWindows && markerFile ? new SignInFlow({
   userProfile,
@@ -318,8 +330,11 @@ async function startSignIn(target: SignInTarget): Promise<ActionResult> {
   if (claude.state !== 'found') return result(store.current, lookupError(claude));
   logTiming(`start: Claude version: ${claudeVersion(claude.app.exe) ?? 'unknown'}`);
   const t1 = Date.now();
-  signInSlot = lookUpDefaultProfile(claude.app.family);
-  const slot = await signInSlot;
+  // Never the cached value: only a fresh lookup is safe before moving the main profile.
+  const slot = await mainProfile.lookUpNow().catch((err: unknown) => {
+    console.warn(`Main profile lookup failed: ${(err as Error).message}`);
+    return null;
+  });
   logTiming(`start: find the main profile: ${Date.now() - t1} ms`);
   if (!slot) return result(store.current, 'noProfile');
 
@@ -413,6 +428,25 @@ async function removeExisting(id: string, closeFirst: boolean): Promise<ActionRe
 
 const isText = (value: unknown): value is string => typeof value === 'string';
 
+// ---------- Receive memories from… (Phase 5.1) ----------
+
+/** The pasted text lives only inside this object (never on disk, never in a log). */
+const memories = new MemoryTransfer({
+  open: async (id) => (await openAccount(id, false)).error,
+  writeClipboard: (text) => clipboard.writeText(text),
+  readClipboard: () => clipboard.readText().catch(() => ''),
+  log: logTiming,
+});
+
+async function beginMemories(sourceId: string, targetId: string): Promise<ActionError | null> {
+  if (flow?.active) return 'pending';
+  const cfg = store.current;
+  const sources = memorySources(cfg.accounts, targetId, signedInTracker.cards(cfg.accounts, lastRunning));
+  if (!sources.some((a) => a.id === sourceId)) return 'notSignedIn';
+  await memories.begin(sourceId, targetId);
+  return null;
+}
+
 function registerIpc(): void {
   ipcMain.handle('launcher:getState', () => state(store.current));
   ipcMain.handle('launcher:setGreetingName', async (_e, name: unknown) =>
@@ -461,6 +495,18 @@ function registerIpc(): void {
   });
   ipcMain.handle('launcher:runningAccounts', () => runningIds());
   ipcMain.handle('launcher:cardsShown', () => { void onCardsShown(); });
+  ipcMain.handle('launcher:memories:begin', (_e, sourceId: unknown, targetId: unknown) => {
+    if (!isText(sourceId) || !isText(targetId)) throw new Error('Invalid arguments');
+    return beginMemories(sourceId, targetId);
+  });
+  ipcMain.handle('launcher:memories:proceed', () => memories.proceed());
+  ipcMain.handle('launcher:memories:useText', (_e, text: unknown) => {
+    if (!isText(text)) throw new Error('Invalid arguments');
+    return memories.useText(text);
+  });
+  ipcMain.handle('launcher:memories:copyAgain', () => memories.copyAgain());
+  ipcMain.handle('launcher:memories:finish', () => memories.finish());
+  ipcMain.handle('launcher:memories:cancel', () => memories.cancel());
 }
 
 function createWindow(): void {
@@ -485,10 +531,13 @@ function createWindow(): void {
   const w = win;
   w.once('ready-to-show', () => w.show());
   // Closing the launcher in the middle of a sign-in cancels it cleanly (a crash is handled on the next start).
+  // Receive memories: the text goes with the window (and off the clipboard) before it closes.
   w.on('close', (e) => {
-    if (!flow?.active) return;
+    if (!flow?.active && memories.step === null) return;
     e.preventDefault();
-    void flow.cancel().finally(() => w.destroy());
+    void memories.cancel()
+      .then(() => flow?.active ? flow.cancel() : undefined)
+      .finally(() => w.destroy());
   });
   w.on('closed', () => { win = null; });
   w.loadFile(path.join(here, '..', 'renderer', 'index.html'));
@@ -509,8 +558,26 @@ async function start(): Promise<void> {
   }));
   startup.config = performance.now();
   if (marker) await recoverSignIn(marker);
-  // After the recovery, which may put the main profile back. Also fills the Claude.exe cache on the first run.
-  signInSlot = findClaude().then((c) => lookUpDefaultProfile(c.state === 'found' ? c.app.family : undefined));
+  windowsName = new CachedLookup<string>({
+    cached: store.current.windowsName ?? undefined,
+    lookUp: () => (onWindows
+      ? windowsDisplayName(process.env, runPowerShell)
+      : Promise.resolve(cleanDisplayName('', process.env.USERNAME ?? process.env.USER))),
+    save: async (name) => { await store.update((c) => setStartupCache(c, { windowsName: name })); },
+    onChange: cardsChanged,
+  });
+  // After the recovery, which may put the main profile back. A cached folder that is gone is looked up at once.
+  // The lookup also fills the Claude.exe cache on the first run.
+  const savedProfile = store.current.defaultProfile;
+  mainProfile = new CachedLookup<string | null>({
+    cached: savedProfile && existsSync(savedProfile) ? savedProfile : undefined,
+    lookUp: async () => {
+      const claude = await findClaude();
+      return lookUpDefaultProfile(claude.state === 'found' ? claude.app.family : undefined);
+    },
+    save: async (dir) => { await store.update((c) => setStartupCache(c, { defaultProfile: dir })); },
+    onChange: cardsChanged,
+  });
   registerIpc();
   createWindow();
   startup.window = performance.now();

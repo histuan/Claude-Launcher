@@ -4,6 +4,7 @@ import {
 import { cardBadge, cardStatus } from '../core/card.js';
 import type { Account } from '../core/config.js';
 import { checkDetails, type Details } from '../core/details.js';
+import { checkMemoryText, MAX_MEMORY_CHARS, memorySources } from '../core/memories.js';
 import { PHOTO_SIZE, squareCrop } from '../core/photo.js';
 import { greetingFor } from '../core/greeting.js';
 import { strings } from './strings.js';
@@ -141,15 +142,26 @@ const sameIds = (a: Iterable<string>, b: Iterable<string>): boolean => {
   return x.length === y.length && x.every((v, i) => v === y[i]);
 };
 
-/** Draws the cards again with a fresh state when the running set or the signed-out set changed. */
+/**
+ * Draws the cards again with a fresh state when the running set or the signed-out set changed. Also follows a new
+ * Windows name or sign-in availability (0.5.1: the cached values are looked up again after the cards are shown).
+ */
 async function refreshCards(nextRunning: Set<string>): Promise<void> {
   const fresh = await api.getState();
-  if (sameIds(nextRunning, running) && sameIds(fresh.signedOut, state.signedOut)
-    && sameIds(fresh.checking, state.checking)) return;
+  const cardsSame = sameIds(nextRunning, running) && sameIds(fresh.signedOut, state.signedOut)
+    && sameIds(fresh.checking, state.checking);
+  const nameChanged = fresh.defaultName !== state.defaultName;
+  const availabilityChanged = fresh.signInAvailable !== state.signInAvailable;
+  if (cardsSame && !nameChanged && !availabilityChanged) return;
   running = nextRunning;
   state = fresh;
-  closeMenu(); // its card is about to be replaced
-  renderCards();
+  if (!cardsSame) {
+    closeMenu(); // its card is about to be replaced
+    renderCards();
+  }
+  // Not while the person is typing a name (the field would vanish).
+  if (nameChanged && !byId('name-wrap').querySelector('input')) renderName();
+  if (availabilityChanged) renderSignInAvailability();
 }
 
 async function refreshRunning(): Promise<void> {
@@ -180,19 +192,21 @@ document.addEventListener('mouseover', (e) => {
 const menu = byId('menu');
 let menuOwner: HTMLElement | null = null;
 
+function menuItem(text: string | (Node | string)[], action: (() => void) | null, extra: Record<string, string> = {}): HTMLButtonElement {
+  const button = h('button', { type: 'button', role: 'menuitem', ...extra }, ...(typeof text === 'string' ? [text] : text));
+  if (action) {
+    button.addEventListener('click', () => { closeMenu(); action(); });
+  } else {
+    button.setAttribute('aria-disabled', 'true');
+    button.title = extra.title ?? strings.comingSoon;
+  }
+  return button;
+}
+
 function openMenu(account: Account, owner: HTMLElement): void {
   if (menuOwner === owner) return closeMenu();
   closeMenu();
-  const item = (text: string, action: (() => void) | null, extra: Record<string, string> = {}): HTMLButtonElement => {
-    const button = h('button', { type: 'button', role: 'menuitem', ...extra }, text);
-    if (action) {
-      button.addEventListener('click', () => { closeMenu(); action(); });
-    } else {
-      button.setAttribute('aria-disabled', 'true');
-      button.title = extra.title ?? strings.comingSoon;
-    }
-    return button;
-  };
+  const item = menuItem;
   const items = !isSignedOut(account) ? []
     : [signInOff() ? item(strings.menu.signIn, null, { title: strings.signInOff }) : item(strings.menu.signIn, () => void signIn(account))];
   items.push(
@@ -200,12 +214,18 @@ function openMenu(account: Account, owner: HTMLElement): void {
     item(strings.menu.editDetails, () => void editDetails(account)),
     item(strings.menu.changePhoto, () => pickPhoto(account)),
     ...(state.photos[account.id] ? [item(strings.menu.removePhoto, () => void setPhoto(account, null))] : []),
+    memoriesItem(account, owner),
     running.has(account.id)
       ? item(strings.menu.close, () => void closeAccount(account))
       : item(strings.menu.close, null, { title: strings.menu.closeOff }),
   );
   if (!isMain(account)) items.push(item(strings.menu.remove, () => void remove(account), { class: 'danger' }));
-  menu.replaceChildren(...items);
+  showMenu(owner, items);
+}
+
+/** Puts the items in the menu under the card's ⋯ button. */
+function showMenu(owner: HTMLElement, items: HTMLElement[], title?: string): void {
+  menu.replaceChildren(...(title ? [h('p', { class: 'menu-title' }, title)] : []), ...items);
   menu.hidden = false;
 
   const box = owner.getBoundingClientRect();
@@ -215,6 +235,22 @@ function openMenu(account: Account, owner: HTMLElement): void {
   menuOwner = owner;
   owner.setAttribute('aria-expanded', 'true');
   items[0]?.focus();
+}
+
+/** "Receive memories from…": the menu turns into the list of the other signed-in accounts (Phase 5.1). */
+function memoriesItem(target: Account, owner: HTMLElement): HTMLButtonElement {
+  const sources = memorySources(state.accounts, target.id, state);
+  if (sources.length === 0) {
+    const why = isSignedOut(target) ? strings.menu.memoriesSignedOut : strings.menu.memoriesNoSource;
+    return menuItem(strings.menu.receiveMemories, null, { title: why });
+  }
+  return menuItem(strings.menu.receiveMemories, () => {
+    const items = sources.map((source) => menuItem(
+      source.email ? [cardName(source), h('span', { class: 'menu-email' }, source.email)] : cardName(source),
+      () => void receiveMemories(source, target),
+    ));
+    showMenu(owner, items, strings.menu.memoriesFrom);
+  });
 }
 
 function closeMenu(focusOwner = false): void {
@@ -251,6 +287,8 @@ byId('dialog-cancel').addEventListener('click', () => dialog.close());
 /** Resolves with the typed text (or '' without a field) on confirm, null on cancel. */
 function ask(opts: {
   title: string; body?: string; value?: string; confirm: string; danger?: boolean; cancel?: boolean;
+  /** Cancel in red (Receive memories warning). */
+  cancelDanger?: boolean;
 }): Promise<string | null> {
   byId('dialog-title').textContent = opts.title;
   byId('dialog-body').textContent = opts.body ?? '';
@@ -259,6 +297,7 @@ function ask(opts: {
   dialogConfirm.textContent = opts.confirm;
   dialogConfirm.classList.toggle('danger', opts.danger === true);
   byId('dialog-cancel').hidden = opts.cancel === false;
+  byId('dialog-cancel').classList.toggle('danger', opts.cancelDanger === true);
   dialog.returnValue = '';
   dialog.showModal();
   if (opts.value !== undefined) dialogInput.select();
@@ -411,6 +450,117 @@ async function closeAccount(account: Account): Promise<void> {
   await showResult(await api.closeAccount(account.id));
   await refreshRunning();
 }
+
+// ---------- Receive memories from… (Phase 5.1): a guided copy and paste ----------
+// The text is sent to the main process, which keeps it only in memory; Done / Cancel / Esc clear it there and here.
+
+const memoriesDialog = byId<HTMLDialogElement>('memories');
+const memoriesText = byId<HTMLTextAreaElement>('memories-text');
+const memoriesError = byId('memories-error');
+const memoriesNext = byId<HTMLButtonElement>('memories-next');
+const memoriesCopy = byId<HTMLButtonElement>('memories-copy');
+memoriesText.placeholder = strings.memories.copy.placeholder;
+byId('memories-cancel').textContent = strings.cancel;
+memoriesCopy.textContent = strings.memories.import.copyAgain;
+/** Set while a transfer runs: what Next / Done / Cancel do. */
+let memoriesStep: 'copy' | 'import' | null = null;
+
+async function receiveMemories(source: Account, target: Account): Promise<void> {
+  const refused = await api.memories.begin(source.id, target.id);
+  if (refused) return showResult({ state, error: refused });
+  const ok = await ask({
+    title: strings.memories.warning.title,
+    body: strings.memories.warning.body(cardName(source), cardName(target)),
+    confirm: strings.memories.warning.proceed,
+    cancelDanger: true,
+  });
+  if (ok === null) return api.memories.cancel();
+  showMemoriesStep('copy', source, target);
+  memoriesNext.disabled = true;
+  byId('memories-tip').textContent = strings.memories.copy.opening;
+  const error = await api.memories.proceed().catch(() => 'launchFailed' as const);
+  if (memoriesStep !== 'copy') return; // cancelled meanwhile
+  if (error) {
+    await closeMemories();
+    return showResult({ state, error });
+  }
+  memoriesNext.disabled = false;
+  byId('memories-tip').textContent = strings.memories.copy.tip;
+}
+
+function showMemoriesStep(step: 'copy' | 'import', source: Account, target: Account): void {
+  memoriesStep = step;
+  const copy = step === 'copy';
+  const text = copy ? strings.memories.copy : strings.memories.import;
+  const name = cardName(copy ? source : target);
+  byId('memories-title').textContent = text.title(name);
+  byId('memories-body').textContent = text.body(name);
+  byId('memories-steps').replaceChildren(...text.steps.map((line) => h('li', {}, line)));
+  memoriesText.hidden = !copy;
+  memoriesCopy.hidden = copy;
+  memoriesNext.textContent = copy ? strings.memories.copy.next : strings.memories.import.done;
+  byId('memories-tip').textContent = copy ? strings.memories.copy.tip : '';
+  memoriesError.textContent = '';
+  memoriesNext.onclick = copy ? () => void useMemoriesText(source, target) : () => void closeMemories(true);
+  if (!memoriesDialog.open) memoriesDialog.showModal();
+  (copy ? memoriesText : memoriesNext).focus();
+}
+
+async function useMemoriesText(source: Account, target: Account): Promise<void> {
+  const checked = checkMemoryText(memoriesText.value);
+  if ('error' in checked) {
+    memoriesError.textContent = strings.memories.errors[checked.error];
+    memoriesText.focus();
+    return;
+  }
+  memoriesNext.disabled = true;
+  try {
+    const error = await api.memories.useText(checked.text);
+    memoriesText.value = ''; // the main process holds it now (and the clipboard)
+    showMemoriesStep('import', source, target);
+    // The text is on the clipboard: the person can still open the account and paste.
+    if (error) memoriesError.textContent = strings.errors[error].title;
+  } finally {
+    memoriesNext.disabled = false;
+  }
+}
+
+/** Done or Cancel (Esc too): the text is forgotten here and in the main process. */
+async function closeMemories(done = false): Promise<void> {
+  if (memoriesStep === null) return;
+  memoriesStep = null;
+  memoriesText.value = '';
+  if (memoriesDialog.open) memoriesDialog.close();
+  await (done ? api.memories.finish() : api.memories.cancel());
+}
+
+byId('memories-cancel').addEventListener('click', () => void closeMemories());
+memoriesDialog.addEventListener('close', () => void closeMemories()); // Esc
+memoriesCopy.addEventListener('click', () => {
+  void api.memories.copyAgain().then(() => { byId('memories-tip').textContent = strings.memories.import.copied; });
+});
+
+// Dropping a .txt / .md file fills the field (read here, in memory). Anywhere else, a drop does nothing (Electron
+// would otherwise open the file in the window).
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => e.preventDefault());
+memoriesText.addEventListener('dragenter', () => memoriesText.classList.add('drop'));
+memoriesText.addEventListener('dragleave', () => memoriesText.classList.remove('drop'));
+memoriesText.addEventListener('drop', (e) => {
+  e.preventDefault();
+  memoriesText.classList.remove('drop');
+  const file = e.dataTransfer?.files[0];
+  if (!file) return;
+  // A UTF-8 character is at most 4 bytes: bigger files cannot pass checkMemoryText.
+  if (!/\.(txt|md)$/i.test(file.name) || file.size > MAX_MEMORY_CHARS * 4) {
+    memoriesError.textContent = !/\.(txt|md)$/i.test(file.name) ? strings.memories.fileType : strings.memories.errors.tooLong;
+    return;
+  }
+  void file.text().then((text) => {
+    memoriesText.value = text;
+    memoriesError.textContent = '';
+  });
+});
 
 // ---------- Sign-in (WINDOWS.md §4): the main process runs the flow, the window shows its progress ----------
 
