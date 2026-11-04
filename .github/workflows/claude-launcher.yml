@@ -40,6 +40,9 @@ jobs:
       - run: npm test
       # npm test already compiled the app into out/, which electron-builder packages.
       - run: npx electron-builder --win --publish never
+      # README "Download vX" badge; the release uploads it, so releases/latest/download/badge-download.svg is live.
+      - name: Make version badge
+        run: node scripts/make-badges.ts --release
       # The self-update files the release uploads (checked on every run, so a PR shows it before the merge).
       - name: Check update files
         shell: bash
@@ -78,10 +81,10 @@ jobs:
           fi
           # Since 0.6.0 the self-update (electron-updater, GitHub provider) reads latest.yml from the latest release
           # and the .blockmap for a smaller download, so both go next to the .exe.
-          for f in dist/*.exe dist/*.exe.blockmap dist/latest.yml; do
+          for f in dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/badge-download.svg; do
             [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
           done
           # Since 0.3.0 (the first usable version) every release is a regular one, marked as latest.
-          gh release create "$tag" dist/*.exe dist/*.exe.blockmap dist/latest.yml --target "$GITHUB_SHA" \
+          gh release create "$tag" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/badge-download.svg --target "$GITHUB_SHA" \
             --title "$tag" \
             --notes-file release-notes.md --latest

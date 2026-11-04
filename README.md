@@ -1,8 +1,10 @@
 # Multi-Account Launcher for Claude
 
-[![claude-launcher](https://github.com/histuan/Claude-Launcher/actions/workflows/claude-launcher.yml/badge.svg)](https://github.com/histuan/Claude-Launcher/actions/workflows/claude-launcher.yml)
-[![Latest release](https://img.shields.io/github/v/release/histuan/Claude-Launcher?label=release)](https://github.com/histuan/Claude-Launcher/releases)
-[![License: MIT](https://img.shields.io/github/license/histuan/Claude-Launcher)](./LICENSE)
+<p>
+  <a href="https://github.com/histuan/Claude-Launcher/releases/latest"><img src="docs/badges/download.svg" alt="Download for Windows" height="38"></a>
+  <img src="docs/badges/windows.svg" alt="Windows 10 / 11" height="36">
+  <a href="./LICENSE"><img src="docs/badges/license.svg" alt="MIT license" height="36"></a>
+</p>
 
 A small Windows launcher that keeps several Claude accounts signed in at the same time, each one in its own
 isolated instance of the official Claude desktop app. Pick an account, click, done. No more signing out and back in.
@@ -27,6 +29,8 @@ Since 0.6.0 the launcher updates itself: when a newer release is out, it asks on
 **Install**; nothing is forced). Older versions are updated by installing the new `.exe` by hand.
 
 ## For testers: installing a PR build
+
+[![CI](https://github.com/histuan/Claude-Launcher/actions/workflows/claude-launcher.yml/badge.svg)](https://github.com/histuan/Claude-Launcher/actions/workflows/claude-launcher.yml)
 
 Pull Request builds are not on the Releases page; each PR's Actions run has the installer as the artifact
 **launcher-installer**. [`scripts/install-latest.ps1`](./scripts/install-latest.ps1) installs it in one step. Save it
