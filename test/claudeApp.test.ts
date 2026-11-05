@@ -5,8 +5,8 @@ import { bringToFront, launchClaude, listClaudeProcesses, lookUpClaudeApp, type 
 
 const LOC = 'C:\\Program Files\\WindowsApps\\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc';
 const EXE = `${LOC}\\app\\Claude.exe`;
-const OLD = 'C:\\Users\\thiag\\AppData\\Local\\AnthropicClaude\\claude.exe';
-const env = { LOCALAPPDATA: 'C:\\Users\\thiag\\AppData\\Local' };
+const OLD = 'C:\\Users\\alex\\AppData\\Local\\AnthropicClaude\\claude.exe';
+const env = { LOCALAPPDATA: 'C:\\Users\\alex\\AppData\\Local' };
 const exists = (files: string[]) => (p: string) => files.includes(p);
 
 const pkg = (exe = true) => JSON.stringify([{ Name: 'Claude', InstallLocation: exe ? LOC : 'C:\\gone', PackageFamilyName: 'Claude_pzs8sxrjxfjjc' }]);

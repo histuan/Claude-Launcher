@@ -15,8 +15,8 @@ function setup<T>(cached: T | undefined, result: () => Promise<T>) {
 }
 
 test('with a cache: answers at once without a lookup', async () => {
-  const { s, lookup } = setup<string>('Thiago', async () => 'Thiago');
-  assert.equal(await lookup.get(), 'Thiago');
+  const { s, lookup } = setup<string>('Alex', async () => 'Alex');
+  assert.equal(await lookup.get(), 'Alex');
   assert.equal(s.lookups, 0);
 });
 
@@ -30,7 +30,7 @@ test('without a cache: waits for the lookup and saves it', async () => {
 });
 
 test('refresh: same value = nothing saved, nothing redrawn', async () => {
-  const { s, lookup } = setup<string>('Thiago', async () => 'Thiago');
+  const { s, lookup } = setup<string>('Alex', async () => 'Alex');
   await lookup.refresh();
   assert.equal(s.lookups, 1);
   assert.deepEqual(s.saved, []);
@@ -46,9 +46,9 @@ test('refresh: a new value is saved, used and reported', async () => {
 });
 
 test('a failed refresh keeps the cached value', async () => {
-  const { s, lookup } = setup<string>('Thiago', async () => { throw new Error('PowerShell timed out'); });
+  const { s, lookup } = setup<string>('Alex', async () => { throw new Error('PowerShell timed out'); });
   await lookup.refresh();
-  assert.equal(await lookup.get(), 'Thiago');
+  assert.equal(await lookup.get(), 'Alex');
   assert.deepEqual(s.saved, []);
 });
 

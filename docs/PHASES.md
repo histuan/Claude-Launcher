@@ -3,7 +3,7 @@
 Each phase = **a new cloud session** (a new session carries no history; it is the cloud's "/clear").
 Model: Opus 5.5, effort `medium` (`high` only if stuck).
 Each phase ends with a Pull Request to `main` and its own issue (`[launcher] Phase N — …`, milestone
-"Multi-Account Launcher v1.0"). Thiago downloads the installer (PR artifact, or the Release after the merge), tests it on
+"Multi-Account Launcher v1.0"). The maintainer downloads the installer (PR artifact, or the Release after the merge), tests it on
 the PC and merges. The next phase starts only after the merge.
 
 ## Prompt to paste for each phase
@@ -25,7 +25,7 @@ If something in the phase is impossible in the cloud, stop and explain instead o
 
 ## Phase 0 — Tests on the PC ✅ (2026-10-26)
 
-Done by Thiago, without Claude. Results in `WINDOWS.md`, section 1.
+Done by hand on Windows 11, without Claude. Results in `WINDOWS.md`, section 1.
 
 ## Phase 1 — Skeleton and build ✅ (2026-10-26, commit `b839fa5`)
 
@@ -64,7 +64,7 @@ Goal: make the project look like a professional project and be **entirely in Eng
    - commits follow *Conventional Commits* with the `launcher` scope (`feat(launcher): …`, `fix(…)`, `docs(…)`, `ci(…)`);
    - PR description from the PR template (`.github/pull_request_template.md`), with `Closes #<phase issue>`;
    - the phase bumps the version in `package.json` to `0.N.0` (Phase 1.5 keeps `0.1.0`) and adds its section to `CHANGELOG.md`;
-   - Thiago tests and merges; the next phase starts only after the merge.
+   - The maintainer tests and merges; the next phase starts only after the merge.
 2. **PR template** at `.github/pull_request_template.md`: Summary, Why, How it was tested, Screenshots, Checklist.
 3. **`CHANGELOG.md`** following *Keep a Changelog*, with the `0.1.0` entry (Phase 1) and `Unreleased`.
 4. **Automatic release on merge:** in the workflow, after the build on `windows-latest`, when the event is a push to `main`
@@ -171,9 +171,9 @@ Housekeeping first (2026-11-04):
 - Remember the last known signed-in state of each account in the config (`signedIn`) and show it at once on
   startup; the background check updates it.
 - After a sign-in, reopen the main Claude only if it had a **visible** window before the sign-in started. Running
-  hidden (no tray icon on Thiago's PC) or not running: leave it closed.
+  hidden (Claude may have no tray icon) or not running: leave it closed.
 
-- First: diagnostic script (only keys and paths, never token values) for Thiago to run and paste the output.
+- First: diagnostic script (only keys and paths, never token values) to run on Windows and paste the output.
   Stop the phase here if the output does not exist yet.
 - Then: detection in the order of section 5, with manual fallback. Also update the Main card.
   **Decided after the diagnostic:** local files are not reliable; v1 uses manual details only (e-mail required,
@@ -211,7 +211,7 @@ so the launcher only walks the person through copying the text from one account 
   clipboard. Instructions: Settings → Memory → Import memory from other AI providers → Start import (Claude shows a
   prompt meant for the other provider) → paste (Ctrl+V) → confirm. Buttons: **Copy again** (puts the text back on
   the clipboard) and **Done**.
-- Menu names checked on Thiago's Claude Desktop (UI in Portuguese: Configurações → Memória → Exportar /
+- Menu names checked on Claude Desktop for Windows (UI in Portuguese: Configurações → Memória → Exportar /
   Iniciar importação); the support article's names (Your Claude, Manage, Add to memory) were outdated.
 - Privacy: the text is kept **only in memory**, never written to disk or logs, and cleared on **Done** or **Cancel**.
 - Tests: the warning comes first; the text never reaches a file or a log; Done and Cancel clear it; only signed-in
@@ -219,7 +219,7 @@ so the launcher only walks the person through copying the text from one account 
 
 ## Phase 5.2 — Self-update (2026-11-04, version 0.6.0)
 
-Scope change approved by Thiago (`SCOPE.md` §5–§6): the launcher updates itself.
+Scope change (`SCOPE.md` §5–§6): the launcher updates itself.
 
 - `electron-updater` with the GitHub provider (public repo, no token in the app); `publish` in `package.json` makes
   electron-builder write `app-update.yml` into the app and `latest.yml` + `.blockmap` into `dist/`. The release step
@@ -232,7 +232,7 @@ Scope change approved by Thiago (`SCOPE.md` §5–§6): the launcher updates its
   Install is refused); sign-in and memories are refused while an update downloads.
 - Code: `src/main/selfUpdate.ts` (logic, injected updater), `src/main/system/updater.ts` (electron-updater).
   Strings in `strings.update`. Logs: `update: …` lines with versions and timings only.
-- Testers: `scripts/install-latest.ps1` (Thiago's script) installs the latest PR build; documented in the README.
+- Testers: `scripts/install-latest.ps1` installs the latest PR build; documented in the README.
 - Tests (mocked updater): no update, update found, Later, Install with progress, download error, busy.
 - 0.6.0 is installed by hand; the real test is 0.6.0 → 0.6.1 after the merge.
 

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { cleanDisplayName } from '../src/core/name.js';
 
 test('first word of the display name, without stray punctuation', () => {
-  assert.equal(cleanDisplayName('histuan .', 'thiag'), 'histuan');
-  assert.equal(cleanDisplayName('Thiago Gomes', 'thiag'), 'Thiago');
-  assert.equal(cleanDisplayName('  "Thiago," Gomes ', 'thiag'), 'Thiago');
-  assert.equal(cleanDisplayName('. Thiago', 'thiag'), 'Thiago');
+  assert.equal(cleanDisplayName('alexr .', 'alex'), 'alexr');
+  assert.equal(cleanDisplayName('Alex Rivera', 'alex'), 'Alex');
+  assert.equal(cleanDisplayName('  "Alex," Rivera ', 'alex'), 'Alex');
+  assert.equal(cleanDisplayName('. Alex', 'alex'), 'Alex');
 });
 
 test('keeps punctuation inside the word and accents', () => {
@@ -16,8 +16,8 @@ test('keeps punctuation inside the word and accents', () => {
 });
 
 test('falls back to USERNAME when the display name is empty', () => {
-  assert.equal(cleanDisplayName('', 'thiag'), 'thiag');
-  assert.equal(cleanDisplayName(' . ', 'thiag'), 'thiag');
-  assert.equal(cleanDisplayName(null, ' thiag '), 'thiag');
+  assert.equal(cleanDisplayName('', 'alex'), 'alex');
+  assert.equal(cleanDisplayName(' . ', 'alex'), 'alex');
+  assert.equal(cleanDisplayName(null, ' alex '), 'alex');
   assert.equal(cleanDisplayName(undefined, undefined), '');
 });
