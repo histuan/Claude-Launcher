@@ -105,7 +105,4 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the root (created when needed). Se
 
 ## Habits to avoid
 
-- Public texts (PR titles and descriptions, commit messages, issues, release notes, CHANGELOG, README) never
-  name the maintainer or say who asked for, decided or tested something ("Thiago wants…", "approved by Thiago",
-  "on Thiago's PC"). State the change, the reason and the result directly: "tested on Windows 11", "the old badges
-  were small", "scope change: self-update". The only name in public texts is the copyright line of the license.
+- (empty for now; add here whatever Thiago corrects)
