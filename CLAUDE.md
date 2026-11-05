@@ -29,7 +29,8 @@ one account per profile, with no signing out and back in.
 
 ## GitHub process
 
-- Each phase works on the session branch and ends with a **Pull Request to `main`**. Never push directly to `main`.
+- Phases, code, CI and version changes work on a branch and end with a **Pull Request to `main`**.
+- Small docs-only changes (README, docs, typos, CLAUDE.md) go straight to `main`, without a PR.
 - Commits follow *Conventional Commits* with the `launcher` scope: `feat(launcher): …`, `fix(launcher): …`,
   `docs(launcher): …`, `ci(launcher): …`. Commit messages in English.
 - The PR description follows `.github/pull_request_template.md` (GitHub pre-fills it in the web UI; when opening the
