@@ -10,7 +10,7 @@ one account per profile, with no signing out and back in.
 
 ## Before anything else
 
-1. Use the **dev-economico** skill (it comes from Thiago's account). If it is not available in this session, say so at the
+1. Use the **dev-economico** skill. If it is not available in this session, say so at the
    start of the report and work economically: read only what is needed, closed scope, test before calling it done.
 2. Read `docs/STATUS.md` and only the current phase's section in `docs/PHASES.md`. Read `SCOPE.md` and `WINDOWS.md` only in the sections the phase cites.
 3. The repository is `histuan/Claude-Launcher` and the project lives at its root. Do not read `node_modules/`, `out/`
@@ -18,14 +18,14 @@ one account per profile, with no signing out and back in.
 
 ## Environment
 
-- Usually you are in a **cloud session**: Linux, no display, no access to Thiago's PC.
+- Usually you are in a **cloud session**: Linux, no display.
 - The `.exe` is built by **GitHub Actions** (`windows-latest`), never inside the session. Do not try Wine or Docker.
 - Exception to dev-economico: here `docs/STATUS.md` goes **into git**, because the cloud VM is deleted.
 - In the cloud you do not need the Electron binary to test the logic: use `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`
   (drop it only to try the offscreen screenshot).
 - To check Actions, use `gh run list` / `gh run view` (REST API) or the GitHub MCP tools. If neither works, say so in
-  the report and Thiago checks the Actions tab.
-- Local Claude Code (on Thiago's PC) is the last resort: only when a bug shows up only on real Windows and logs are not enough.
+  the report and i check the Actions tab.
+- Local Claude Code (on my PC) is the last resort: only when a bug shows up only on real Windows and logs are not enough.
 
 ## GitHub process
 
@@ -85,7 +85,7 @@ one account per profile, with no signing out and back in.
 
 - Logic: `node:test` tests with mocks of `src/main/system/`. Run `npm run typecheck` and `npm test` before calling it done.
 - Interface: if possible, a screenshot via offscreen Electron (`xvfb-run`). If not possible in the cloud, say so and leave it to Thiago.
-- The real test is on Thiago's PC: at the end of the phase, write a short "How to test" in `docs/STATUS.md`
+- The real test is on my PC: at the end of the phase, write a short "How to test" in `docs/STATUS.md`
   (download the installer from the Releases page or the PR artifact, install, what to check).
 - If something in the phase is impossible in the cloud, stop and explain instead of improvising.
 
@@ -105,4 +105,8 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the root (created when needed). Se
 
 ## Habits to avoid
 
-- (empty for now; add here whatever Thiago corrects)
+   - Public texts (PR titles and descriptions, commit messages, issues, release notes, CHANGELOG, README) never
+     name the maintainer or say who asked for, decided or tested something ("Thiago wants…", "approved by Thiago",
+     "on Thiago's PC"). State the change, the reason and the result directly: "tested on Windows 11", "the old badges
+     were small", "scope change: self-update". The only name in public texts is the copyright line of the license.
+   - Always use generic names on examples. EX: John Doe, JohnDoe@email.com etc. 
