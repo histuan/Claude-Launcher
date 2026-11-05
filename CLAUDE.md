@@ -40,7 +40,7 @@ one account per profile, with no signing out and back in.
 - On merge to `main`, the workflow creates the tag `v<version>` (since 0.5.0; older ones are `launcher-v<version>`)
   and a GitHub Release titled `v<version>` with the installer and the
   notes from `CHANGELOG.md`, published as a regular release marked as latest (0.1.0 and 0.2.0 were pre-releases). The PR run uploads the installer as an artifact.
-- Thiago tests and merges. The next phase starts only after the merge.
+- I test and merge. The next phase starts only after the merge.
 
 ## Stack
 
@@ -84,7 +84,7 @@ one account per profile, with no signing out and back in.
 ## Verification
 
 - Logic: `node:test` tests with mocks of `src/main/system/`. Run `npm run typecheck` and `npm test` before calling it done.
-- Interface: if possible, a screenshot via offscreen Electron (`xvfb-run`). If not possible in the cloud, say so and leave it to Thiago.
+- Interface: if possible, a screenshot via offscreen Electron (`xvfb-run`). If not possible in the cloud, say so and leave it to me.
 - The real test is on my PC: at the end of the phase, write a short "How to test" in `docs/STATUS.md`
   (download the installer from the Releases page or the PR artifact, install, what to check).
 - If something in the phase is impossible in the cloud, stop and explain instead of improvising.
