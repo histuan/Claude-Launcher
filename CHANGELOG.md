@@ -8,6 +8,35 @@ Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-05
+
+Review round and diagnostics: the last code changes before 1.0.
+
+### Added
+
+- **Copy diagnostics** link next to the version label: puts a plain-text report on the clipboard (launcher, Claude and
+  Windows versions, the accounts by card label with signed-in / running, the cached paths written with
+  `%LOCALAPPDATA%` / `%APPDATA%` / `%USERPROFILE%`, and the last 50 lines of `sign-in-timings.log`). E-mails, real
+  names, the Windows and greeting names, the user folder and long token-like values are removed. The link says
+  "Copied" for ~2 s.
+
+### Changed
+
+- Muted text is lighter (`--text-real-name` `#a3a19a`) and the dimmed "next" sign-in steps lose their extra opacity:
+  4.5:1 (WCAG AA) on the window, the cards and the dialogs. Red error text, red menu items and links inside dialogs
+  use slightly lighter shades for the same reason (buttons keep their colours).
+- When a dialog closes, the focus goes back to what opened it (the card's ⋯ button, even after the cards are drawn
+  again); every dialog is named by its title; the rename field and the memories box have labels.
+
+### Fixed
+
+- The window can no longer navigate away from the launcher page or open a new window (defence in depth: links
+  already go through the browser with URLs built in the main process).
+
+### Removed
+
+- Dead code: `isSignedIn` / `hasOauth` (the `oauth:` keys stopped deciding in 0.4.5) and an unused memories string.
+
 ## [0.6.2] - 2026-11-04
 
 Update polish.
@@ -390,7 +419,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/histuan/Claude-Launcher/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/histuan/Claude-Launcher/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/histuan/Claude-Launcher/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/histuan/Claude-Launcher/compare/v0.5.1...v0.6.0

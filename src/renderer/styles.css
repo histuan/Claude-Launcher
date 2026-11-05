@@ -9,8 +9,12 @@
   --accent-hover: #e08a6d;
   --text: #f5f4ee;
   --text-email: #b7b5ad;
-  --text-real-name: #8f8d86;
+  /* 0.7.0: lighter muted text, WCAG AA (4.5:1) on --bg, --surface and --surface-hover */
+  --text-real-name: #a3a19a;
   --danger: #e5675c;
+  /* Text (not fills) on --surface / --surface-hover: --danger and --accent are under 4.5:1 there (0.7.0) */
+  --danger-text: #ef8379;
+  --accent-text: #e08a6d;
   /* Shared buttons (0.6.2): hover = one step lighter, pressed = slightly darker than the resting colour */
   --button: #3d3d3a;
   --button-hover: #4a4a46;
@@ -141,7 +145,7 @@ main {
 .steps .done::before { content: '✓'; color: var(--running); }
 .steps .current { color: var(--text); }
 .steps .current::before { content: '•'; color: var(--accent); animation: pulse 1s ease-in-out infinite alternate; }
-.steps .next { color: var(--text-real-name); opacity: .6; }
+.steps .next { color: var(--text-real-name); }
 .steps[hidden] { display: none; }
 @keyframes pulse { from { opacity: .35; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .steps .current::before { animation: none; } }
@@ -177,7 +181,7 @@ dialog p { white-space: pre-line; overflow-wrap: anywhere; }
 .field[hidden] { display: none; }
 .field span { display: block; margin-bottom: 4px; }
 dialog .field input { margin-bottom: 0; }
-dialog p.error { color: var(--danger); }
+dialog p.error { color: var(--danger-text); }
 
 /* Card photo: a square PNG shown as a circle */
 img.avatar { object-fit: cover; background: var(--surface); }
@@ -246,12 +250,13 @@ dialog p.tip { font-size: 12px; color: var(--text-real-name); }
 .dialog-buttons button:disabled { opacity: .5; cursor: progress; }
 
 .menu button { background: none; color: var(--text); }
-.menu .danger { color: var(--danger); }
+.menu .danger { color: var(--danger-text); }
 .menu button:is(:hover, :focus-visible):not([aria-disabled="true"]) { background: var(--surface-hover); outline: none; }
 .menu button:active:not([aria-disabled="true"]) { background: var(--menu-active); }
 .menu button[aria-disabled="true"] { color: var(--text-real-name); cursor: default; }
 
 .text-link { padding: 0; background: none; color: var(--accent); }
+dialog .text-link { color: var(--accent-text); }
 .text-link:hover:enabled { color: var(--accent-hover); text-decoration: underline; }
 .text-link:active:enabled { color: var(--accent-active); }
 .text-link[hidden] { display: none; }

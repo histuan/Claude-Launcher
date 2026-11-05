@@ -236,6 +236,19 @@ Scope change approved by Thiago (`SCOPE.md` §5–§6): the launcher updates its
 - Tests (mocked updater): no update, update found, Later, Install with progress, download error, busy.
 - 0.6.0 is installed by hand; the real test is 0.6.0 → 0.6.1 after the merge.
 
+## 0.7.0 — Review and diagnostics (2026-11-05)
+
+The last code changes before 1.0.0; Phase 6 then only does the README, the done-criteria review and the version.
+
+- Review round (findings with file and line in the PR): security (IPC input, `shell.openExternal`, logs, zip limits,
+  default-profile rule, self-update), accessibility (keyboard path through every dialog, focus back to the opener,
+  labels of icon-only buttons, WCAG AA contrast of muted text), code health (dead code, unused strings and
+  dependencies). Only clear bugs and real risks are fixed, no refactors.
+- **Copy diagnostics** next to the version label: plain-text report on the clipboard (versions, accounts by card
+  label and their state, cached paths with `%LOCALAPPDATA%` / `%USERPROFILE%`, last 50 lines of
+  `sign-in-timings.log`); never e-mails, account names, tokens, cookies or memory text; "Copied" confirmation.
+  Logic in `src/core/diagnostics.ts`, tests prove nothing personal reaches the report.
+
 ## Phase 6 — Polish and release
 
 - `README.md` (what it is, how to install, SmartScreen, limitations, credits, notice that it is not affiliated with Anthropic).

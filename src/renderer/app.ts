@@ -109,7 +109,7 @@ function renderCards(): void {
     const extra = badge ? [h('span', { class: 'badge' }, strings.badges[badge])] : [];
     const more = h('button', {
       class: 'card-menu', type: 'button', 'aria-haspopup': 'menu', 'aria-expanded': 'false',
-      'aria-label': strings.accountOptions(name), title: strings.accountOptions(name),
+      'aria-label': strings.accountOptions(name), title: strings.accountOptions(name), 'data-focus-key': `menu:${account.id}`,
     }, '⋯');
     more.addEventListener('click', () => openMenu(account, more));
     return h('div', { class: 'card' }, open, status, ...extra, more);
@@ -200,7 +200,8 @@ let menuOwner: HTMLElement | null = null;
 function menuItem(text: string | (Node | string)[], action: (() => void) | null, extra: Record<string, string> = {}): HTMLButtonElement {
   const button = h('button', { type: 'button', role: 'menuitem', ...extra }, ...(typeof text === 'string' ? [text] : text));
   if (action) {
-    button.addEventListener('click', () => { closeMenu(); action(); });
+    // Focus goes back to the card's ⋯ button first: a dialog opened by the action returns there when it closes.
+    button.addEventListener('click', () => { closeMenu(true); action(); });
   } else {
     button.setAttribute('aria-disabled', 'true');
     button.title = extra.title ?? strings.comingSoon;
@@ -281,6 +282,31 @@ document.addEventListener('mousedown', (e) => {
 window.addEventListener('resize', () => closeMenu());
 byId('cards').addEventListener('scroll', () => closeMenu());
 
+// ---------- Focus back to what opened a dialog (0.7.0) ----------
+// Cards are drawn again after most actions, so the opener is also found again by its data-focus-key (the card's ⋯
+// button). A chain of dialogs (details → sign-in → result) returns to the first opener.
+
+let focusBack: { el: Element | null; key: string | null } | null = null;
+
+function openModal(d: HTMLDialogElement): void {
+  if (!focusBack) {
+    const el = document.activeElement;
+    focusBack = { el, key: el instanceof HTMLElement ? el.dataset.focusKey ?? null : null };
+  }
+  d.showModal();
+}
+
+function restoreFocus(): void {
+  if (!focusBack || document.querySelector('dialog[open]')) return;
+  const { el, key } = focusBack;
+  focusBack = null;
+  const target = el instanceof HTMLElement && el.isConnected && el !== document.body ? el
+    : key ? document.querySelector<HTMLElement>(`[data-focus-key="${CSS.escape(key)}"]`) ?? byId('add-account') : null;
+  target?.focus();
+}
+
+for (const d of document.querySelectorAll('dialog')) d.addEventListener('close', () => setTimeout(restoreFocus, 0));
+
 // ---------- Rename / remove dialog ----------
 
 const dialog = byId<HTMLDialogElement>('dialog');
@@ -304,7 +330,7 @@ function ask(opts: {
   byId('dialog-cancel').hidden = opts.cancel === false;
   byId('dialog-cancel').classList.toggle('danger', opts.cancelDanger === true);
   dialog.returnValue = '';
-  dialog.showModal();
+  openModal(dialog);
   if (opts.value !== undefined) dialogInput.select();
   else dialogConfirm.focus();
   return new Promise((resolve) => {
@@ -348,7 +374,7 @@ function askDetails(opts: {
   detailsError.textContent = '';
   byId('details-confirm').textContent = opts.confirm;
   detailsDialog.returnValue = '';
-  detailsDialog.showModal();
+  openModal(detailsDialog);
   (opts.name !== undefined ? detailsName : detailsEmail).focus();
   return new Promise((resolve) => {
     let value: ({ name: string } & Details) | null = null;
@@ -527,7 +553,7 @@ function showCopyStep(source: Account, target: Account): void {
   memoriesTip.textContent = text.tip;
   memoriesNext.textContent = text.next;
   memoriesNext.onclick = () => void useMemories(target);
-  if (!memoriesDialog.open) memoriesDialog.showModal();
+  if (!memoriesDialog.open) openModal(memoriesDialog);
   memoriesText.focus();
 }
 
@@ -838,7 +864,7 @@ function showSignIn(status: SignInStatus): void {
     byId('signin-body').textContent = '';
     renderSteps(status.step);
     lockSignIn(); // nothing to confirm or cancel until the sign-in window is up
-    if (!signInDialog.open) signInDialog.showModal();
+    if (!signInDialog.open) openModal(signInDialog);
     return;
   }
   if (status.phase === 'checking' || status.phase === 'notFound') {
@@ -848,7 +874,7 @@ function showSignIn(status: SignInStatus): void {
       ? strings.signIn.checking(status.secondsLeft) : strings.signIn.notFound;
     signInConfirm.disabled = status.phase === 'checking';
     signInCancel.disabled = false;
-    if (!signInDialog.open) signInDialog.showModal();
+    if (!signInDialog.open) openModal(signInDialog);
     return;
   }
   if (status.phase === 'notSaved') {
@@ -857,7 +883,7 @@ function showSignIn(status: SignInStatus): void {
     byId('signin-body').textContent = strings.signIn.notSaved.body;
     signInConfirm.disabled = false;
     signInCancel.disabled = false;
-    if (!signInDialog.open) signInDialog.showModal();
+    if (!signInDialog.open) openModal(signInDialog);
     return;
   }
   if (status.phase === 'waiting' || status.phase === 'saving') {
@@ -867,7 +893,7 @@ function showSignIn(status: SignInStatus): void {
     const saving = status.phase === 'saving';
     signInConfirm.disabled = saving;
     signInCancel.disabled = saving;
-    if (!signInDialog.open) signInDialog.showModal();
+    if (!signInDialog.open) openModal(signInDialog);
     return;
   }
   if (signInDialog.open) signInDialog.close();
@@ -999,7 +1025,7 @@ function renderUpdate(status: Exclude<UpdateStatus, { phase: 'none' }>): void {
   updateLater.hidden = updateRunning;
   updateLater.textContent = status.phase === 'failed' ? strings.update.close : strings.update.later;
   if (!updateDialog.open) {
-    updateDialog.showModal();
+    openModal(updateDialog);
     updateInstall.focus();
   }
   renderUpdateLink();
@@ -1021,6 +1047,16 @@ const version = byId('version');
 version.textContent = strings.version(state.version);
 version.title = strings.logs(state.timingsLog);
 version.addEventListener('click', () => void api.openVersionNotes());
+// "Copy diagnostics" (0.7.0): the main process builds the report; the link says "Copied" for ~2 s.
+const diagnostics = byId<HTMLButtonElement>('diagnostics');
+diagnostics.textContent = strings.diagnostics.link;
+let diagnosticsTimer: ReturnType<typeof setTimeout> | undefined;
+diagnostics.addEventListener('click', async () => {
+  const copied = await api.copyDiagnostics().catch(() => false);
+  diagnostics.textContent = copied ? strings.diagnostics.copied : strings.diagnostics.failed;
+  clearTimeout(diagnosticsTimer);
+  diagnosticsTimer = setTimeout(() => { diagnostics.textContent = strings.diagnostics.link; }, 2_000);
+});
 renderGreetingText();
 renderName();
 renderCards();

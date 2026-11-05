@@ -119,6 +119,8 @@ export interface LauncherApi {
   cardsShown(): Promise<void>;
   /** 0.6.2: the version label opens the installed version's release page (URL built in the main process). */
   openVersionNotes(): Promise<void>;
+  /** 0.7.0: "Copy diagnostics": a plain-text report on the clipboard, nothing personal. false = could not copy. */
+  copyDiagnostics(): Promise<boolean>;
   /** Self-update (Phase 5.2, 0.6.2): checked once per start, never blocking the cards; nothing is ever forced. */
   updates: {
     onStatus(listener: (status: UpdateStatus) => void): void;
