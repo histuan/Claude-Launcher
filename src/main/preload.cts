@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('launcher', {
   runningAccounts: () => ipcRenderer.invoke('launcher:runningAccounts'),
   cardsShown: () => ipcRenderer.invoke('launcher:cardsShown'),
   openVersionNotes: () => ipcRenderer.invoke('launcher:openVersionNotes'),
+  copyDiagnostics: () => ipcRenderer.invoke('launcher:copyDiagnostics'),
   updates: {
     onStatus: (listener: (status: unknown) => void) => {
       ipcRenderer.on('launcher:update', (_e, status: unknown) => listener(status));

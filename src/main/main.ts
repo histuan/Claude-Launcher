@@ -1,6 +1,6 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import { existsSync, readdirSync } from 'node:fs';
-import { appendFile, stat, writeFile } from 'node:fs/promises';
+import { appendFile, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import { performance } from 'node:perf_hooks';
 import path from 'node:path';
@@ -8,12 +8,13 @@ import { fileURLToPath } from 'node:url';
 import type { ActionError, ActionResult, LauncherState, SignInStatus, SignInTarget, UpdateStatus } from '../core/api.js';
 import {
   addAccount, afterSignIn, defaultConfig, isMain, removeAccount, renameAccount, setClaudeApp, setDetails, setGreetingName, setPhoto, setSignedIn,
-  setKnownUpdate, setStartupCache,
+  profileDirFor, setKnownUpdate, setStartupCache,
   type LauncherConfig,
 } from '../core/config.js';
 import { CachedLookup } from '../core/cachedLookup.js';
 import { findClaudeApp, lookupError, type ClaudeLookup } from '../core/claudeApp.js';
 import { checkDetails } from '../core/details.js';
+import { buildDiagnostics, type DiagnosticsAccount } from '../core/diagnostics.js';
 import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
 import { memorySources } from '../core/memories.js';
@@ -511,6 +512,41 @@ async function showFinishingUpdate(): Promise<void> {
   }).catch(() => undefined);
 }
 
+/**
+ * "Copy diagnostics" (0.7.0): a plain-text report on the clipboard. Card labels only; e-mails, real names, the Windows
+ * and greeting names and the user folders are removed by buildDiagnostics (src/core/diagnostics.ts).
+ */
+async function copyDiagnostics(): Promise<boolean> {
+  const cfg = store.current;
+  const checks = signedInTracker.cards(cfg.accounts, lastRunning);
+  const accounts: DiagnosticsAccount[] = cfg.accounts.map((a) => ({
+    label: a.label ?? strings.mainAccount,
+    state: checks.checking.includes(a.id) ? 'checking' : checks.signedOut.includes(a.id) ? 'signedOut' : 'signedIn',
+    running: lastRunning.includes(a.id),
+  }));
+  const claude = await findClaude().catch(() => null);
+  await timingWork; // the lines written so far
+  const report = buildDiagnostics({
+    createdAt: new Date(),
+    launcherVersion: app.getVersion(),
+    claudeVersion: claude?.state === 'found' ? claudeVersion(claude.app.exe) : null,
+    windowsVersion: `${os.version()} ${os.release()}`,
+    accounts,
+    paths: {
+      claudeExe: store.current.claudeApp?.exe ?? null,
+      mainProfile: cfg.defaultProfile,
+      extraProfiles: path.win32.dirname(profileDirFor(userProfile, 'x')),
+      log: timingsLog,
+    },
+    log: await readFile(timingsLog, 'utf8').catch(() => ''),
+    env: process.env,
+    personal: [cfg.greetingName, cfg.windowsName, ...cfg.accounts.flatMap((a) => [a.email, a.realName])],
+  }, strings.diagnostics.report);
+  clipboard.writeText(report);
+  logTiming('diagnostics: copied to the clipboard');
+  return true;
+}
+
 function registerIpc(): void {
   ipcMain.handle('launcher:getState', () => state(store.current));
   ipcMain.handle('launcher:setGreetingName', async (_e, name: unknown) =>
@@ -567,6 +603,10 @@ function registerIpc(): void {
     offeredVersion ? releasePageUrl(RELEASES_URL, offeredVersion) : RELEASES_URL));
   ipcMain.handle('launcher:openVersionNotes', () => shell.openExternal(releasePageUrl(RELEASES_URL, app.getVersion())));
   ipcMain.handle('launcher:update:openReleases', () => shell.openExternal(RELEASES_URL));
+  ipcMain.handle('launcher:copyDiagnostics', () => copyDiagnostics().catch((err: unknown) => {
+    console.warn(`Could not copy the diagnostics: ${(err as Error).message}`);
+    return false;
+  }));
   ipcMain.handle('launcher:memories:begin', (_e, sourceId: unknown, targetId: unknown) => {
     if (!isText(sourceId) || !isText(targetId)) throw new Error('Invalid arguments');
     return beginMemories(sourceId, targetId);
@@ -604,6 +644,10 @@ function createWindow(): void {
     },
   });
   const w = win;
+  // The window only ever shows index.html: no navigation and no new windows (links go through shell.openExternal
+  // with URLs built here).
+  w.webContents.on('will-navigate', (e) => e.preventDefault());
+  w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   w.once('ready-to-show', () => w.show());
   // Closing the launcher in the middle of a sign-in cancels it cleanly (a crash is handled on the next start).
   // Receive memories: the text goes with the window (and off the clipboard) before it closes.

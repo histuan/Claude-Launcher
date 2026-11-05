@@ -4,6 +4,7 @@ import type { CardBadge, CardStatus } from '../core/card.js';
 import type { DetailsError } from '../core/details.js';
 import type { MemoryTextError } from '../core/memories.js';
 import type { MemoryZipError } from '../core/memoryZip.js';
+import type { DiagnosticsText } from '../core/diagnostics.js';
 import type { GreetingPeriod } from '../core/greeting.js';
 
 export const strings = {
@@ -257,8 +258,7 @@ export const strings = {
     },
     errors: {
       empty: 'Paste the memories first, or drop the exported .zip.',
-      tooLong: 'The text is over the limit of 100,000 characters.',
-    } satisfies Record<MemoryTextError, string>,
+    } satisfies Record<Exclude<MemoryTextError, 'tooLong'>, string>, // tooLong: pastedTooLong below
     /** Pasted text (or a .txt / .md file) cannot be split by file: nothing is cut. */
     pastedTooLong: (chars: string) => `This text has ${chars} characters, over the limit of 100,000. Nothing was cut: `
       + 'drop the exported .zip instead (it is imported in parts, by whole files), or shorten the text.',
@@ -296,6 +296,31 @@ export const strings = {
     finishing: 'Finishing the update…',
     finishingDetail: 'The launcher opens again by itself in a few seconds.',
     ok: 'OK',
+  },
+  /** 0.7.0: "Copy diagnostics" next to the version label; the report is plain text, nothing personal. */
+  diagnostics: {
+    link: 'Copy diagnostics',
+    copied: 'Copied',
+    failed: 'Could not copy',
+    report: {
+      title: 'Multi-Account Launcher for Claude — diagnostics',
+      created: 'Created',
+      launcher: 'Launcher',
+      claude: 'Claude',
+      unknown: 'not found',
+      windows: 'Windows',
+      accounts: (count: number, signedIn: number) => `Accounts: ${count} (${signedIn} signed in)`,
+      states: { signedIn: 'signed in', signedOut: 'not signed in', checking: 'checking' },
+      running: 'running',
+      paths: 'Paths',
+      claudeExe: 'Claude.exe',
+      mainProfile: 'Main profile',
+      extraProfiles: 'Other profiles',
+      logFile: 'Log',
+      notCached: 'not known yet',
+      logTail: (lines: number) => `Last ${lines} lines of sign-in-timings.log`,
+      emptyLog: '(empty)',
+    } satisfies DiagnosticsText,
   },
   photo: {
     failed: {

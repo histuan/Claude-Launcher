@@ -1,7 +1,7 @@
 # Status
 
-**Current phase:** 0.6.2 — update polish, in a PR to `main`, waiting for the test on Windows and the merge. Next: Phase 6 —
-Polish and release (`docs/PHASES.md`), after the merge.
+**Current phase:** 0.7.0 — review and diagnostics, in a PR to `main`, waiting for the test on Windows and the merge.
+Next: Phase 6 — Polish and release (`docs/PHASES.md`: README, done criteria, 1.0.0), after the merge.
 
 ## Done
 
@@ -107,6 +107,14 @@ Polish and release (`docs/PHASES.md`), after the merge.
   quitting. One shared button style in `styles.css` (end of file). Screenshots (mocked):
   `docs/screenshots/0.6.2-hover-before-after.png`, `docs/screenshots/0.6.2-corner-links.png`.
 
+- 0.7.0: review round (security, accessibility, code health; findings table in the PR) and **Copy diagnostics**
+  next to the version label (`src/core/diagnostics.ts`: report with versions, accounts by card label, cached paths
+  as `%LOCALAPPDATA%` / `%APPDATA%` / `%USERPROFILE%`, last 50 log lines; e-mails, real / Windows / greeting names,
+  the user name and long token-like values removed). Fixes: the window cannot navigate or open windows; focus goes
+  back to the dialog's opener (card ⋯ button, found again after a redraw via `data-focus-key`); dialogs named by
+  their titles; muted / red / dialog-link text at 4.5:1; dead `isSignedIn` / `hasOauth` removed. Screenshot
+  (mocked): `docs/screenshots/0.7.0-diagnostics.png`.
+
 ## Missing
 
 - Phase 6 (`docs/PHASES.md`).
@@ -178,29 +186,28 @@ Polish and release (`docs/PHASES.md`), after the merge.
 
 ## How to test
 
-0.6.2 (update polish, 0.6.1 → 0.6.2). Needs v0.6.2 on the Releases page, so it starts **after this PR is merged**.
-Start with 0.6.1 installed (version label **v0.6.1**). Note: steps 1–5 run the **0.6.1** code (the old version does
-the check and the install), so the new behaviour shows from 0.6.2 on; the full test is the next update (0.6.2 → 0.6.3).
+0.7.0 (review and diagnostics, 0.6.2 → 0.7.0). Needs v0.7.0 on the Releases page, so it starts **after this PR is
+merged**. Start with **v0.6.2** installed. This update is the real test of the 0.6.2 update behaviour (0.6.2 code
+does the check and the install).
 
-1. Open the launcher: the 0.6.1 dialog "Version 0.6.2 is available" appears after the cards. **Install**: progress →
-   the launcher closes, ~20 s with no window, then **v0.6.2** opens.
-2. While those ~20 s run, opening the launcher may still open the old 0.6.1 (it is 0.6.1 code); that is expected
-   only for this update.
-3. Log (`%APPDATA%\claude-launcher\sign-in-timings.log`, hover the version label for the path): the `update:` line
-   shows bytes, ms and the mode; this one should say **differential** (0.6.1 was installed by the updater).
-4. On **v0.6.2**: hover every dialog and menu button (Add account → Cancel / Continue; ⋯ menu items; Edit details;
-   Receive memories → Cancel / Proceed / Next / Copy part / Done; the update dialog): pointer, a subtle colour change,
-   slightly darker while the mouse is pressed. Tab still shows the orange focus ring.
-5. Click **v0.6.2** (bottom-right): the browser opens the v0.6.2 release page.
-
-When v0.6.3 exists (0.6.2 → 0.6.3, the full test of this release):
-
-6. Open the launcher: the notice appears quickly (the check starts with the window). **Later** → "Update to 0.6.3"
-   appears next to the version. Close and reopen: the notice is shown at once (remembered), and stays.
-7. Click **Update to 0.6.3** → the same dialog → **Install**: progress, then "Installing… the launcher opens again
-   in about 20 seconds", the launcher closes and reopens as v0.6.3.
-8. During those ~20 s, open the launcher from the Start menu: "Finishing the update…" shows and closes by itself;
-   the old version does not open. The log has `update: started while the update installer runs; …`.
+1. Open the launcher: the notice "Version 0.7.0 is available" appears quickly. **Later** → "Update to 0.7.0" shows
+   next to the version (bottom-right).
+2. Click **Update to 0.7.0** → the same dialog → **Install**: progress, then "Installing… the launcher opens again in
+   about 20 seconds", the launcher closes.
+3. During those ~20 s, open the launcher from the Start menu: "Finishing the update…" shows and closes by itself
+   (the old version does not open).
+4. It reopens as **v0.7.0**. Log (`%APPDATA%\claude-launcher\sign-in-timings.log`, hover the version for the
+   path): the `update:` line shows bytes, ms and **differential**.
+5. **Copy diagnostics** (bottom-right, left of the version): it says "Copied" for ~2 s. Paste in Notepad: versions,
+   accounts by card label with their state, paths starting with `%LOCALAPPDATA%` / `%APPDATA%` / `%USERPROFILE%`,
+   the last log lines. Search it for your e-mail, your name, your Windows user name and `C:\Users`: nothing should be found.
+6. **Keyboard only** (no mouse): Tab to a card's ⋯, Enter, arrows, Enter on Rename / Edit details / Receive
+   memories / Remove; in each dialog Tab moves between the fields and buttons, Enter confirms, Esc cancels (the
+   sign-in dialog ignores Esc on purpose: Tab to Cancel). After a dialog closes, the orange focus ring is back on
+   the same card's ⋯ (also after Rename, when the cards are redrawn). Add account → Esc → the ring is back on Add.
+   The update dialog: Esc = Later.
+7. Visible review fixes: the grey texts (real name on the cards, the version, dialog tips, the next
+   sign-in steps) are a little lighter; red error texts and the red **Remove** item are slightly lighter red.
 
 ### 0.6.1 (kept for reference)
 

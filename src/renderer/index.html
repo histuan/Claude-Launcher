@@ -24,12 +24,13 @@
 
   <footer class="corner">
     <button id="update-link" class="text-link" type="button" hidden></button>
+    <button id="diagnostics" class="text-link version" type="button" aria-live="polite"></button>
     <button id="version" class="text-link version" type="button"></button>
   </footer>
 
   <div id="menu" class="menu" role="menu" hidden></div>
 
-  <dialog id="signin">
+  <dialog id="signin" aria-labelledby="signin-title">
     <h2 id="signin-title"></h2>
     <p id="signin-body"></p>
     <ol id="signin-steps" class="steps" hidden></ol>
@@ -39,7 +40,7 @@
     </div>
   </dialog>
 
-  <dialog id="details">
+  <dialog id="details" aria-labelledby="details-title">
     <form method="dialog">
       <h2 id="details-title"></h2>
       <p id="details-body"></p>
@@ -57,13 +58,13 @@
     </form>
   </dialog>
 
-  <dialog id="memories">
+  <dialog id="memories" aria-labelledby="memories-title">
     <h2 id="memories-title"></h2>
     <p id="memories-body"></p>
     <ol id="memories-steps" class="how"></ol>
     <div id="memories-files" class="files" hidden></div>
     <p id="memories-total" class="total"></p>
-    <textarea id="memories-text" rows="7" spellcheck="false" autocomplete="off"></textarea>
+    <textarea id="memories-text" aria-labelledby="memories-title" rows="7" spellcheck="false" autocomplete="off"></textarea>
     <button id="memories-file" class="text-link" type="button"></button>
     <input id="memories-file-input" type="file" accept=".zip,.txt,.md" hidden>
     <p id="memories-tip" class="tip"></p>
@@ -76,7 +77,7 @@
     </div>
   </dialog>
 
-  <dialog id="update">
+  <dialog id="update" aria-labelledby="update-title">
     <h2 id="update-title"></h2>
     <p id="update-body"></p>
     <progress id="update-progress" max="100" value="0" hidden></progress>
@@ -91,11 +92,11 @@
 
   <input id="photo-input" type="file" accept="image/png,image/jpeg,image/webp" hidden>
 
-  <dialog id="dialog">
+  <dialog id="dialog" aria-labelledby="dialog-title">
     <form method="dialog">
       <h2 id="dialog-title"></h2>
       <p id="dialog-body"></p>
-      <input id="dialog-input" type="text" maxlength="40" autocomplete="off" spellcheck="false">
+      <input id="dialog-input" aria-labelledby="dialog-title" type="text" maxlength="40" autocomplete="off" spellcheck="false">
       <div class="dialog-buttons">
         <button id="dialog-cancel" type="button"></button>
         <button id="dialog-confirm" class="primary" type="submit" value="confirm"></button>

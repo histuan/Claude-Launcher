@@ -69,20 +69,6 @@ export function parseMarker(raw: unknown): Marker | null {
 }
 
 /**
- * Claude writes "oauth:tokenCache" / "oauth:tokenCacheV2" into config.json once signed in (a fresh profile has
- * neither). Only the key NAMES are looked at, never their values. Signing out does not remove them.
- */
-export function hasOauth(configJson: string): boolean {
-  try {
-    const cfg: unknown = JSON.parse(configJson);
-    if (typeof cfg !== 'object' || cfg === null) return false;
-    return Object.keys(cfg).some((key) => key === 'oauth:tokenCache' || key === 'oauth:tokenCacheV2');
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Account-related key NAMES in config.json (values are never read): any "oauth:*" key (Claude 3.x writes
  * oauth:tokenCache / oauth:tokenCacheV2), "lastKnownAccountUuid" (Claude 4.4212, which has no oauth: key any more),
  * or any name containing "Account". Unreadable or non-object JSON gives [].

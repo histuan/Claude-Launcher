@@ -1,9 +1,9 @@
 // Where the default Claude profile really lives, plus the small Windows helpers the sign-in flow needs.
 import { execFile } from 'node:child_process';
-import { readFile, statfs } from 'node:fs/promises';
+import { statfs } from 'node:fs/promises';
 import path from 'node:path';
 import { defaultProfileFromProcesses, type RawProcess } from '../../core/processes.js';
-import { defaultSlot, hasOauth, STASH_SUFFIX } from '../../core/signIn.js';
+import { defaultSlot, STASH_SUFFIX } from '../../core/signIn.js';
 import type { RunPowerShell } from './windowsUser.js';
 
 const FAMILY_SCRIPT = '[Console]::OutputEncoding = [Text.Encoding]::UTF8; '
@@ -117,12 +117,6 @@ export function markerFileFor(env: Record<string, string | undefined>): string |
 export async function freeBytes(dir: string): Promise<number> {
   const s = await statfs(dir);
   return s.bavail * s.bsize;
-}
-
-/** A profile counts as signed in once Claude wrote its OAuth token into config.json (only the key is checked). */
-export async function isSignedIn(profileDir: string): Promise<boolean> {
-  const text = await readFile(path.join(profileDir, 'config.json'), 'utf8').catch(() => '');
-  return hasOauth(text);
 }
 
 export type ExecFn = (file: string, args: string[]) => Promise<void>;
