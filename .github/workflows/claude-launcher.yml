@@ -40,6 +40,9 @@ jobs:
       - run: npm test
       # npm test already compiled the app into out/, which electron-builder packages.
       - run: npx electron-builder --win --publish never
+      # README "Download vX" badge; the release uploads it, so releases/latest/download/badge-download.svg is live.
+      - name: Make version badge
+        run: node scripts/make-badges.ts --release
       # The self-update files the release uploads (checked on every run, so a PR shows it before the merge).
       - name: Check update files
         shell: bash
@@ -76,12 +79,22 @@ jobs:
             echo "::error::CHANGELOG.md has no section for $version"
             exit 1
           fi
+          # A fixed-name copy of the installer, so releases/latest/download/Claude-Launcher-Setup.exe (the README
+          # button) always downloads the latest one. The self-update keeps using the versioned file in latest.yml.
+          cp "dist/Claude-Launcher-Setup-$version.exe" dist/Claude-Launcher-Setup.exe
+          # The download link goes first in the notes, so nobody has to pick among the files at the bottom.
+          url="https://github.com/histuan/Claude-Launcher/releases/download/$tag/Claude-Launcher-Setup-$version.exe"
+          { printf '## Download\n\n**[⬇ Download Claude-Launcher-Setup-%s.exe](%s)** (Windows 10 / 11)\n\n' "$version" "$url"
+            printf 'Already installed? The launcher updates itself and asks you first. The other files below are used\n'
+            printf 'by that automatic update; you do not need them.\n\n## What changed\n'
+            cat release-notes.md; } > release-notes-full.md
+          mv release-notes-full.md release-notes.md
           # Since 0.6.0 the self-update (electron-updater, GitHub provider) reads latest.yml from the latest release
           # and the .blockmap for a smaller download, so both go next to the .exe.
-          for f in dist/*.exe dist/*.exe.blockmap dist/latest.yml; do
+          for f in dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/badge-download.svg; do
             [ -f "$f" ] || { echo "::error::missing $f"; exit 1; }
           done
           # Since 0.3.0 (the first usable version) every release is a regular one, marked as latest.
-          gh release create "$tag" dist/*.exe dist/*.exe.blockmap dist/latest.yml --target "$GITHUB_SHA" \
+          gh release create "$tag" dist/*.exe dist/*.exe.blockmap dist/latest.yml dist/badge-download.svg --target "$GITHUB_SHA" \
             --title "$tag" \
             --notes-file release-notes.md --latest

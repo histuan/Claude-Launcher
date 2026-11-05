@@ -55,7 +55,7 @@ test('parseConfig rejects something that is not a config', () => {
 
 test('greeting name: trimmed, empty restores the default (null)', () => {
   const cfg = defaultConfig();
-  assert.equal(setGreetingName(cfg, '  Thiago  ').greetingName, 'Thiago');
+  assert.equal(setGreetingName(cfg, '  Alex  ').greetingName, 'Alex');
   assert.equal(setGreetingName(cfg, '   ').greetingName, null);
   assert.equal(setGreetingName(cfg, null).greetingName, null);
   assert.equal(setGreetingName(cfg, 'x'.repeat(100)).greetingName?.length, 40);
@@ -77,14 +77,14 @@ test('remove: deletes the account, never the Main one', () => {
   assert.equal(removeAccount(cfg, 'missing'), cfg);
 });
 
-const HOME = 'C:\\Users\\thiag';
+const HOME = 'C:\\Users\\alex';
 
 test('add: id from the name, folder under ClaudeProfiles, appended last', () => {
   const result = addAccount(defaultConfig(), '  Trabalho Ágil! ', HOME);
   assert.ok(result);
   assert.deepEqual(result.account, {
     id: 'trabalho-agil', label: 'Trabalho Ágil!', email: null, realName: null, photo: null,
-    profileDir: 'C:\\Users\\thiag\\ClaudeProfiles\\trabalho-agil', signedIn: null,
+    profileDir: 'C:\\Users\\alex\\ClaudeProfiles\\trabalho-agil', signedIn: null,
   });
   assert.deepEqual(result.config.accounts.map((a) => a.id), ['main', 'trabalho-agil']);
 });
@@ -108,13 +108,13 @@ test('add: name trimmed and capped like rename', () => {
 });
 
 test('only direct children of %USERPROFILE%\\ClaudeProfiles count as launcher profile folders', () => {
-  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\work', HOME), true);
-  assert.equal(isLauncherProfileDir('c:\\users\\THIAG\\claudeprofiles\\work\\', HOME), true);
-  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles', HOME), false);
-  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\..', HOME), false);
-  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\..\\Documents', HOME), false);
-  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\ClaudeProfiles\\a\\b', HOME), false);
-  assert.equal(isLauncherProfileDir('C:\\Users\\thiag\\AppData\\Roaming\\Claude', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\alex\\ClaudeProfiles\\work', HOME), true);
+  assert.equal(isLauncherProfileDir('c:\\users\\ALEX\\claudeprofiles\\work\\', HOME), true);
+  assert.equal(isLauncherProfileDir('C:\\Users\\alex\\ClaudeProfiles', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\alex\\ClaudeProfiles\\..', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\alex\\ClaudeProfiles\\..\\Documents', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\alex\\ClaudeProfiles\\a\\b', HOME), false);
+  assert.equal(isLauncherProfileDir('C:\\Users\\alex\\AppData\\Roaming\\Claude', HOME), false);
   assert.equal(isLauncherProfileDir('', HOME), false);
 });
 
@@ -162,17 +162,17 @@ test('Claude.exe cache: kept only for an MSIX Claude.exe path; default and bad v
 test('Add account: the typed details go on the new card; an invalid e-mail is not saved', () => {
   const base = parseConfig({ accounts: [acc('main', null)] });
   const work = { id: 'work', label: 'Work', profileDir: 'C:\\P\\work', isNew: true };
-  const added = afterSignIn(base, { ...work, email: ' me@work.com ', realName: 'Thiago G.' });
+  const added = afterSignIn(base, { ...work, email: ' me@work.com ', realName: 'Alex M.' });
   assert.equal(added.accounts[1]?.email, 'me@work.com');
-  assert.equal(added.accounts[1]?.realName, 'Thiago G.');
+  assert.equal(added.accounts[1]?.realName, 'Alex M.');
   assert.equal(afterSignIn(base, { ...work, email: 'nope' }).accounts[1]?.email, null);
 });
 
 test('Edit details: any card (Main too); invalid e-mail or unknown id leaves the config as it is', () => {
   const cfg = parseConfig({ accounts: [acc('main', null), acc('w', 'D:\\w')] });
-  const main = setDetails(cfg, 'main', 'thiago@gmail.com', ' Thiago U. ');
-  assert.deepEqual([main.accounts[0]?.email, main.accounts[0]?.realName], ['thiago@gmail.com', 'Thiago U.']);
-  assert.equal(setDetails(main, 'main', 'thiago@gmail.com', '').accounts[0]?.realName, null, 'real name can be cleared');
+  const main = setDetails(cfg, 'main', 'alex@example.com', ' Alex R. ');
+  assert.deepEqual([main.accounts[0]?.email, main.accounts[0]?.realName], ['alex@example.com', 'Alex R.']);
+  assert.equal(setDetails(main, 'main', 'alex@example.com', '').accounts[0]?.realName, null, 'real name can be cleared');
   assert.equal(setDetails(cfg, 'w', 'bad', 'x'), cfg);
   assert.equal(setDetails(cfg, 'nope', 'a@b.cd', 'x'), cfg);
   assert.equal(cfg.accounts[0]?.email, null, 'input not mutated');
@@ -190,8 +190,8 @@ test('startup cache (0.5.1): Windows name and main profile kept from disk; bad v
   assert.equal(defaultConfig().windowsName, null);
   assert.equal(defaultConfig().defaultProfile, null);
   const dir = 'C:\\Users\\u\\AppData\\Local\\Claude-Data\\claude_1';
-  const cfg = parseConfig({ accounts: [], windowsName: 'Thiago', defaultProfile: dir });
-  assert.equal(cfg.windowsName, 'Thiago');
+  const cfg = parseConfig({ accounts: [], windowsName: 'Alex', defaultProfile: dir });
+  assert.equal(cfg.windowsName, 'Alex');
   assert.equal(cfg.defaultProfile, dir);
   const bad = parseConfig({ accounts: [], windowsName: 3, defaultProfile: '' });
   assert.equal(bad.windowsName, null);

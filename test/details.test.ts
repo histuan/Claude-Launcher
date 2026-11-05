@@ -5,7 +5,7 @@ import { checkDetails, MAX_REAL_NAME_LENGTH } from '../src/core/details.js';
 import { squareCrop } from '../src/core/photo.js';
 
 test('details: e-mail required and trimmed, real name optional and capped', () => {
-  assert.deepEqual(checkDetails('  me@work.com ', '  Thiago U. '), { email: 'me@work.com', realName: 'Thiago U.' });
+  assert.deepEqual(checkDetails('  me@work.com ', '  Alex R. '), { email: 'me@work.com', realName: 'Alex R.' });
   assert.deepEqual(checkDetails('t@unifor.edu.br', '   '), { email: 't@unifor.edu.br', realName: null });
   assert.deepEqual(checkDetails('   ', 'x'), { error: 'emailMissing' });
   for (const bad of ['me', 'me@', '@work.com', 'me@work', 'me@@work.com', 'me @work.com', 'me@work.', `${'a'.repeat(250)}@b.cd`]) {

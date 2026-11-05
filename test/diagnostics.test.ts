@@ -5,15 +5,15 @@ import { buildDiagnostics, DIAGNOSTICS_LOG_LINES, redact, type DiagnosticsInput 
 import { strings } from '../src/renderer/strings.js';
 
 const env = {
-  USERPROFILE: 'C:\\Users\\thiag',
-  LOCALAPPDATA: 'C:\\Users\\thiag\\AppData\\Local',
-  APPDATA: 'C:\\Users\\thiag\\AppData\\Roaming',
-  USERNAME: 'thiag',
+  USERPROFILE: 'C:\\Users\\johnd',
+  LOCALAPPDATA: 'C:\\Users\\johnd\\AppData\\Local',
+  APPDATA: 'C:\\Users\\johnd\\AppData\\Roaming',
+  USERNAME: 'johnd',
 };
-const EMAIL = 'thiago.real@example.com';
-const REAL_NAME = 'Thiago Fulano';
-const WINDOWS_NAME = 'Thiago Windows';
-const GREETING = 'Thi';
+const EMAIL = 'JohnDoe@email.com';
+const REAL_NAME = 'John Doe';
+const WINDOWS_NAME = 'Johnny Windows';
+const GREETING = 'Jo';
 const TOKEN = 'sk-ant-sid01-' + 'A1b2C3d4E5'.repeat(8);
 
 function input(log: string, over: Partial<DiagnosticsInput> = {}): DiagnosticsInput {
@@ -29,9 +29,9 @@ function input(log: string, over: Partial<DiagnosticsInput> = {}): DiagnosticsIn
     ],
     paths: {
       claudeExe: 'C:\\Program Files\\WindowsApps\\Claude_3.6556.2.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe',
-      mainProfile: 'C:\\Users\\thiag\\AppData\\Local\\Claude-Data\\claude_abc',
-      extraProfiles: 'C:\\Users\\thiag\\ClaudeProfiles',
-      log: 'C:\\Users\\thiag\\AppData\\Roaming\\claude-launcher\\sign-in-timings.log',
+      mainProfile: 'C:\\Users\\johnd\\AppData\\Local\\Claude-Data\\claude_abc',
+      extraProfiles: 'C:\\Users\\johnd\\ClaudeProfiles',
+      log: 'C:\\Users\\johnd\\AppData\\Roaming\\claude-launcher\\sign-in-timings.log',
     },
     log,
     env,
@@ -41,9 +41,9 @@ function input(log: string, over: Partial<DiagnosticsInput> = {}): DiagnosticsIn
 }
 
 const personalLog = [
-  `2026-11-05T11:00:00Z  start: stash c:\\users\\THIAG\\AppData\\Local\\Claude-Data\\claude_abc`,
-  `2026-11-05T11:00:01Z  card check work: ${EMAIL} for Thiago Fulano (Windows: Thiago Windows, hi Thi)`,
-  `2026-11-05T11:00:02Z  folder C:/Users/thiag/ClaudeProfiles/work, user thiag, token ${TOKEN}`,
+  `2026-11-05T11:00:00Z  start: stash c:\\users\\JOHND\\AppData\\Local\\Claude-Data\\claude_abc`,
+  `2026-11-05T11:00:01Z  card check work: ${EMAIL} for John Doe (Windows: Johnny Windows, hi Jo)`,
+  `2026-11-05T11:00:02Z  folder C:/Users/johnd/ClaudeProfiles/work, user johnd, token ${TOKEN}`,
   `2026-11-05T11:00:03Z  someone@else.org wrote it`,
 ].join('\r\n');
 
@@ -63,12 +63,12 @@ test('paths are written with environment variables, never the real user folder',
   assert.match(report, /Other profiles: %USERPROFILE%\\ClaudeProfiles/);
   assert.match(report, /Log: %APPDATA%\\claude-launcher\\sign-in-timings\.log/);
   assert.match(report, /Claude\.exe: C:\\Program Files\\WindowsApps\\Claude_3\.6556\.2\.0/);
-  assert.doesNotMatch(report, /thiag/i);
+  assert.doesNotMatch(report, /johnd/i);
 });
 
 test('nothing personal from the log reaches the report: e-mails, names, user folder, tokens', () => {
   const report = buildDiagnostics(input(personalLog), strings.diagnostics.report);
-  for (const secret of [EMAIL, 'someone@else.org', 'Thiago', 'Fulano', 'Thiago Windows', 'Thi)', 'thiag', TOKEN, 'A1b2C3d4E5']) {
+  for (const secret of [EMAIL, 'someone@else.org', 'John Doe', 'Johnny', 'Jo)', 'johnd', TOKEN, 'A1b2C3d4E5']) {
     assert.ok(!report.toLowerCase().includes(secret.toLowerCase()), `report contains ${secret}`);
   }
   assert.match(report, /stash %LOCALAPPDATA%\\Claude-Data\\claude_abc/);
@@ -88,7 +88,7 @@ test('an e-mail typed as a card label is removed; unknown Claude and uncached pa
   const report = buildDiagnostics(input('', {
     claudeVersion: null,
     accounts: [{ label: EMAIL, state: 'signedIn', running: false }],
-    paths: { claudeExe: null, mainProfile: null, extraProfiles: 'C:\\Users\\thiag\\ClaudeProfiles', log: 'x.log' },
+    paths: { claudeExe: null, mainProfile: null, extraProfiles: 'C:\\Users\\johnd\\ClaudeProfiles', log: 'x.log' },
   }), strings.diagnostics.report);
   assert.ok(!report.includes(EMAIL));
   assert.match(report, /- <e-mail>: signed in/);
@@ -97,6 +97,6 @@ test('an e-mail typed as a card label is removed; unknown Claude and uncached pa
 });
 
 test('redact: a name inside a longer word stays (no false matches), a bare drive is never a folder', () => {
-  assert.equal(redact('Thiagosomething thiag', { USERNAME: 'thiag' }, ['Thiago']), 'Thiagosomething <name>');
+  assert.equal(redact('Johndsomething johnd', { USERNAME: 'johnd' }, ['John Doe']), 'Johndsomething <name>');
   assert.equal(redact('C:\\Windows', { USERPROFILE: 'C:\\' }, []), 'C:\\Windows');
 });
