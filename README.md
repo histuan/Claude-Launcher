@@ -1,7 +1,7 @@
 # Multi-Account Launcher for Claude
 
 <p>
-  <a href="https://github.com/histuan/Claude-Launcher/releases/latest"><img src="docs/badges/download.svg" alt="Download for Windows" height="38"></a>
+  <a href="https://github.com/histuan/Claude-Launcher/releases/latest/download/Claude-Launcher-Setup.exe"><img src="https://github.com/histuan/Claude-Launcher/releases/latest/download/badge-download.svg" alt="Download the latest version for Windows" height="38"></a>
   <img src="docs/badges/windows.svg" alt="Windows 10 / 11" height="36">
   <a href="./LICENSE"><img src="docs/badges/license.svg" alt="MIT license" height="36"></a>
 </p>
