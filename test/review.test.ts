@@ -55,7 +55,7 @@ test('every dialog is named by its title; the fields without a visible label too
 });
 
 test('dialogs open through openModal (focus goes back to the opener when the last one closes)', () => {
-  assert.doesNotMatch(app.replace(/function openModal[\s\S]*?\n}\n/, ''), /\.showModal\(\)/);
+  assert.doesNotMatch(app.replace(/function openModal[\s\S]*?\r?\n}\r?\n/, ''), /\.showModal\(\)/);
   assert.match(app, /'data-focus-key': `menu:\$\{account\.id\}`/);
   assert.match(app, /closeMenu\(true\); action\(\);/);
   assert.match(app, /for \(const d of document\.querySelectorAll\('dialog'\)\) d\.addEventListener\('close'/);
