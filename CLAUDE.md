@@ -18,14 +18,14 @@ one account per profile, with no signing out and back in.
 
 ## Environment
 
-- Usually you are in a **cloud session**: Linux, no display.
-- The `.exe` is built by **GitHub Actions** (`windows-latest`), never inside the session. Do not try Wine or Docker.
-- Exception to dev-economico: here `docs/STATUS.md` goes **into git**, because the cloud VM is deleted.
-- In the cloud you do not need the Electron binary to test the logic: use `ELECTRON_SKIP_BINARY_DOWNLOAD=1 npm ci`
-  (drop it only to try the offscreen screenshot).
+- You run as **local Claude Code on my PC**: Windows 11, Node 24, `gh` CLI. The repo is at
+  `C:\codiguinhos\Github\Claude-Launcher`. The real app can be built and started here (`npm start`).
+- **Safety:** never run the sign-in flow, "Close this account", or anything that touches the default Claude profile or
+  `%USERPROFILE%\ClaudeProfiles` without asking me first. Prefer tests with mocks.
+- The `.exe` is built by **GitHub Actions** (`windows-latest`), never inside the session.
+- Exception to dev-economico: here `docs/STATUS.md` goes **into git**, so the context lives in the repository.
 - To check Actions, use `gh run list` / `gh run view` (REST API) or the GitHub MCP tools. If neither works, say so in
   the report and i check the Actions tab.
-- Local Claude Code (on my PC) is the last resort: only when a bug shows up only on real Windows and logs are not enough.
 
 ## GitHub process
 
@@ -57,7 +57,7 @@ one account per profile, with no signing out and back in.
 - `npm run build` — compile `src/` and `test/` into `out/` (ignored by git) and copy the renderer's HTML/CSS
 - `npm run typecheck` — type check only
 - `npm test` — build, then run `out/test/**/*.test.js` with `node --test`
-- `npm start` — build and open the app (does not work in the cloud, which has no display)
+- `npm start` — build and open the app
 
 ## Architecture
 
@@ -85,10 +85,8 @@ one account per profile, with no signing out and back in.
 ## Verification
 
 - Logic: `node:test` tests with mocks of `src/main/system/`. Run `npm run typecheck` and `npm test` before calling it done.
-- Interface: if possible, a screenshot via offscreen Electron (`xvfb-run`). If not possible in the cloud, say so and leave it to me.
 - The real test is on my PC: at the end of the phase, write a short "How to test" in `docs/STATUS.md`
   (download the installer from the Releases page or the PR artifact, install, what to check).
-- If something in the phase is impossible in the cloud, stop and explain instead of improvising.
 
 ## Agent skills
 
