@@ -1,9 +1,7 @@
 // README badges: rounded pills in the launcher's colours (shields.io cannot do large rounded badges).
-//   node scripts/make-badges.ts            -> docs/badges/windows.svg, docs/badges/license.svg (static, committed)
-//   node scripts/make-badges.ts --release  -> dist/badge-download.svg with the package.json version; the release
-//                                             step uploads it, so .../releases/latest/download/badge-download.svg
-//                                             always shows the latest version without a commit.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+//   node scripts/make-badges.ts -> docs/badges/*.svg (static, committed). GitHub does not render images served
+//   from release assets, so the download badge has no version in it.
+import { mkdirSync, writeFileSync } from 'node:fs';
 
 const ACCENT = '#d97757';
 const DARK = '#2b2a27';
@@ -50,13 +48,7 @@ function pill({ text, icon, primary }: Pill): string {
     + ` lengthAdjust="spacingAndGlyphs">${esc}</text></svg>\n`;
 }
 
-if (process.argv.includes('--release')) {
-  const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
-  mkdirSync('dist', { recursive: true });
-  writeFileSync('dist/badge-download.svg', pill({ text: `Download v${version} for Windows`, icon: 'download', primary: true }));
-} else {
-  mkdirSync('docs/badges', { recursive: true });
-  writeFileSync('docs/badges/download.svg', pill({ text: 'Download for Windows', icon: 'download', primary: true }));
-  writeFileSync('docs/badges/windows.svg', pill({ text: 'Windows 10 / 11', icon: 'windows', primary: false }));
-  writeFileSync('docs/badges/license.svg', pill({ text: 'MIT license', icon: 'scale', primary: false }));
-}
+mkdirSync('docs/badges', { recursive: true });
+writeFileSync('docs/badges/download.svg', pill({ text: 'Download for Windows', icon: 'download', primary: true }));
+writeFileSync('docs/badges/windows.svg', pill({ text: 'Windows 10 / 11', icon: 'windows', primary: false }));
+writeFileSync('docs/badges/license.svg', pill({ text: 'MIT license', icon: 'scale', primary: false }));

@@ -1,7 +1,7 @@
 # Status
 
-**Current phase:** 0.7.0 — review and diagnostics, in a PR to `main`, waiting for the test on Windows and the merge.
-Next: Phase 6 — Polish and release (`docs/PHASES.md`: README, done criteria, 1.0.0), after the merge.
+**Current state:** v1.0 released (Phase 6, 1.0.0: docs and CI only, same code as 0.7.0), in a PR to `main`,
+waiting for the merge and the update test. After that: ideas in `docs/IDEAS.md`, no phase planned.
 
 ## Done
 
@@ -115,9 +115,13 @@ Next: Phase 6 — Polish and release (`docs/PHASES.md`: README, done criteria, 1
   their titles; muted / red / dialog-link text at 4.5:1; dead `isSignedIn` / `hasOauth` removed. Screenshot
   (mocked): `docs/screenshots/0.7.0-diagnostics.png`.
 
+- Phase 6 (1.0.0): README rewritten for v1, done criteria in `docs/SCOPE.md` §7 marked with their results and the
+  scope changes, `docs/IDEAS.md`, CI no longer makes `badge-download.svg` (GitHub does not render images from
+  release assets; the README uses `docs/badges/download.svg`). Tested with Claude Desktop 4.23118.0.0 on Windows 11.
+
 ## Missing
 
-- Phase 6 (`docs/PHASES.md`).
+- Nothing for v1. Later ideas: `docs/IDEAS.md`.
 
 ## Notes for the next phases
 
@@ -185,6 +189,17 @@ Next: Phase 6 — Polish and release (`docs/PHASES.md`: README, done criteria, 1
   Minimum free space 500 MB on the drive of the default profile. The Add card is created only when the sign-in succeeds.
 
 ## How to test
+
+1.0.0 (update 0.7.0 → 1.0.0). Needs v1.0.0 on the Releases page, so it starts **after this PR is merged**. Start with
+**v0.7.0** installed.
+
+1. Open the launcher: "Version 1.0.0 is available" appears. **Install**: progress, "Installing… the launcher opens
+   again in about 20 seconds", the launcher closes and reopens.
+2. The version label (bottom-right) shows **v1.0.0**. Accounts, names and photos are all still there.
+3. The v1.0.0 release has the `.exe`, the fixed-name `Claude-Launcher-Setup.exe`, the `.blockmap` and `latest.yml`,
+   and no `badge-download.svg`. The README **Download for Windows** button downloads the 1.0.0 installer.
+
+### 0.7.0 (kept for reference)
 
 0.7.0 (review and diagnostics, 0.6.2 → 0.7.0). Needs v0.7.0 on the Releases page, so it starts **after this PR is
 merged**. Start with **v0.6.2** installed. This update is the real test of the 0.6.2 update behaviour (0.6.2 code
