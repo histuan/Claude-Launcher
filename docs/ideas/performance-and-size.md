@@ -54,6 +54,10 @@ Each answer goes in the Phase 7 summary as yes / no / how, with the command used
    import and export is called now, in English and in Portuguese. The help center says Settings → **Your Claude**
    (older layout: Settings → **Memory**); the assistant's steps must match what the app shows. If Phase 7 runs before
    the change reaches the PC, answer for the current layout and repeat this one question afterwards.
+10. **Weekly canary in CI:** can a GitHub Actions Windows runner install Claude Desktop (e.g. winget) and run the
+    no-account checks of `resilience.md` guard 9? (Research only; building it is a later decision.)
+11. **Fixtures for the current Claude version:** save the names-and-shapes samples listed in `resilience.md` guard 10
+    while measuring, so Phase 7.5 starts with them.
 
 ## Memory assistant review (with the Phase 7 answers)
 Walk through "Receive memories from…" on the PC and note every manual step and its time. **Stop before confirming the

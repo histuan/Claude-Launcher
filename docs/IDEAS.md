@@ -42,6 +42,7 @@ make the self-update refuse to offer 1.2 to anyone on 1.12.
 | Phase | Version | What | Why at this point |
 |---|---|---|---|
 | 7 | — | Baseline measurements + research (deep links per profile, Claude updates with several instances open) | Cheap; tells where the time goes and what is possible before building. |
+| 7.5 | 1.0.1 | Resilience against Claude updates: a signed-out card still opens, "unknown" is not "signed out", finish a sign-in by hand, exe from the package manifest, self-check after a Claude update, fixtures per Claude version | Claude updates itself often; today a renamed cookie would stop every extra account from opening. Protect what exists before adding more. |
 | 8 | 1.1.0 | Varied greetings (with rare ones) + update progress window + version history ("What's new") | Small, visible, low risk. |
 | 9 | 1.2.0 | Settings page + theme presets (Warm, Graphite, Light, System) + privacy mode + updates and "at login" settings + copy e-mail on sign-in | Theme and behaviour choices in one place; needed before any video. |
 | 10 | 1.3.0 | Security review + community files | Before promoting the project. |
@@ -118,6 +119,9 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 - 💤 Automatic account photo (only if Claude desktop ever exposes one)
 
 ### Quality, security, performance
+- ✅ **Resilience against Claude updates** (top priority): a click always opens the account, signed-in detection
+  that degrades to "unknown", "I'm signed in" button, exe from the package manifest, process and package fallbacks,
+  self-check after a Claude update, fixtures per Claude version — 1.0.1 — `ideas/resilience.md`
 - ✅ **Agent-run measurements on a real PC**: the AI agent runs commands and drives the screen, repeats each
   measurement dozens of times and records the timings (too tiring by hand) — Phase 7 and 1.4 —
   `ideas/performance-and-size.md`
