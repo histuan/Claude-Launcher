@@ -249,8 +249,13 @@ The last code changes before 1.0.0; Phase 6 then only does the README, the done-
   `sign-in-timings.log`); never e-mails, account names, tokens, cookies or memory text; "Copied" confirmation.
   Logic in `src/core/diagnostics.ts`, tests prove nothing personal reaches the report.
 
-## Phase 6 — Polish and release
+## Phase 6 — Polish and release ✅ (2026-11-07, version 1.0.0)
 
 - `README.md` (what it is, how to install, SmartScreen, limitations, credits, notice that it is not affiliated with Anthropic).
 - Review the done criteria (`SCOPE.md` §7). Version `1.0.0` in `package.json` → the merge creates the Release
   `v1.0.0`.
+
+## After v1.0
+
+No phases are planned. Future ideas live in [`docs/IDEAS.md`](./IDEAS.md); each one picked up becomes its own
+issue and PR, with a minor version (`1.N.0`).

@@ -121,8 +121,19 @@ macOS and Linux; light theme; migrating scheduled tasks and MCP between profiles
 
 ## 7. v1 done criteria
 
-- Installs and opens on Windows 10/11.
-- Opens the Main account and at least one extra account side by side, each in its own account.
-- Add account works with email sign-in and Google sign-in, and the main profile stays intact afterwards.
-- Closing the launcher in the middle of sign-in and reopening it restores the main profile.
-- Greeting, name editing, cards, ⋯ menu and the "● Running" indicator work as described above.
+Reviewed for 1.0.0 (2026-11-07), on Claude Desktop 4.23118.0.0:
+
+- ✅ Installs and opens on Windows 11. Windows 10 not tested.
+- ✅ Opens the Main account and at least one extra account side by side, each in its own account.
+- ✅ Add account works with e-mail sign-in, and the main profile stays intact afterwards. Google sign-in is
+  supported: it happens in the same Claude window and ends with the same session cookies as the e-mail sign-in.
+- ✅ Closing the launcher in the middle of sign-in and reopening it restores the main profile (tested several times).
+- ✅ Greeting, name editing, cards, ⋯ menu and the "● Running" indicator work as described above.
+
+### Scope changes since the plan
+
+- **Self-update** (0.6.0): moved into v1 (§5).
+- **Receive memories from…** (0.5.1): a guided assistant to copy Claude's memories between accounts.
+- **E-mail and name typed by the person** (0.5.0): not detected automatically (`docs/WINDOWS.md` §5).
+- **Account photo** (0.5.0): chosen by the person, the initial by default.
+- **Copy diagnostics** (0.7.0): a report for bug reports, with nothing personal in it.

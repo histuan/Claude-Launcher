@@ -8,6 +8,34 @@ Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-07
+
+First stable release. The code is the same as 0.7.0; this release changes only the documentation and the CI.
+
+### Summary of v1
+
+- One card per Claude account; a click opens that account in its own isolated Claude window
+  (`--user-data-dir`), side by side with the others, with a **● Running** indicator.
+- **Add account** signs in an extra account (e-mail or Google) in a blank Claude window and puts the main profile
+  back afterwards; an interrupted sign-in is restored on the next start.
+- Greeting with an editable name; **Rename**, **Edit details** (card name, e-mail, account name), **Change photo**,
+  **Close this account** and **Remove** in the card ⋯ menu.
+- **Receive memories from…**: a guided assistant to copy Claude's memories between accounts.
+- Self-update from GitHub Releases (asks first; **Later** / **Install**).
+- **Copy diagnostics** for bug reports, with nothing personal in it.
+- MIT license.
+
+### Changed
+
+- README rewritten for v1: download, first install, updates, adding an account, limitations, credits.
+- `docs/SCOPE.md` §7: done criteria marked with their results; scope changes since the plan recorded.
+- CI no longer makes or uploads `badge-download.svg` (GitHub does not render images served from release assets;
+  the README uses `docs/badges/download.svg`). The fixed-name `Claude-Launcher-Setup.exe` copy stays.
+
+### Added
+
+- `docs/IDEAS.md`: ideas for after v1.0.
+
 ## [0.7.0] - 2026-11-05
 
 Review round and diagnostics: the last code changes before 1.0.
@@ -419,7 +447,8 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/histuan/Claude-Launcher/compare/v0.7.0...v1.0.0
 [0.7.0]: https://github.com/histuan/Claude-Launcher/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/histuan/Claude-Launcher/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/histuan/Claude-Launcher/compare/v0.6.0...v0.6.1
