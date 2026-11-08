@@ -27,6 +27,7 @@ everything that was added (the best list of features is the list of what each ve
 ```
 ┌──────────────────────────────────────────────┐
 │  What's new                               ✕  │
+│  [ Release notes on GitHub ] [ GitHub page ] │  top: two links, always visible
 │                                              │
 │  ▌ 1.1.0 · November 2026        ← current    │  bright, accent bar, opened here
 │  ▌ • Greetings change with the time of day   │
@@ -41,7 +42,13 @@ everything that was added (the best list of features is the list of what each ve
 ```
 
 - **When it opens:** by itself once, on the first start after an update (`--updated` or version changed), scrolled
-  to the new version; any time from the version label (bottom-right) and from Settings → About.
+  to the new version; any time from the version label (bottom-right) and from Settings → About. Today the version
+  label opens the GitHub release page directly (`releasePageUrl` in `src/core/version.ts`); it will open this screen
+  instead, and the GitHub page moves to the button below.
+- **Two links at the top:** **Release notes on GitHub** opens the release page of the version being read
+  (`releasePageUrl`, built from the version only); **GitHub page** opens the repository. Like the existing
+  `launcher:openVersionNotes` and `launcher:update:openReleases` handlers in `src/main/main.ts`, each URL is fixed or
+  built in the main process; the window never sends a URL.
 - **Look:** the current version on top with full contrast and the accent bar; older versions below in the muted text
   colour, still readable; pre-1.0 versions with a small "beta" tag. Every version back to 0.1.0.
 - **Source:** `CHANGELOG.md`, bundled with the app at build time, so it works offline and never fetches anything.

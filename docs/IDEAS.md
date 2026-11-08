@@ -1,96 +1,175 @@
-# Ideas after v1.0 — index and roadmap
+# Ideas after v1.0 — index, review and roadmap
 
 Not promises. Each idea picked up becomes its own issue and PR (or a phase, if it is big).
-Updated 2026-11-08 (after v1.0.0).
+Reviewed 2026-11-08: every idea has a verdict, and ideas that do not pay off are kept at the end with the reason,
+so they are not proposed again by accident.
 
 ## How the ideas are kept
 
 | File | What it holds |
 |---|---|
-| `IDEAS.md` (this file) | The full list, one line each, plus the suggested order. Short on purpose. |
+| `IDEAS.md` (this file) | Principles, the suggested order, the full list with a verdict per idea, and what was decided against. |
 | `ideas/<topic>.md` | Ideas already thought through: goal, how it could work, risks, open questions, "done when". |
-| `ideas/DONE.md` | Ideas that shipped, with the version and the PR. An idea moves there when it is released. |
+| `ideas/DONE.md` | Ideas that shipped, with the version and the PR. |
 
-A new idea goes in this list first (one line); it gets its own file only when it is about to be planned.
+A new idea goes in the list first (one line, with a verdict); it gets its own file only when it is about to be planned.
+
+## Principles (every idea is checked against these)
+
+1. **Session data never leaves its profile.** The launcher never reads, copies, decrypts or uploads cookies or
+   tokens. Anything that would need them is out.
+2. **No telemetry, no server.** Nothing about the person or their use leaves the PC.
+3. **For separate accounts, not for getting around limits.** Work and personal accounts side by side are normal;
+   creating accounts to dodge plan limits is what Anthropic's usage policies target. The project never presents
+   itself as a way around limits.
+4. **Not affiliated with Anthropic**, and it looks like it: original icon and names, no Anthropic logo or mascot.
+5. **Small and boring where it matters** (profiles, updates, deletions); playful only where it is harmless (greetings,
+   easter eggs).
+
+## Versioning (since 1.0.0)
+
+Versions are `MAJOR.MINOR.PATCH`, three separate whole numbers (`src/core/version.ts` compares them that way):
+- **MINOR** = a phase with new features: 1.1.0, 1.2.0 … 1.9.0, **1.10.0**, 1.11.0 … (1.10 comes after 1.9; there is no
+  limit, so reaching 2.0 is a choice, never an accident).
+- **PATCH** = fixes and small additions: 1.1.1, 1.1.2 …
+- **MAJOR** = a deliberate big step (for example a redesign or sync). Decided, not counted.
+
+Numbers are never read as decimals: 1.2.0 is **older** than 1.12.0, so a scheme like 1.1 → 1.11 → 1.12 → 1.2 would
+make the self-update refuse to offer 1.2 to anyone on 1.12.
 
 ## Suggested order
 
-| Step | Version | What | Why at this point |
+| Phase | Version | What | Why at this point |
 |---|---|---|---|
-| 0 | — | Baseline measurements (agent-run, read-only) | Cheap to take now; tells where the ~20 s update and the slow first start actually go, which shapes step 1. |
-| 1 | 1.1.0 | Varied greetings + update progress window + "What's new" after an update | Small, visible, low risk. |
-| 2 | 1.2.0 | Settings page + light theme + "follow the system" theme + privacy mode | Theme is a setting, so they ship together. Must come before videos and the website, so those show the final UI. |
-| 3 | 1.3.0 | Security review round + community files | Before the project is promoted more widely. |
-| 4 | 1.4.0 | Performance and size work, using the baseline | Optimise the final shape of the app, not one that is about to change. |
-| 5 | 1.5.0 | Presentation: README, screenshots, demo videos (dark and light), small website | Last, because it shows everything above. |
-| 6 | 1.6.0 | Português (Brasil) interface + language setting | The Settings page from 1.2 already has the selector; translating is easier once the texts stop changing. |
-| 7 | later | Same cards on every PC (sync folder), taskbar jump list, Claude Code profiles, the rest of the list | Bigger or less urgent. |
+| 7 | — | Baseline measurements + research (deep links per profile, Claude updates with several instances open) | Cheap; tells where the time goes and what is possible before building. |
+| 8 | 1.1.0 | Varied greetings (with rare ones) + update progress window + version history ("What's new") | Small, visible, low risk. |
+| 9 | 1.2.0 | Settings page + theme presets (Warm, Graphite, Light, System) + privacy mode + updates and "at login" settings + copy e-mail on sign-in | Theme and behaviour choices in one place; needed before any video. |
+| 10 | 1.3.0 | Security review + community files | Before promoting the project. |
+| 11 | 1.4.0 | Performance and size, using the baseline | Optimise the final shape. |
+| 12 | 1.5.0 | Presentation: README, GIFs/videos, release notes format, small website, one community post | Shows everything above. |
+| 13 | 1.6.0 | Shortcuts and quality of life: `--open` command line, taskbar jump list, desktop shortcut per account, quick actions (`claude://`), keys 1–9, drag to reorder, accent colour, hidden windows | High value per hour; builds on the Phase 7 research. |
+| 14 | 1.7.0 | Português (Brasil) interface | Translate once the texts stop changing. |
+| — | later | Claude Code profiles, copy MCP servers between accounts, sync folder, easter-egg game | Bigger or less urgent. |
 
-One phase per session; the next one starts after the merge (same rule as v1).
+Small fixes ship as PATCH versions between phases (1.1.1, 1.1.2 …).
 
 ## The list
 
-Status: `idea` = one line only · `elaborated` = has its own file · `planned` = in the order above.
+Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but not needed (no one is missing it) ·
+🚫 not worth it (cost or risk higher than the gain) · ☠️ actively bad (see "Decided against").
 
-### Interface
-- **Varied greetings by time of day** (late-night ones too, e.g. a "night owl" line) — planned 1.1 — `ideas/greetings.md`
-- **Settings page** (theme, language, start with Windows, privacy mode, …) — planned 1.2 — `ideas/settings-and-theme.md`
-- **Light theme + follow the Windows theme** — planned 1.2 — `ideas/settings-and-theme.md`
-- **Theme presets**: Warm dark (default, today's look), Graphite dark (darker, like the newer Claude look), Light — planned 1.2 — `ideas/settings-and-theme.md`
-- **Automatic updates setting**: install automatically · ask me · off — planned 1.2 — `ideas/settings-and-theme.md`
-- **Privacy mode**: hide e-mails and real names on the cards (screen sharing, demo videos) — planned 1.2 — `ideas/settings-and-theme.md`
-- **Copy the e-mail on sign-in**: when a card's account is not signed in and the person signs in from it, the e-mail goes to the clipboard with "E-mail copied — paste it on the sign-in screen" — idea — `ideas/sync.md`
-- **Same cards on every PC (sync)**: cards, photos and settings follow the person through a sync folder (OneDrive / Google Drive); sign-ins never travel — idea, after 1.5 — `ideas/sync.md`
-- **Settings shortcut**: Ctrl+, opens Settings — idea
-- **Accent colour per account** (a coloured ring on the avatar), so accounts are told apart at a glance — idea
-- **Drag to reorder cards** — idea
-- **Keyboard shortcuts**: 1–9 open the first nine cards — idea
-- **Open several accounts at once** ("Open all", or saved groups) — idea
-- **Languages**: English and Português (Brasil) first, others on request; chosen in Settings or from Windows (all texts are already in `src/renderer/strings.ts`) — idea, right after 1.2 — `ideas/settings-and-theme.md`
-- **Accessibility pass**: screen-reader labels, reduced motion, keyboard-only walkthrough — idea
+### Greeting and fun
+- ✅ **Varied greetings by time of day**, late-night set included — 1.1 — `ideas/greetings.md`
+- ✅ **Rare greetings** (about 1 in 200 opens, a special line) — 1.1, nearly free once greetings vary — `ideas/greetings.md`
+- ⚠️ **Easter-egg runner game** (like the browser's offline dinosaur game): only with an **original** character (the
+  launcher's own spark), tiny, opt-in by a secret key sequence — later — `ideas/easter-egg.md`
+- 💤 Seasonal themes (holidays), local stats ("opened 120 times"), sounds
 
-### Updates and installer
-- **Visible progress during the ~20 s silent install** — planned 1.1 — `ideas/update-progress.md`
-- **"What's new" = full version history** in the app: current version highlighted on top, every older version below back to 0.1.0 (pre-1.0 tagged beta), opened by itself after an update and from the version label — planned 1.1 — `ideas/update-progress.md`
-- **Smaller installer** (~121 MB, mostly Electron) — planned 1.4 — `ideas/performance-and-size.md`
-- **Faster first start after install** (5.8 s measured; normal starts ~0.3–1 s) and a faster sign-in window — planned 1.4 — `ideas/performance-and-size.md`
-- **Sign the installer** (fewer SmartScreen warnings; then set `win.publisherName` so the self-update checks the signature). Costs money — idea
-- **Distribution through winget or Scoop** — idea
-- **"Tested with Claude <version>"** filled in automatically by CI or by the diagnostics — idea
-- **Compatibility warning**: on start, notice that Claude desktop updated to a version never tested with the launcher and say so calmly — idea
-- **Portable version** (zip, no installer) — idea
+### Settings and themes
+- ✅ **Settings page** — 1.2 — `ideas/settings-and-theme.md`
+- ✅ **Theme presets**: Warm dark (default), Graphite dark (like the newer Claude look), Light, System — 1.2
+- ✅ **Privacy mode** (hide e-mails and real names; needed for videos and screen sharing) — 1.2
+- ✅ **Updates setting**: install automatically (on the next close) · ask me · off — 1.2
+- ⚠️ **"At login"** instead of a plain "start with Windows": nothing · show the launcher · open account X. A launcher
+  that closes after one click gains little from starting alone; opening a chosen account is the real use — 1.2
+- ✅ **Copy the e-mail on sign-in** with a short "E-mail copied" message — 1.2
+- ✅ **Ctrl+,** opens Settings; **Windows high-contrast mode** respected — 1.2
+- ✅ **After opening an account**: close the launcher (today) · keep it open — 1.2
+- ✅ **Export / Import launcher settings** (cards, names, photos; never session data) and **Reset launcher
+  settings** — 1.2, also the manual version of sync
+- ✅ **Languages**: Português (Brasil) after English — 1.7
 
-### Accounts and Claude
-- **Claude Code profiles (terminal)**: a card type that opens a terminal with Claude Code signed in to that account (`CLAUDE_CONFIG_DIR` per account) — idea
-- **Taskbar jump list**: right-click the launcher icon in the taskbar → open an account directly, without the launcher window — idea
-- **Desktop shortcut per account** ("Create shortcut" in the card menu) — idea
-- **Automatic e-mail and name detection** via the `sessionKey` cookie (`docs/WINDOWS.md` §5, option 2). Skipped in v1: reads session tokens, breaks with Claude updates — idea
-- **Sign-out seen while Claude is open** (today only after the account is closed; the cookie database is locked while Claude runs) — idea
-- **Hidden Claude windows**: "Running (hidden)" on the card, with "Show" / "Close" — idea
-- **Automatic account photo**, once Claude desktop has a profile photo — idea
-- **Per-account usage meter**, if Claude ever exposes usage safely — idea
-- **Move more between accounts**: scheduled tasks, MCP servers, Project memories per Project — idea
+### Updates and history
+- ✅ **Something on screen during the ~20 s install** — 1.1 — `ideas/update-progress.md`
+- ✅ **Version history in the app** (every version back to 0.1.0, current highlighted, beta tag before 1.0) with
+  **"Release notes on GitHub"** and **"GitHub page"** buttons — 1.1 — `ideas/update-progress.md`
+- ✅ **Plain-language Highlights** per version, reused for the release notes — 1.1
+- ✅ **Compatibility notice**: when Claude Desktop updates to a version never tested with the launcher, say so calmly;
+  the same data fills a **"Tested with Claude <version>"** line in the README and the diagnostics — 1.6 or a patch
+- ✅ **Faster first start after install** (5.8 s measured; normal starts ~0.3–1 s) — 1.4
+- ⚠️ **Smaller installer**: only cheap settings (compression, unused locales); Electron itself is most of the size, so
+  expect tens of percent at best, not halves — 1.4
+- ⚠️ **Faster sign-in window**: much of it is Claude's own start-up; measure first — 1.4
+- 💤 Beta channel (pre-releases through the updater; needs version suffixes the updater rejects today)
+- 💤 winget / Scoop distribution (only if people ask; SmartScreen stays the same)
+- 🚫 Code signing for now (yearly cost; revisit with real users)
 
-### Memory assistant
-- Confirm whether Claude accepts a second "Start import" right after the first, and whether a paste near 100,000 characters goes in at once — idea
-- Remove partial real names from the diagnostics report (today only the full name) — idea
+### Shortcuts and accounts
+- ✅ **`--open <card>` command line**: the base for every shortcut below — 1.6 — `ideas/shortcuts.md`
+- ✅ **Taskbar jump list**: right-click the launcher in the taskbar → open an account directly — 1.6
+- ✅ **Desktop shortcut per account** ("Create shortcut" in the card menu) — 1.6
+- ✅ **Quick actions per card** with Claude's `claude://` links: New chat · New Code session · New Cowork task.
+  Needs the Phase 7 test that a link reaches the right profile — 1.6
+- ✅ **Keys 1–9** open the first nine cards; **drag to reorder** cards — 1.6
+- ✅ **Accent colour per account** (ring on the avatar) — 1.6
+- ✅ **Hidden Claude windows**: "Running (hidden)" with Show / Close (a real problem: Claude keeps running hidden
+  after its window closes on some PCs) — 1.6
+- ✅ **"Restart all accounts"** to let a pending Claude update apply, if Phase 7 shows several open instances delay it — 1.6
+- ⚠️ **"Usage" quick action**: the honest version of a usage meter. Opens that account's own usage page inside its
+  Claude window, if Phase 7 finds a link that does it; the launcher never reads the numbers itself — 1.6, if possible
+- ✅ **Duplicate e-mail warning** when a second card uses the same e-mail — any patch
+- ⚠️ **Last opened** on the card ("2 h ago") — small, only if the card stays uncluttered
+- ⚠️ **Card notes** (a short line like "client X") — small, privacy mode hides it
+- ✅ **Claude Code profiles**: a card type that opens a terminal with Claude Code signed in to that account
+  (`CLAUDE_CONFIG_DIR` per account, a documented mechanism) — later
+- ⚠️ **Copy MCP servers from one account to another** (each profile has its own `claude_desktop_config.json`): show
+  exactly what is copied, since entries can hold API keys; never log them — later
+- ⚠️ **Same cards on every PC** through a sync folder (OneDrive / Google Drive); sign-ins never travel — later —
+  `ideas/sync.md`
+- 💤 Open several accounts at once / groups (heavy on memory, rarely needed), search box, compact list view
+- 💤 Automatic account photo (only if Claude desktop ever exposes one)
 
 ### Quality, security, performance
-- **Baseline measurements** (start, first start, open account, sign-in, update, size, memory), agent-run on a real PC — planned step 0 — `ideas/performance-and-size.md`
-- **Security review rounds** (best practices; the app barely talks to the network, but it handles session folders) — planned 1.3 — `ideas/security-review.md`
-- **Deep study of how the Claude desktop app behaves** (start-up, single-instance lock, new-profile first start) to find faster paths — planned 1.4 — `ideas/performance-and-size.md`
-- **"Report a problem" button**: opens a pre-filled GitHub issue with the (already anonymised) diagnostics — idea
-- **End-to-end UI tests** (Playwright for Electron) with screenshot comparison in dark and light — idea
-- **Contrast test**: a unit test that reads the theme variables and checks WCAG AA for every text/background pair — planned 1.2 — `ideas/settings-and-theme.md`
-- **Windows 10 test** on a real machine (only Windows 11 was tested; the README badge still says "Windows 10 / 11") — idea
-- **CI**: check the `test` job after `ubuntu-latest` moves to Ubuntu 26 — idea
+- ✅ **Agent-run measurements on a real PC**: the AI agent runs commands and drives the screen, repeats each
+  measurement dozens of times and records the timings (too tiring by hand) — Phase 7 and 1.4 —
+  `ideas/performance-and-size.md`
+- ✅ **Deep study of how the Claude desktop app behaves** (start-up per profile, single-instance lock, first start of a
+  new profile, `claude://` links, how its updates apply) to find faster paths and new ways to connect — Phase 7
+- ✅ **Bug-hunt round**: the agent uses the app on the PC like a person would (every menu, odd inputs, closing things
+  at the wrong moment) and files what breaks — after 1.3, then before each MINOR release
+- ✅ **Tech-debt review**: a short list of code worth simplifying, kept with the performance round — 1.4
+- ✅ **Accessibility pass** in every UI phase: screen-reader names, keyboard-only use, reduced motion — ongoing
+- ✅ **Visual polish pass**: spacing, alignment and states checked against the design rules once the settings and
+  themes exist — with 1.2
+- ✅ **Security review + community files** (SECURITY.md, issue templates, CONTRIBUTING, Discussions, Dependabot,
+  CodeQL) — 1.3 — `ideas/security-review.md`
+- ✅ **"Report a problem"** button: a pre-filled GitHub issue with the anonymised diagnostics — 1.3
+- ✅ **Contrast test** for every theme preset — 1.2
+- ✅ **README badge says "Windows 11"** until Windows 10 is really tested — 1.1 (small and honest)
+- ✅ **CI**: confirm the `test` job after `ubuntu-latest` moves to Ubuntu 26 — any patch
+- ✅ **Memory assistant**: confirm a second "Start import" and ~100,000-character pastes; remove partial real names
+  from diagnostics — any patch
+- 💤 End-to-end UI tests with screenshots (worth it only when the UI changes often or more people contribute)
+- 💤 Windows 10 test on a real machine (needs one)
 
-### Community and presentation
-- **Community files**: issue templates (bug / idea), `CONTRIBUTING.md`, `SECURITY.md`, code of conduct, GitHub Discussions for questions — planned 1.3 — `ideas/security-review.md`
-- **README overhaul**, nicer Release notes, repo topics and social preview image — planned 1.5 — `ideas/presentation.md`
-- **Demo videos / GIFs** showing dark and light themes — planned 1.5 — `ideas/presentation.md`
-- **Small website** (static HTML/CSS + a little JS, GitHub Pages): video, download button, features, open source — planned 1.5 — `ideas/presentation.md`
-- **Write-up of how the project was built** (a short case study: problem, design, testing, releases) for a blog or portfolio — idea
+### Presentation and community
+- ✅ **README overhaul with GIFs** (a GIF at the top is worth more than any page), nicer Releases page, repository
+  topics and social preview — 1.5 — `ideas/presentation.md`
+- ✅ **Demo videos** showing the app working in dark and light themes; the agent writes the storyboard and the
+  recording checklist and cuts/compresses with ffmpeg; recording by hand looks better — 1.5
+- ✅ **One helpful post** where people ask for this (the multi-account request on Anthropic's GitHub, a Claude
+  community forum), clearly "not affiliated" — 1.5
+- ✅ **Write-up of how it was built** (problem, design, testing, releases) for a blog or portfolio — any time
+- ✅ **Small website** (HTML, CSS, a little JS; video, download button, open source link), on a host that browsers
+  trust for downloads: check the domain is not flagged by Safe Browsing first, and use Vercel or Netlify if it is —
+  1.5
 
 ### Platforms
-- **macOS and Linux** (`docs/SCOPE.md` §6) — idea
+- 💤 **macOS and Linux**: Claude Desktop exists on both now, but the launcher's core (MSIX paths, PowerShell,
+  installer) is Windows-only, so a port is close to a rewrite of `src/main/system`. Only if people ask.
+
+## Decided against (and why)
+
+| Idea | Verdict | Why |
+|---|---|---|
+| Version scheme 1.1 → 1.11 → 1.12 → 1.2 | ☠️ | Versions are whole numbers per part: 1.2.0 < 1.12.0, so the updater would never offer 1.2. The PATCH number already gives "small steps" (1.1.1, 1.1.2). |
+| Read e-mail/name from the `sessionKey` cookie | ☠️ | Breaks principle 1; decrypting browser cookies is exactly what password-stealing malware does, so antivirus tools may flag the launcher; breaks with Claude updates. |
+| Own account system with login and a server | ☠️ | A server, passwords, data-protection law and uptime: bigger and riskier than the launcher itself. A sync folder gives the same result. |
+| Per-account usage meter read by the launcher | ☠️ | Would need session tokens or scraping; no safe public source. The "Usage" quick action (open the account's own usage page) is the safe version. |
+| Using Anthropic's logo or mascot (e.g. in the game) | ☠️ | Not ours to use; makes the project look official. Original art only. |
+| Second personal GitHub account for review tricks | ☠️ | GitHub allows one free personal account per person. |
+| Portable (zip) version | 🚫 | No self-update, different paths for recovery and photos, more antivirus false alarms. The per-user installer needs no admin rights already. |
+| Sign-out detection while Claude is open | 🚫 | The cookie database is locked while Claude runs; reading around the lock is fragile. Detection after closing works. |
+| Moving scheduled tasks or Project memories | 🚫 | They live on Anthropic's servers with no public API; the memory assistant is the honest version. |
+| Cleaning Claude's cache folders | 🚫 | Deleting inside a Claude profile risks breaking it for a few hundred MB. Showing the size is fine; deleting is not. |
+| Backing up a profile folder to a zip | 🚫 | The zip would hold live session cookies: a file that is as good as being signed in. |

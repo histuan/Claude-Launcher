@@ -31,11 +31,32 @@ answers "where does the time go?", which also decides how the update progress wi
 | Installer size | `.exe` size, and what is inside it | ~121 MB |
 | Memory | launcher working set idle with 3 cards | ? |
 
-## Deep study of the Claude desktop app
-- How it starts with `--user-data-dir`, what the first start of an empty profile does (and how long it takes), how the
-  single-instance lock behaves per profile, whether a profile can be pre-warmed safely.
-- What changes between Claude updates (paths, process names) that could break the launcher; turn findings into
-  checks in the diagnostics.
+## Deep study of the Claude desktop app (Phase 7 research questions)
+Each answer goes in the Phase 7 summary as yes / no / how, with the command used (no personal data):
+1. **Links per profile:** does `claude.exe --user-data-dir=<profile> "claude://claude.ai/new"` open a new chat in
+   *that* account, when it is closed and when it is already running? Same for `claude://code/new` and
+   `claude://cowork/new`. (Unlocks the quick actions in `shortcuts.md`.)
+2. **Usage page:** is there any link or argument that opens Settings → Usage inside a given profile?
+3. **Updates with several instances:** when Claude updates itself, do open extra instances delay or block it? Does a
+   restart of every instance let it apply? (Decides "Restart all accounts".)
+4. **Hidden windows:** after closing Claude's window it keeps running with no visible window on this PC. Can the
+   launcher find that process's window per profile, show it again, or close it cleanly?
+5. **Config per profile:** where each profile keeps `claude_desktop_config.json` (MCP servers), so copying MCP servers
+   between accounts can be designed. Keys and paths only, never values.
+6. **First start of a new profile:** what it creates and how long it takes; can anything be done ahead of time
+   without touching session data?
+7. **What changes between Claude updates** (paths, process names, arguments) that could break the launcher; turn
+   findings into checks in the diagnostics and the compatibility notice.
+
+## Bug-hunt round (after 1.3, then before each MINOR release)
+The agent uses the installed app like a person would: every menu and dialog, very long and odd names, emoji, empty
+fields, closing Claude or the launcher at the wrong moment, sleeping the PC mid sign-in, two launchers at once,
+offline start. Each problem becomes an issue with steps to reproduce; nothing is fixed in the same session unless it is
+trivial.
+
+## Tech-debt review (with 1.4)
+A short list of code worth simplifying (largest files first: `src/renderer/app.ts`, `src/main/main.ts`,
+`src/main/signInFlow.ts`), each item with the reason and the risk; only clear wins are done.
 
 ## Size ideas to test in 1.4 (keep only what the numbers support)
 - electron-builder `compression: "maximum"`; `electronLanguages` limited to the locales actually used.

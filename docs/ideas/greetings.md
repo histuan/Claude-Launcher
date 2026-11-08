@@ -30,6 +30,13 @@ common so it still feels familiar.
 4. Crossing a slot boundary with the window open: switch to a line from the new slot (as today).
 5. A setting "Greeting: varied / classic only" (see `settings-and-theme.md`).
 
+## Rare greetings
+About 1 in 200 opens, a special line from a small separate list, for fun and nothing else. Drafts (original, short,
+never about usage limits or anything that could read as a complaint):
+"Hello again, {name}" · "Fancy seeing you here, {name}" · "Plot twist: it's {name}" · "The cards missed you, {name}".
+Same `{name}` split and same tests; the rare pick is part of the injected random source so tests stay deterministic.
+The "Classic only" setting turns rare lines off too.
+
 ## Tests
 - Every minute of the day maps to exactly one slot; every slot has at least one line; every line has exactly one
   `{name}`; with an injected random source the pick is deterministic; no immediate repeat.

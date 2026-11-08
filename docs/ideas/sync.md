@@ -1,4 +1,7 @@
-# Same cards on every PC (sync) — idea, after 1.5
+# Same cards on every PC (sync) — idea, later
+
+Verdict (review 2026-11-08): the goal is good; an own account system with a server is decided against (see
+`../IDEAS.md`, "Decided against"); a sync folder is the way, after Export/Import ships in 1.2.
 
 ## Goal
 Someone with a desktop and a laptop sees the same cards on both: card names, e-mails, account names, photos, order

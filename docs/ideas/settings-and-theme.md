@@ -12,7 +12,8 @@ returns to the cards. Changes apply at once and are saved in the launcher config
 |---|---|---|---|
 | Theme | System · Light · Warm dark · Graphite dark | System (dark side = Warm dark) | See "Theme presets" below |
 | Language | System · English · Português (· more later) | System | Only English exists today; see "Languages" below |
-| Start with Windows | On · Off | Off | `app.setLoginItemSettings` |
+| At login | Nothing · Show the launcher · Open account X | Nothing | `app.setLoginItemSettings` with an argument; "Open account X" uses the `--open` command line from `shortcuts.md` (or a simple internal flag if that phase is later) |
+| Sign-in helper | Copy the e-mail when signing in from a card · Off | On | Shows "E-mail copied — paste it on the sign-in screen" |
 | Updates | Install automatically · Ask me (today) · Off (manual check only) | Ask me | "Install automatically" downloads in the background and installs on the next close |
 | After opening an account | Close the launcher · Keep it open | Close | Today it always closes |
 | Privacy mode | On · Off | Off | Hides e-mails and real names on cards (screen sharing, demo videos); card names stay |
@@ -22,6 +23,14 @@ returns to the cards. Changes apply at once and are saved in the launcher config
 | Reset launcher settings | Button with confirmation | — | Does not touch any Claude profile |
 
 Config: bump the config `version` with a migration that fills defaults; tests for the migration.
+
+Also in this phase:
+- **Ctrl+,** opens Settings from the main screen.
+- A small **toast** component (bottom of the window, a few seconds, screen-reader announced) for messages like
+  "E-mail copied"; reused later by other features.
+- **Windows high-contrast mode** (`forced-colors`) keeps every control visible.
+- A **visual polish pass** over the main screen and the dialogs once the presets exist (spacing, alignment, hover,
+  focus and disabled states), using the design skills.
 
 ## Light theme + follow the system
 - Today every colour is a CSS variable in `src/renderer/styles.css` (`:root`), and the window title bar repeats

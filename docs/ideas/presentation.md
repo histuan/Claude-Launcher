@@ -19,9 +19,17 @@ website whose only job is "see it working, download it".
   but recording by hand will likely look better).
 - Store compressed versions only (MP4 for the site, GIF or MP4 in the README).
 
+## Community post
+One helpful, honest post where people already ask for multiple Claude desktop accounts (the long-running request on
+Anthropic's GitHub; a Claude community forum): what it does, that it is free and open source, that sign-ins never
+leave the PC, that it is for separate work/personal accounts (not for getting around limits), and "not affiliated
+with Anthropic". One post, not repeated.
+
 ## Website
-- Static HTML + CSS + a little JS, no login, no tracking, no build step. Hosted on GitHub Pages from the repository
-  (folder `site/`, deployed by an Actions workflow).
+- Static HTML + CSS + a little JS, no login, no tracking, no build step, folder `site/` in the repository.
+- **Host:** a download page must not trigger browser warnings. Check the domain with Google Safe Browsing's site
+  status first; if `*.github.io` for this account is flagged, use Vercel or Netlify (free, own subdomain) instead of
+  GitHub Pages, deployed by an Actions workflow either way.
 - Sections: hero with the video, Download button (latest release), features, dark/light screenshots,
   "Open source · MIT" with the repository link, FAQ (SmartScreen, privacy: everything stays on the PC), footer with
   "not affiliated with Anthropic".
