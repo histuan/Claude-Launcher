@@ -292,7 +292,8 @@ Read: `docs/ideas/greetings.md`, `docs/ideas/update-progress.md`, the Phase 7 su
 
 - Varied greetings by time slot (late-night set included), pencil still only over the name.
 - Something always on screen from **Install** to the new version (option chosen from the measurements).
-- "What's new" note on the first start after an update.
+- "What's new" = full version history (every version back to 0.1.0, current one highlighted, pre-1.0 tagged beta),
+  from the bundled `CHANGELOG.md`; plain-language **Highlights** added to each existing version.
 - Test the update from 1.0.0 on the PC after the merge (never by installing the PR artifact).
 
 ## Phase 9 — Settings, light theme, privacy mode (1.2.0)

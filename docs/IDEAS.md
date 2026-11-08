@@ -51,7 +51,7 @@ Status: `idea` = one line only · `elaborated` = has its own file · `planned` =
 
 ### Updates and installer
 - **Visible progress during the ~20 s silent install** — planned 1.1 — `ideas/update-progress.md`
-- **"What's new" note on the first start after an update** — planned 1.1 — `ideas/update-progress.md`
+- **"What's new" = full version history** in the app: current version highlighted on top, every older version below back to 0.1.0 (pre-1.0 tagged beta), opened by itself after an update and from the version label — planned 1.1 — `ideas/update-progress.md`
 - **Smaller installer** (~121 MB, mostly Electron) — planned 1.4 — `ideas/performance-and-size.md`
 - **Faster first start after install** (5.8 s measured; normal starts ~0.3–1 s) and a faster sign-in window — planned 1.4 — `ideas/performance-and-size.md`
 - **Sign the installer** (fewer SmartScreen warnings; then set `win.publisherName` so the self-update checks the signature). Costs money — idea

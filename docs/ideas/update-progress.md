@@ -20,9 +20,40 @@ the new version opens by itself. Show something during that time, so it never lo
 
 Lean towards **A** if the NSIS script stays small; B as fallback.
 
-## "What's new" (cheap, do it regardless)
-On the first start after an update (`--updated` or version changed), show a small, dismissible note:
-"Updated to 1.1.0" + 2–3 lines from the CHANGELOG section + link to the full notes. Shown once.
+## "What's new" = the full version history
+Not just a note about the latest version: a scrollable **version history** of the whole project, so anyone can see
+everything that was added (the best list of features is the list of what each version added).
+
+```
+┌──────────────────────────────────────────────┐
+│  What's new                               ✕  │
+│                                              │
+│  ▌ 1.1.0 · November 2026        ← current    │  bright, accent bar, opened here
+│  ▌ • Greetings change with the time of day   │
+│  ▌ • A progress window while updating        │
+│                                              │
+│    1.0.0 · November 2026                     │  dimmer: older versions
+│    • First stable release                    │
+│    0.7.0 · …                                 │
+│    …                                         │
+│    0.1.0 · October 2026          beta        │  versions < 1.0 tagged "beta"
+└──────────────────────────────────────────────┘
+```
+
+- **When it opens:** by itself once, on the first start after an update (`--updated` or version changed), scrolled
+  to the new version; any time from the version label (bottom-right) and from Settings → About.
+- **Look:** the current version on top with full contrast and the accent bar; older versions below in the muted text
+  colour, still readable; pre-1.0 versions with a small "beta" tag. Every version back to 0.1.0.
+- **Source:** `CHANGELOG.md`, bundled with the app at build time, so it works offline and never fetches anything.
+  Parsed by a tiny parser for the subset the changelog uses (version headings, dates, lists, bold, code); rendered as
+  plain DOM text, never as raw HTML.
+- **Words people understand:** the CHANGELOG is written for developers. Add a short **Highlights** list (1–3 plain
+  lines) at the top of each version's section and show only the highlights in the app, with "Show details" to expand
+  the full entry. Write highlights for the existing versions once (0.1.0 → 1.0.0).
+- All interface texts in `strings.ts`; the changelog itself stays in English until the Português phase decides.
+
+Tests: the parser reads every version in the real `CHANGELOG.md`; the current version is first and marked; versions
+< 1.0 are tagged beta; a version without highlights falls back to its first lines; no HTML is injected.
 
 ## Measure first
 Time each step on the PC (download, install, first start) before choosing (step 0 in `../IDEAS.md`); part of the
