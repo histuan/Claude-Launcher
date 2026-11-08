@@ -1,4 +1,4 @@
-# Phase plan
+﻿# Phase plan
 
 Each phase = **a new cloud session** (a new session carries no history; it is the cloud's "/clear").
 Model: Opus 5.5, effort `medium` (`high` only if stuck).
@@ -293,7 +293,7 @@ Read: `docs/ideas/performance-and-size.md` ("Step 0" and "What to measure").
   profile, usage page link, Claude updates with several instances open, hidden windows, MCP config per profile, first
   start of a new profile, what Claude updates change, a link to the memory import screen, the memory menu names
   after "Unified Claude". Yes / no / how, with the command used.
-- Memory assistant review: walk "Receive memories from…" end to end with two test accounts and list the friction
+- Memory assistant review: walk "Receive memories from…" and list the friction, stopping before the import is confirmed unless I name accounts that may be changed
   (fixes go to a 1.1.x patch).
 - Docs only: straight to `main`, no PR. Done when the summary exists.
 

@@ -56,8 +56,9 @@ Each answer goes in the Phase 7 summary as yes / no / how, with the command used
    the change reaches the PC, answer for the current layout and repeat this one question afterwards.
 
 ## Memory assistant review (with the Phase 7 answers)
-Walk through "Receive memories from…" end to end on the PC with two test accounts and note every manual step and its
-time. Candidates to remove friction, kept only if they work:
+Walk through "Receive memories from…" on the PC and note every manual step and its time. **Stop before confirming the
+import in Claude** (that would change a real account's memory) unless the maintainer names two accounts that may be
+changed. Candidates to remove friction, kept only if they work:
 - **Pick the export by itself:** after step 1, look in the Downloads folder for the newest `claude-memory-*.zip`
   created since the assistant opened and offer it ("Use this file?"), instead of asking to drop it. Read-only, local.
 - **Open the import screen directly** if question 8 finds a link.
