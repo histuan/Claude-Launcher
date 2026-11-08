@@ -10,13 +10,13 @@ returns to the cards. Changes apply at once and are saved in the launcher config
 
 | Setting | Options | Default | Notes |
 |---|---|---|---|
-| Theme | System · Light · Dark | System | See below |
-| Language | System · English (· Português when ready) | System | Only English exists today |
+| Theme | System · Light · Warm dark · Graphite dark | System (dark side = Warm dark) | See "Theme presets" below |
+| Language | System · English · Português (· more later) | System | Only English exists today; see "Languages" below |
 | Start with Windows | On · Off | Off | `app.setLoginItemSettings` |
+| Updates | Install automatically · Ask me (today) · Off (manual check only) | Ask me | "Install automatically" downloads in the background and installs on the next close |
 | After opening an account | Close the launcher · Keep it open | Close | Today it always closes |
 | Privacy mode | On · Off | Off | Hides e-mails and real names on cards (screen sharing, demo videos); card names stay |
 | Greeting | Varied · Classic only | Varied | Depends on `greetings.md` |
-| Check for updates on start | On · Off | On | The manual check stays available |
 | Backup | Export / Import launcher settings | — | Cards, names, photos. **Never** session data or profile folders |
 | About | Version, links (repository, changelog), Copy diagnostics, Open log folder | — | |
 | Reset launcher settings | Button with confirmation | — | Does not touch any Claude profile |
@@ -36,10 +36,31 @@ Config: bump the config `version` with a migration that fills defaults; tests fo
   used in the UI, so future colour tweaks cannot break contrast silently.
 - Native dialogs already follow the system theme.
 
+## Theme presets
+The Claude desktop app moved from the warm brown-grey dark look to a darker, near-black one. Offer both:
+
+| Preset | Look | Notes |
+|---|---|---|
+| **Warm dark** (default dark) | Today's palette (`#262624` background, `#30302e` cards) | Stays the default |
+| **Graphite dark** | Darker, near-black, neutral greys, same coral accent | Inspired by the newer Claude look; exact values tuned on screen, original values (no copied assets) |
+| **Light** | Warm light palette above | |
+
+- Each preset is just another set of the same CSS variables (`:root[data-theme="…"]`), so adding one later costs a
+  block of colours plus its contrast test.
+- "System" picks Light or the chosen dark preset (Warm or Graphite) from the Windows setting.
+- Label names are drafts; avoid names that suggest an official Claude theme.
+
+## Languages
+- Today all texts are in `src/renderer/strings.ts` (English). Split into one table per language with the same keys;
+  a test checks that every language has every key and the same `{placeholders}`.
+- Order: English, Português (Brasil), then others only if someone asks (Spanish is the natural third).
+- "System" uses the Windows display language when it is available, else English.
+
 ## Open questions
 - Should "Keep it open" also hide the window to the tray? (Probably no tray in 1.2.)
 - Where does "Copy diagnostics" live today in the UI? Move it to About or keep both.
 
 ## Done when
 All settings work and survive a restart; switching the Windows theme while the launcher is open switches it at once
-(title bar included); both themes pass the contrast test; screenshots of both themes in `docs/screenshots/`.
+(title bar included); every preset passes the contrast test; automatic updates install on the next close when
+chosen; screenshots of each preset in `docs/screenshots/`.

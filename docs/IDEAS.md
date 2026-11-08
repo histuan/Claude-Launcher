@@ -23,7 +23,8 @@ A new idea goes in this list first (one line); it gets its own file only when it
 | 3 | 1.3.0 | Security review round + community files | Before the project is promoted more widely. |
 | 4 | 1.4.0 | Performance and size work, using the baseline | Optimise the final shape of the app, not one that is about to change. |
 | 5 | 1.5.0 | Presentation: README, screenshots, demo videos (dark and light), small website | Last, because it shows everything above. |
-| 6 | later | Portuguese UI, taskbar jump list, Claude Code profiles, the rest of the list | Bigger or less urgent. |
+| 6 | 1.6.0 | Português (Brasil) interface + language setting | The Settings page from 1.2 already has the selector; translating is easier once the texts stop changing. |
+| 7 | later | Same cards on every PC (sync folder), taskbar jump list, Claude Code profiles, the rest of the list | Bigger or less urgent. |
 
 One phase per session; the next one starts after the merge (same rule as v1).
 
@@ -35,12 +36,17 @@ Status: `idea` = one line only · `elaborated` = has its own file · `planned` =
 - **Varied greetings by time of day** (late-night ones too, e.g. a "night owl" line) — planned 1.1 — `ideas/greetings.md`
 - **Settings page** (theme, language, start with Windows, privacy mode, …) — planned 1.2 — `ideas/settings-and-theme.md`
 - **Light theme + follow the Windows theme** — planned 1.2 — `ideas/settings-and-theme.md`
+- **Theme presets**: Warm dark (default, today's look), Graphite dark (darker, like the newer Claude look), Light — planned 1.2 — `ideas/settings-and-theme.md`
+- **Automatic updates setting**: install automatically · ask me · off — planned 1.2 — `ideas/settings-and-theme.md`
 - **Privacy mode**: hide e-mails and real names on the cards (screen sharing, demo videos) — planned 1.2 — `ideas/settings-and-theme.md`
+- **Copy the e-mail on sign-in**: when a card's account is not signed in and the person signs in from it, the e-mail goes to the clipboard with "E-mail copied — paste it on the sign-in screen" — idea — `ideas/sync.md`
+- **Same cards on every PC (sync)**: cards, photos and settings follow the person through a sync folder (OneDrive / Google Drive); sign-ins never travel — idea, after 1.5 — `ideas/sync.md`
+- **Settings shortcut**: Ctrl+, opens Settings — idea
 - **Accent colour per account** (a coloured ring on the avatar), so accounts are told apart at a glance — idea
 - **Drag to reorder cards** — idea
 - **Keyboard shortcuts**: 1–9 open the first nine cards — idea
 - **Open several accounts at once** ("Open all", or saved groups) — idea
-- **Other interface languages**, starting with Portuguese (all texts are already in `src/renderer/strings.ts`) — idea
+- **Languages**: English and Português (Brasil) first, others on request; chosen in Settings or from Windows (all texts are already in `src/renderer/strings.ts`) — idea, right after 1.2 — `ideas/settings-and-theme.md`
 - **Accessibility pass**: screen-reader labels, reduced motion, keyboard-only walkthrough — idea
 
 ### Updates and installer
