@@ -14,6 +14,8 @@ so they are not proposed again by accident.
 
 A new idea goes in the list first (one line, with a verdict); it gets its own file only when it is about to be planned.
 
+**On GitHub:** each phase is an issue (label `phase`, milestone "Multi-Account Launcher v1.x"); each idea for later is an open issue (label `idea`); each idea decided against is an issue closed as *not planned* (label `wontfix`) with the reason. This file keeps the reasoning; the issues keep the dates and the links to pull requests.
+
 ## Principles (every idea is checked against these)
 
 1. **Session data never leaves its profile.** The launcher never reads, copies, decrypts or uploads cookies or
@@ -41,15 +43,15 @@ make the self-update refuse to offer 1.2 to anyone on 1.12.
 
 | Phase | Version | What | Why at this point |
 |---|---|---|---|
-| 7 | — | Baseline measurements + research (deep links per profile, Claude updates with several instances open) | Cheap; tells where the time goes and what is possible before building. |
-| 7.5 | 1.0.1 | Resilience against Claude updates: a signed-out card still opens, "unknown" is not "signed out", finish a sign-in by hand, exe from the package manifest, self-check after a Claude update, fixtures per Claude version | Claude updates itself often; today a renamed cookie would stop every extra account from opening. Protect what exists before adding more. |
-| 8 | 1.1.0 | Varied greetings (with rare ones) + update progress window + version history ("What's new") | Small, visible, low risk. |
-| 9 | 1.2.0 | Settings page + theme presets (Warm, Graphite, Light, System) + privacy mode + updates and "at login" settings + copy e-mail on sign-in | Theme and behaviour choices in one place; needed before any video. |
-| 10 | 1.3.0 | Security review + community files | Before promoting the project. |
-| 11 | 1.4.0 | Performance and size, using the baseline | Optimise the final shape. |
-| 12 | 1.5.0 | Presentation: README, GIFs/videos, release notes format, small website, one community post | Shows everything above. |
-| 13 | 1.6.0 | Shortcuts and quality of life: `--open` command line, taskbar jump list, desktop shortcut per account, quick actions (`claude://`), keys 1–9, drag to reorder, accent colour, hidden windows | High value per hour; builds on the Phase 7 research. |
-| 14 | 1.7.0 | Português (Brasil) interface | Translate once the texts stop changing. |
+| 7 (#31) | — | Baseline measurements + research (deep links per profile, Claude updates with several instances open) | Cheap; tells where the time goes and what is possible before building. |
+| 7.5 (#39) | 1.0.1 | Resilience against Claude updates: a signed-out card still opens, "unknown" is not "signed out", finish a sign-in by hand, exe from the package manifest, self-check after a Claude update, fixtures per Claude version | Claude updates itself often; today a renamed cookie would stop every extra account from opening. Protect what exists before adding more. |
+| 8 (#32) | 1.1.0 | Varied greetings (with rare ones) + update progress window + version history ("What's new") | Small, visible, low risk. |
+| 9 (#33) | 1.2.0 | Settings page + theme presets (Warm, Graphite, Light, System) + privacy mode + updates and "at login" settings + copy e-mail on sign-in | Theme and behaviour choices in one place; needed before any video. |
+| 10 (#34) | 1.3.0 | Security review + community files | Before promoting the project. |
+| 11 (#35) | 1.4.0 | Performance and size, using the baseline | Optimise the final shape. |
+| 12 (#36) | 1.5.0 | Presentation: README, GIFs/videos, release notes format, small website, one community post | Shows everything above. |
+| 13 (#37) | 1.6.0 | Shortcuts and quality of life: `--open` command line, taskbar jump list, desktop shortcut per account, quick actions (`claude://`), keys 1–9, drag to reorder, accent colour, hidden windows | High value per hour; builds on the Phase 7 research. |
+| 14 (#38) | 1.7.0 | Português (Brasil) interface | Translate once the texts stop changing. |
 | — | later | Claude Code profiles, copy MCP servers between accounts, sync folder | Bigger or less urgent. |
 
 Small fixes ship as PATCH versions between phases (1.1.1, 1.1.2 …).
@@ -84,7 +86,7 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
   **"Release notes on GitHub"** and **"GitHub page"** buttons — 1.1 — `ideas/update-progress.md`
 - ✅ **Plain-language Highlights** per version, reused for the release notes — 1.1
 - ✅ **Compatibility notice**: when Claude Desktop updates to a version never tested with the launcher, say so calmly;
-  the same data fills a **"Tested with Claude <version>"** line in the README and the diagnostics — 1.6 or a patch
+  the same data fills a **"Tested with Claude <version>"** line in the README and the diagnostics — 1.6 or a patch — #55
 - ✅ **Faster first start after install** (5.8 s measured; normal starts ~0.3–1 s) — 1.4
 - ⚠️ **Smaller installer**: only cheap settings (compression, unused locales); Electron itself is most of the size, so
   expect tens of percent at best, not halves — 1.4
@@ -107,13 +109,13 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 - ⚠️ **"Usage" quick action**: the honest version of a usage meter. Opens that account's own usage page inside its
   Claude window, if Phase 7 finds a link that does it; the launcher never reads the numbers itself — 1.6, if possible
 - ✅ **Duplicate e-mail warning** when a second card uses the same e-mail — any patch
-- ⚠️ **Last opened** on the card ("2 h ago") — small, only if the card stays uncluttered
-- ⚠️ **Card notes** (a short line like "client X") — small, privacy mode hides it
+- ⚠️ **Last opened** on the card ("2 h ago") — small, only if the card stays uncluttered — #44
+- ⚠️ **Card notes** (a short line like "client X") — small, privacy mode hides it — #44
 - ✅ **Claude Code profiles**: a card type that opens a terminal with Claude Code signed in to that account
-  (`CLAUDE_CONFIG_DIR` per account, a documented mechanism) — later
+  (`CLAUDE_CONFIG_DIR` per account, a documented mechanism) — later — #40
 - ⚠️ **Copy MCP servers from one account to another** (each profile has its own `claude_desktop_config.json`): show
-  exactly what is copied, since entries can hold API keys; never log them — later
-- ⚠️ **Same cards on every PC** through a sync folder (OneDrive / Google Drive); sign-ins never travel — later —
+  exactly what is copied, since entries can hold API keys; never log them — later — #41
+- ⚠️ **Same cards on every PC** through a sync folder (OneDrive / Google Drive); sign-ins never travel — later — #42 —
   `ideas/sync.md`
 - 💤 Open several accounts at once / groups (heavy on memory, rarely needed), search box, compact list view
 - 💤 Automatic account photo (only if Claude desktop ever exposes one)
@@ -121,7 +123,7 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 ### Quality, security, performance
 - ✅ **Resilience against Claude updates** (top priority): a click always opens the account, signed-in detection
   that degrades to "unknown", "I'm signed in" button, exe from the package manifest, process and package fallbacks,
-  self-check after a Claude update, fixtures per Claude version — 1.0.1 — `ideas/resilience.md`
+  self-check after a Claude update, fixtures per Claude version — 1.0.1 — #39 — `ideas/resilience.md`
 - ✅ **Agent-run measurements on a real PC**: the AI agent runs commands and drives the screen, repeats each
   measurement dozens of times and records the timings (too tiring by hand) — Phase 7 and 1.4 —
   `ideas/performance-and-size.md`
@@ -138,13 +140,13 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 - ✅ **"Report a problem"** button: a pre-filled GitHub issue with the anonymised diagnostics — 1.3
 - ✅ **Contrast test** for every theme preset — 1.2
 - ✅ **README badge says "Windows 11"** until Windows 10 is really tested — 1.1 (small and honest)
-- ✅ **CI**: confirm the `test` job after `ubuntu-latest` moves to Ubuntu 26 — any patch
+- ✅ **CI**: confirm the `test` job after `ubuntu-latest` moves to Ubuntu 26 — any patch — #45
 - ✅ **Memory assistant review** (Phase 7) and a **1.1.x patch** with what it finds: pick the newest
   `claude-memory-*.zip` from Downloads by itself, open the import screen directly if a link exists, step texts that
   name both "Your Claude" and "Memory" (the menu was renamed; "Unified Claude" from 2026-11-10 may rename it again),
   a last "check the new entries" step; confirm a second "Start import" and ~100,000-character pastes; remove partial
   real names from diagnostics. Anthropic offers no account-to-account memory transfer, so this assistant stays the
-  best route — `ideas/performance-and-size.md`
+  best route — #43 — `ideas/performance-and-size.md`
 - 💤 End-to-end UI tests with screenshots (worth it only when the UI changes often or more people contribute)
 - 💤 Windows 10 test on a real machine (needs one)
 
@@ -169,13 +171,13 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 | Idea | Verdict | Why |
 |---|---|---|
 | Version scheme 1.1 → 1.11 → 1.12 → 1.2 | ☠️ | Versions are whole numbers per part: 1.2.0 < 1.12.0, so the updater would never offer 1.2. The PATCH number already gives "small steps" (1.1.1, 1.1.2). |
-| Read e-mail/name from the `sessionKey` cookie | ☠️ | Breaks principle 1; decrypting browser cookies is exactly what password-stealing malware does, so antivirus tools may flag the launcher; breaks with Claude updates. |
-| Own account system with login and a server | ☠️ | A server, passwords, data-protection law and uptime: bigger and riskier than the launcher itself. A sync folder gives the same result. |
-| Per-account usage meter read by the launcher | ☠️ | Would need session tokens or scraping; no safe public source. The "Usage" quick action (open the account's own usage page) is the safe version. |
+| Read e-mail/name from the `sessionKey` cookie (#46) | ☠️ | Breaks principle 1; decrypting browser cookies is exactly what password-stealing malware does, so antivirus tools may flag the launcher; breaks with Claude updates. |
+| Own account system with login and a server (#47) | ☠️ | A server, passwords, data-protection law and uptime: bigger and riskier than the launcher itself. A sync folder gives the same result. |
+| Per-account usage meter read by the launcher (#48) | ☠️ | Would need session tokens or scraping; no safe public source. The "Usage" quick action (open the account's own usage page) is the safe version. |
 | Using Anthropic's logo or mascot anywhere | ☠️ | Not ours to use; makes the project look official. Original art only. |
-| Easter-egg runner game | 💤 dropped | The point was Claude's own character, which cannot be used; with another character it is not worth it. |
-| Portable (zip) version | 🚫 | No self-update, different paths for recovery and photos, more antivirus false alarms. The per-user installer needs no admin rights already. |
-| Sign-out detection while Claude is open | 🚫 | The cookie database is locked while Claude runs; reading around the lock is fragile. Detection after closing works. |
-| Moving scheduled tasks or Project memories | 🚫 | They live on Anthropic's servers with no public API; the memory assistant is the honest version. |
-| Cleaning Claude's cache folders | 🚫 | Deleting inside a Claude profile risks breaking it for a few hundred MB. Showing the size is fine; deleting is not. |
-| Backing up a profile folder to a zip | 🚫 | The zip would hold live session cookies: a file that is as good as being signed in. |
+| Easter-egg runner game (#49) | 💤 dropped | The point was Claude's own character, which cannot be used; with another character it is not worth it. |
+| Portable (zip) version (#50) | 🚫 | No self-update, different paths for recovery and photos, more antivirus false alarms. The per-user installer needs no admin rights already. |
+| Sign-out detection while Claude is open (#51) | 🚫 | The cookie database is locked while Claude runs; reading around the lock is fragile. Detection after closing works. |
+| Moving scheduled tasks or Project memories (#52) | 🚫 | They live on Anthropic's servers with no public API; the memory assistant is the honest version. |
+| Cleaning Claude's cache folders (#53) | 🚫 | Deleting inside a Claude profile risks breaking it for a few hundred MB. Showing the size is fine; deleting is not. |
+| Backing up a profile folder to a zip (#54) | 🚫 | The zip would hold live session cookies: a file that is as good as being signed in. |
