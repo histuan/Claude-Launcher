@@ -257,5 +257,72 @@ The last code changes before 1.0.0; Phase 6 then only does the README, the done-
 
 ## After v1.0
 
-No phases are planned. Future ideas live in [`docs/IDEAS.md`](./IDEAS.md); each one picked up becomes its own
-issue and PR, with a minor version (`1.N.0`).
+Ideas live in [`docs/IDEAS.md`](./IDEAS.md) (list + suggested order) and [`docs/ideas/`](./ideas/) (details).
+The phases below follow that order. Milestone "Multi-Account Launcher v1.x"; one issue per phase.
+From here on each phase is a **new local session** of Claude Code on Windows (not a cloud session).
+
+### Prompt to paste for each post-v1 phase
+
+```
+Phase N of Multi-Account Launcher for Claude (repo histuan/Claude-Launcher), local session on Windows.
+1. Use the dev-economico skill.
+2. Read CLAUDE.md, docs/STATUS.md, the "Phase N" section of docs/PHASES.md and the docs/ideas/ files it cites.
+3. Do ONLY Phase N, on a branch claude/phase-N-<short-name>. When done: verification (typecheck and tests),
+   update docs/STATUS.md (including "How to test"), CHANGELOG.md and docs/ideas/DONE.md, set the version in
+   package.json to the one in the phase, open a Pull Request to main following the "GitHub process" section of
+   CLAUDE.md (Closes #<phase issue>), and the final dev-economico report.
+If something needs my real data or cannot be done, stop and explain instead of improvising.
+```
+
+## Phase 7 — Baseline measurements (no version)
+
+Read: `docs/ideas/performance-and-size.md` ("Step 0" and "What to measure").
+
+- Read-only round on the installed release: no app code changes. Agent-run: commands and, when a step needs the UI,
+  computer use. Back up the default Claude profile first if any run could touch it.
+- Each measurement repeated (≥ 20 runs where it makes sense; fewer for slow ones, with the count stated). The update
+  split into download, install and first start.
+- Raw data `docs/perf/<date>-baseline.csv`; summary in `docs/perf/README.md`; conclusion: where the time goes and
+  what it means for the update progress window (Phase 8).
+- Docs only: straight to `main`, no PR. Done when the summary exists.
+
+## Phase 8 — Greetings and update progress (1.1.0)
+
+Read: `docs/ideas/greetings.md`, `docs/ideas/update-progress.md`, the Phase 7 summary.
+
+- Varied greetings by time slot (late-night set included), pencil still only over the name.
+- Something always on screen from **Install** to the new version (option chosen from the measurements).
+- "What's new" note on the first start after an update.
+- Test the update from 1.0.0 on the PC after the merge (never by installing the PR artifact).
+
+## Phase 9 — Settings, light theme, privacy mode (1.2.0)
+
+Read: `docs/ideas/settings-and-theme.md`.
+
+- Settings page (theme, language, start with Windows, after opening an account, privacy mode, greeting, updates,
+  backup, about, reset), config migration with tests.
+- Light theme and "follow the system", title bar included; contrast test for both themes.
+- Screenshots of both themes in `docs/screenshots/`.
+
+## Phase 10 — Security review and community files (1.3.0)
+
+Read: `docs/ideas/security-review.md`.
+
+- Checklist with the `vibe-security` skill; report `docs/security-review-1.3.md`; small fixes in the PR, issues
+  for the rest.
+- `SECURITY.md`, issue templates, `CONTRIBUTING.md`, code of conduct, Discussions; Dependabot and CodeQL.
+
+## Phase 11 — Performance and size (1.4.0)
+
+Read: `docs/ideas/performance-and-size.md`, the Phase 7 summary.
+
+- Each change measured before/after with the Phase 7 method; keep only what helps. Installer size, first start,
+  sign-in window, opening an account.
+
+## Phase 12 — Presentation (1.5.0)
+
+Read: `docs/ideas/presentation.md`.
+
+- README overhaul with dark and light screenshots, release notes format, repository topics and social preview.
+- Three short demo clips recorded with privacy mode on and test accounts.
+- Small website on GitHub Pages (`site/`), with the Download button for the latest release.
