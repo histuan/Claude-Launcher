@@ -1,7 +1,9 @@
 # Status
 
-**Current state:** v1.0 released (Phase 6, 1.0.0: docs and CI only, same code as 0.7.0), in a PR to `main`,
-waiting for the merge and the update test. After that: ideas in `docs/IDEAS.md`, no phase planned.
+**Current state:** **v1.0.0 released** (2026-11-08, PR #30; docs and CI only, same code as 0.7.0). The self-update
+0.7.0 → 1.0.0 worked on Windows 11 (the installed launcher reports 1.0.0). Next: **Phase 7** (#31, baseline
+measurements and research), then Phases 8–14 in `docs/PHASES.md` → "After v1.0". Ideas, verdicts and what was decided
+against: `docs/IDEAS.md`.
 
 ## Done
 
@@ -121,7 +123,7 @@ waiting for the merge and the update test. After that: ideas in `docs/IDEAS.md`,
 
 ## Missing
 
-- Nothing for v1. Later ideas: `docs/IDEAS.md`.
+- Nothing for v1. Post-v1 work: Phases 7–14 (issues #31–#38, milestone "Multi-Account Launcher v1.x").
 
 ## Notes for the next phases
 
@@ -131,8 +133,8 @@ waiting for the merge and the update test. After that: ideas in `docs/IDEAS.md`,
 - Unsigned `.exe`: electron-updater verifies the signature only when `publisherName` is set (it is not), so unsigned
   updates install. If the installer is ever signed, set `win.publisherName` at the same time.
 
-- E-mail and real name are typed by the person (`docs/WINDOWS.md` §5). Reading them via the `sessionKey` cookie and
-  the claude.ai endpoint is a possible later improvement, not v1.
+- E-mail and real name are typed by the person (`docs/WINDOWS.md` §5). Reading them via the `sessionKey` cookie was
+  decided against on 2026-11-08 (`docs/IDEAS.md` → "Decided against"): the launcher never reads session values.
 - Startup (0.5.1): only the very first start (no cache yet) waits for the Windows name and main-profile lookups.
 - Memories: the menu paths are a translation of the Portuguese UI (Configurações → Memória → Exportar /
   Iniciar importação). If the English UI words them differently, only `strings.memories` changes. Export layout
@@ -190,8 +192,8 @@ waiting for the merge and the update test. After that: ideas in `docs/IDEAS.md`,
 
 ## How to test
 
-1.0.0 (update 0.7.0 → 1.0.0). Needs v1.0.0 on the Releases page, so it starts **after this PR is merged**. Start with
-**v0.7.0** installed.
+1.0.0 (update 0.7.0 → 1.0.0) — done 2026-11-08: the update applied and the installed launcher reports 1.0.0. Kept for
+reference. Needs v1.0.0 on the Releases page. Start with **v0.7.0** installed.
 
 1. Open the launcher: "Version 1.0.0 is available" appears. **Install**: progress, "Installing… the launcher opens
    again in about 20 seconds", the launcher closes and reopens.

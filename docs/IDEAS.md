@@ -49,7 +49,7 @@ make the self-update refuse to offer 1.2 to anyone on 1.12.
 | 12 | 1.5.0 | Presentation: README, GIFs/videos, release notes format, small website, one community post | Shows everything above. |
 | 13 | 1.6.0 | Shortcuts and quality of life: `--open` command line, taskbar jump list, desktop shortcut per account, quick actions (`claude://`), keys 1–9, drag to reorder, accent colour, hidden windows | High value per hour; builds on the Phase 7 research. |
 | 14 | 1.7.0 | Português (Brasil) interface | Translate once the texts stop changing. |
-| — | later | Claude Code profiles, copy MCP servers between accounts, sync folder, easter-egg game | Bigger or less urgent. |
+| — | later | Claude Code profiles, copy MCP servers between accounts, sync folder | Bigger or less urgent. |
 
 Small fixes ship as PATCH versions between phases (1.1.1, 1.1.2 …).
 
@@ -61,8 +61,6 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 ### Greeting and fun
 - ✅ **Varied greetings by time of day**, late-night set included — 1.1 — `ideas/greetings.md`
 - ✅ **Rare greetings** (about 1 in 200 opens, a special line) — 1.1, nearly free once greetings vary — `ideas/greetings.md`
-- ⚠️ **Easter-egg runner game** (like the browser's offline dinosaur game): only with an **original** character (the
-  launcher's own spark), tiny, opt-in by a secret key sequence — later — `ideas/easter-egg.md`
 - 💤 Seasonal themes (holidays), local stats ("opened 120 times"), sounds
 
 ### Settings and themes
@@ -166,8 +164,8 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 | Read e-mail/name from the `sessionKey` cookie | ☠️ | Breaks principle 1; decrypting browser cookies is exactly what password-stealing malware does, so antivirus tools may flag the launcher; breaks with Claude updates. |
 | Own account system with login and a server | ☠️ | A server, passwords, data-protection law and uptime: bigger and riskier than the launcher itself. A sync folder gives the same result. |
 | Per-account usage meter read by the launcher | ☠️ | Would need session tokens or scraping; no safe public source. The "Usage" quick action (open the account's own usage page) is the safe version. |
-| Using Anthropic's logo or mascot (e.g. in the game) | ☠️ | Not ours to use; makes the project look official. Original art only. |
-| Second personal GitHub account for review tricks | ☠️ | GitHub allows one free personal account per person. |
+| Using Anthropic's logo or mascot anywhere | ☠️ | Not ours to use; makes the project look official. Original art only. |
+| Easter-egg runner game | 💤 dropped | The point was Claude's own character, which cannot be used; with another character it is not worth it. |
 | Portable (zip) version | 🚫 | No self-update, different paths for recovery and photos, more antivirus false alarms. The per-user installer needs no admin rights already. |
 | Sign-out detection while Claude is open | 🚫 | The cookie database is locked while Claude runs; reading around the lock is fragile. Detection after closing works. |
 | Moving scheduled tasks or Project memories | 🚫 | They live on Anthropic's servers with no public API; the memory assistant is the honest version. |
