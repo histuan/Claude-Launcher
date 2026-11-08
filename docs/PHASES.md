@@ -289,9 +289,12 @@ Read: `docs/ideas/performance-and-size.md` ("Step 0" and "What to measure").
   split into download, install and first start.
 - Raw data `docs/perf/<date>-baseline.csv`; summary in `docs/perf/README.md`; conclusion: where the time goes and
   what it means for the update progress window (Phase 8).
-- Answer the seven research questions in `docs/ideas/performance-and-size.md` ("Deep study"): `claude://` links per
+- Answer the nine research questions in `docs/ideas/performance-and-size.md` ("Deep study"): `claude://` links per
   profile, usage page link, Claude updates with several instances open, hidden windows, MCP config per profile, first
-  start of a new profile, what Claude updates change. Yes / no / how, with the command used.
+  start of a new profile, what Claude updates change, a link to the memory import screen, the memory menu names
+  after "Unified Claude". Yes / no / how, with the command used.
+- Memory assistant review: walk "Receive memories from…" end to end with two test accounts and list the friction
+  (fixes go to a 1.1.x patch).
 - Docs only: straight to `main`, no PR. Done when the summary exists.
 
 ## Phase 8 — Greetings and update progress (1.1.0)

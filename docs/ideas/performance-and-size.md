@@ -47,6 +47,23 @@ Each answer goes in the Phase 7 summary as yes / no / how, with the command used
    without touching session data?
 7. **What changes between Claude updates** (paths, process names, arguments) that could break the launcher; turn
    findings into checks in the diagnostics and the compatibility notice.
+8. **Memory import screen:** is there a `claude://` link (or an argument) that opens the memory import screen, or
+   the "Import memory to Claude" card on the home screen, inside a given profile? If yes, the memory assistant can
+   open the target account straight on it.
+9. **Memory menu names after "Unified Claude"** (rolled out from 2026-11-10): what the Settings path to the memory
+   import and export is called now, in English and in Portuguese. The help center says Settings → **Your Claude**
+   (older layout: Settings → **Memory**); the assistant's steps must match what the app shows. If Phase 7 runs before
+   the change reaches the PC, answer for the current layout and repeat this one question afterwards.
+
+## Memory assistant review (with the Phase 7 answers)
+Walk through "Receive memories from…" end to end on the PC with two test accounts and note every manual step and its
+time. Candidates to remove friction, kept only if they work:
+- **Pick the export by itself:** after step 1, look in the Downloads folder for the newest `claude-memory-*.zip`
+  created since the assistant opened and offer it ("Use this file?"), instead of asking to drop it. Read-only, local.
+- **Open the import screen directly** if question 8 finds a link.
+- **Step texts that survive renames:** name both menu paths ("Your Claude" or "Memory") and the home-screen card.
+- **Check the result:** a last step asking the person to look at the new entries, since Anthropic marks the import
+  as experimental and it may drop or merge items.
 
 ## Bug-hunt round (after 1.3, then before each MINOR release)
 The agent uses the installed app like a person would: every menu and dialog, very long and odd names, emoji, empty

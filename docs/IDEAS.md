@@ -135,8 +135,12 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 - ✅ **Contrast test** for every theme preset — 1.2
 - ✅ **README badge says "Windows 11"** until Windows 10 is really tested — 1.1 (small and honest)
 - ✅ **CI**: confirm the `test` job after `ubuntu-latest` moves to Ubuntu 26 — any patch
-- ✅ **Memory assistant**: confirm a second "Start import" and ~100,000-character pastes; remove partial real names
-  from diagnostics — any patch
+- ✅ **Memory assistant review** (Phase 7) and a **1.1.x patch** with what it finds: pick the newest
+  `claude-memory-*.zip` from Downloads by itself, open the import screen directly if a link exists, step texts that
+  name both "Your Claude" and "Memory" (the menu was renamed; "Unified Claude" from 2026-11-10 may rename it again),
+  a last "check the new entries" step; confirm a second "Start import" and ~100,000-character pastes; remove partial
+  real names from diagnostics. Anthropic offers no account-to-account memory transfer, so this assistant stays the
+  best route — `ideas/performance-and-size.md`
 - 💤 End-to-end UI tests with screenshots (worth it only when the UI changes often or more people contribute)
 - 💤 Windows 10 test on a real machine (needs one)
 
