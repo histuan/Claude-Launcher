@@ -10,6 +10,11 @@ UI (computer use), repeats each measurement dozens of times, records the timings
 only approves the start and anything that touches real data. These are the repetitive tests that would be too tiring
 to do by hand.
 
+Checked 2026-11-09: computer use can be granted for the **launcher** window, but the **Claude desktop app** itself did
+not resolve as a controllable app (most likely because it is the app running computer use). Plan for that: drive
+and time the launcher by screen; time Claude's own windows by process and window queries (PowerShell), not by clicks;
+steps inside Claude's interface (for example the memory menus) are done by the maintainer, with screenshots.
+
 Ground rules:
 - Back up the default Claude profile before any run that could touch it; prefer test profiles.
 - Never log tokens, cookies or personal data; timings and versions only.
