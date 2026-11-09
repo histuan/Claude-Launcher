@@ -7,3 +7,4 @@ file (the file stays in `ideas/` as the record of how it was thought through).
 |---|---|---|
 | 1.0.0 | Everything in the v1 scope (`docs/SCOPE.md`); details per version in `CHANGELOG.md` | #30 and earlier |
 | 2026-11-08 | Launcher featured as the main project on the author's GitHub profile | profile README |
+| 2026-11-09 | Phase 7: performance baseline (step 0) and the Claude deep-study answers; fixtures of Claude 4.23118 | `performance-and-size.md`, `docs/perf/README.md`, #31 |

@@ -1,9 +1,10 @@
 # Status
 
 **Current state:** **v1.0.0 released** (2026-11-08, PR #30; docs and CI only, same code as 0.7.0). The self-update
-0.7.0 → 1.0.0 worked on Windows 11 (the installed launcher reports 1.0.0). Next: **Phase 7** (#31, baseline
-measurements and research), then Phases 8–14 in `docs/PHASES.md` → "After v1.0". Ideas, verdicts and what was decided
-against: `docs/IDEAS.md`.
+0.7.0 → 1.0.0 worked on Windows 11 (the installed launcher reports 1.0.0). **Phase 7 done** (2026-11-09, #31,
+docs only): baseline and research answers in `docs/perf/README.md`, fixtures in `test/fixtures/claude-4.23118.0.0/`.
+Next: **Phase 7.5** (1.0.1, resilience), then Phases 8–14 in `docs/PHASES.md` → "After v1.0". Ideas, verdicts and
+what was decided against: `docs/IDEAS.md`.
 
 ## Done
 
@@ -121,9 +122,22 @@ against: `docs/IDEAS.md`.
   scope changes, `docs/IDEAS.md`, CI no longer makes `badge-download.svg` (GitHub does not render images from
   release assets; the README uses `docs/badges/download.svg`). Tested with Claude Desktop 4.23118.0.0 on Windows 11.
 
+- Phase 7 (2026-11-09, no version, docs and fixtures only): baseline in `docs/perf/` (raw CSVs, repeatable scripts in
+  `docs/perf/scripts/`, summary `docs/perf/README.md`), the eleven research answers, fixtures of Claude 4.23118.0.0.
+  Key numbers: cards in 342 ms; launcher memory ~383 MB; sign-in window 4.7 s (3.4 s closing the main Claude);
+  update = 3–5 s download + 20–31 s install and restart while the launcher is closed (→ Phase 8 uses the installer's
+  page). Findings for the next phases: memory now lives under **Customize → Memory** (`/customize/memory`; the
+  assistant's steps still say Settings → Memory, fix in 1.1.x), `claude://claude.ai/customize/memory` and
+  `claude://claude.ai/settings/usage` route inside a given profile, a hidden Claude window has `MainWindowHandle = 0`
+  (find it with `EnumWindows`), no winget/Store MSIX for a CI canary.
+
 ## Missing
 
-- Nothing for v1. Post-v1 work: Phases 7–14 (issues #31–#38, milestone "Multi-Account Launcher v1.x").
+- Nothing for v1. Post-v1 work: Phases 7.5–14 (issues #32–#38, milestone "Multi-Account Launcher v1.x").
+- Phase 7 leftovers (need eyes on Claude's own window or real accounts, `docs/perf/README.md` → "Not measured"):
+  whether `claude://claude.ai/new` shows a new chat (it reaches the right account); the memory menu labels in English
+  and Portuguese (screenshot, again after 2026-11-10); the memory assistant walk up to (not including) Confirm;
+  Claude's update with extra accounts open (at the next Claude update).
 
 ## Notes for the next phases
 

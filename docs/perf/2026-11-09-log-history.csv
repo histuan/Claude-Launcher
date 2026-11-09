@@ -1,0 +1,348 @@
+at,kind,ms
+2026-10-27T23:53:58.039Z,"start: find the main profile and Claude.exe",491
+2026-10-27T23:54:06.104Z,"start: close <account> Claude: forced",8048
+2026-10-27T23:54:06.607Z,"start: prepare a clean profile (stashed: true)",4
+2026-10-27T23:54:07.148Z,"start: open <account> sign-in window",541
+2026-10-27T23:54:07.148Z,"start: total",9092
+2026-10-27T23:54:33.755Z,"start: find the main profile and Claude.exe",454
+2026-10-27T23:55:21.208Z,"start: close <account> Claude: still running",47453
+2026-10-27T23:55:21.209Z,"start: stopped (defaultRunning)",47908
+2026-10-27T23:55:47.213Z,"start: find the main profile and Claude.exe",514
+2026-10-27T23:55:55.116Z,"start: close <account> Claude: forced",7903
+2026-10-27T23:55:55.576Z,"start: prepare a clean profile (stashed: true)",6
+2026-10-27T23:55:56.139Z,"start: open <account> sign-in window",563
+2026-10-27T23:55:56.139Z,"start: total",8926
+2026-10-27T23:58:44.513Z,"finish: cookie not written before the force-end",35260
+2026-10-27T23:58:45.615Z,"finish: close <account> sign-in Claude: forced",42886
+2026-10-27T23:58:45.621Z,"finish: move the session to the account folder",42892
+2026-10-27T23:58:46.168Z,"finish: total (main profile restored)",43439
+2026-10-28T00:49:20.006Z,"start: find the main profile and Claude.exe",548
+2026-10-28T00:49:23.097Z,"start: close <account> Claude: forced",3084
+2026-10-28T00:49:23.677Z,"start: prepare a clean profile (stashed: true)",5
+2026-10-28T00:49:24.241Z,"start: open <account> sign-in window",564
+2026-10-28T00:49:24.252Z,"start: total",4239
+2026-10-28T00:49:51.264Z,"start: find the main profile and Claude.exe",546
+2026-10-28T00:49:54.428Z,"start: close <account> Claude: forced",3164
+2026-10-28T00:49:54.964Z,"start: prepare a clean profile (stashed: true)",7
+2026-10-28T00:49:55.570Z,"start: open <account> sign-in window",606
+2026-10-28T00:49:55.584Z,"start: total",4320
+2026-10-28T00:50:15.120Z,"start: find the main profile and Claude.exe",1021
+2026-10-28T00:50:18.618Z,"start: close <account> Claude: forced",3497
+2026-10-28T00:50:19.197Z,"start: prepare a clean profile (stashed: true)",6
+2026-10-28T00:50:20.080Z,"start: open <account> sign-in window",882
+2026-10-28T00:50:20.089Z,"start: total",4968
+2026-10-28T00:50:45.366Z,"start: find the main profile and Claude.exe",772
+2026-10-28T00:50:48.523Z,"start: close <account> Claude: forced",3156
+2026-10-28T00:50:49.080Z,"start: prepare a clean profile (stashed: true)",6
+2026-10-28T00:50:49.672Z,"start: open <account> sign-in window",592
+2026-10-28T00:50:49.677Z,"start: total",4310
+2026-10-28T00:51:17.095Z,"start: find the main profile and Claude.exe",535
+2026-10-28T00:51:20.181Z,"start: close <account> Claude: forced",3086
+2026-10-28T00:51:20.672Z,"start: prepare a clean profile (stashed: true)",4
+2026-10-28T00:51:21.260Z,"start: open <account> sign-in window",588
+2026-10-28T00:51:21.264Z,"start: total",4169
+2026-10-28T00:52:16.251Z,"finish: close <account> sign-in Claude: forced",3726
+2026-10-28T00:52:16.254Z,"finish: move the session to the account folder",3729
+2026-10-28T00:52:16.792Z,"finish: total (main profile restored)",4267
+2026-10-28T00:53:37.068Z,"start: find the main profile and Claude.exe",517
+2026-10-28T00:53:40.112Z,"start: close <account> Claude: forced",3043
+2026-10-28T00:53:40.687Z,"start: prepare a clean profile (stashed: true)",6
+2026-10-28T00:53:41.248Z,"start: open <account> sign-in window",561
+2026-10-28T00:53:41.256Z,"start: total",4187
+2026-10-28T00:54:38.144Z,"finish: close <account> sign-in Claude: forced",3663
+2026-10-28T00:54:38.150Z,"finish: move the session to the account folder",3669
+2026-10-28T00:54:38.719Z,"finish: total (main profile restored)",4238
+2026-10-28T01:03:22.331Z,"start: find the main profile and Claude.exe",494
+2026-10-28T01:03:25.373Z,"start: close <account> Claude: forced",3042
+2026-10-28T01:03:25.926Z,"start: prepare a clean profile (stashed: true)",5
+2026-10-28T01:03:26.505Z,"start: open <account> sign-in window",579
+2026-10-28T01:03:26.515Z,"start: total",4184
+2026-10-28T01:04:47.437Z,"finish: close <account> sign-in Claude: forced",3748
+2026-10-28T01:04:47.447Z,"finish: move the session to the account folder",3758
+2026-10-28T01:04:48.001Z,"finish: total (main profile restored)",4312
+2026-10-28T01:12:40.099Z,"start: find the main profile and Claude.exe",476
+2026-10-28T01:12:43.128Z,"start: close <account> Claude: forced",3028
+2026-10-28T01:12:43.688Z,"start: prepare a clean profile (stashed: true)",20
+2026-10-28T01:12:44.219Z,"start: open <account> sign-in window",531
+2026-10-28T01:12:44.230Z,"start: total",4130
+2026-10-28T01:13:42.765Z,"finish: wait for a quiet profile: quiet",10416
+2026-10-28T01:13:44.536Z,"finish: close <account> sign-in Claude: forced",12187
+2026-10-28T01:13:44.541Z,"finish: move the session to the account folder",12192
+2026-10-28T01:13:45.066Z,"finish: total (main profile restored)",12717
+2026-10-28T01:14:30.719Z,"start: find the main profile and Claude.exe",525
+2026-10-28T01:14:33.753Z,"start: close <account> Claude: forced",3033
+2026-10-28T01:14:34.281Z,"start: prepare a clean profile (stashed: true)",6
+2026-10-28T01:14:34.849Z,"start: open <account> sign-in window",568
+2026-10-28T01:14:34.859Z,"start: total",4139
+2026-10-28T01:15:27.965Z,"finish: wait for a quiet profile: quiet",16785
+2026-10-28T01:15:29.581Z,"finish: close <account> sign-in Claude: forced",18401
+2026-10-28T01:15:29.586Z,"finish: move the session to the account folder",18406
+2026-10-28T01:15:30.115Z,"finish: total (main profile restored)",18935
+2026-10-28T01:16:33.633Z,"start: find the main profile and Claude.exe",531
+2026-10-28T01:16:36.556Z,"start: close <account> Claude: forced",2922
+2026-10-28T01:16:37.066Z,"start: prepare a clean profile (stashed: true)",5
+2026-10-28T01:16:37.617Z,"start: open <account> sign-in window",551
+2026-10-28T01:16:37.628Z,"start: total",3994
+2026-10-28T02:22:46.620Z,"start: find the main profile and Claude.exe",669
+2026-10-28T02:22:50.059Z,"start: close <account> Claude: forced",3437
+2026-10-28T02:22:50.678Z,"start: prepare a clean profile (stashed: true)",5
+2026-10-28T02:22:51.349Z,"start: open <account> sign-in window",671
+2026-10-28T02:22:51.361Z,"start: total",4739
+2026-10-28T02:23:54.709Z,"finish: wait for the cookie write: written",24965
+2026-10-28T02:23:57.788Z,"finish: close <account> sign-in Claude: forced",28044
+2026-10-28T02:23:57.803Z,"finish: move the session to the account folder",28059
+2026-10-28T02:23:58.437Z,"finish: total (main profile restored)",28693
+2026-10-28T03:11:30.505Z,"start: find the main profile and Claude.exe",723
+2026-10-28T03:11:34.160Z,"start: close <account> Claude: forced",3654
+2026-10-28T03:11:34.831Z,"start: prepare a clean profile (stashed: true)",5
+2026-10-28T03:11:35.569Z,"start: open <account> sign-in window",738
+2026-10-28T03:11:35.581Z,"start: total",5075
+2026-10-28T03:12:41.866Z,"finish: wait for the cookie write: written",25367
+2026-10-28T03:12:45.129Z,"finish: close <account> sign-in Claude: forced",28630
+2026-10-28T03:12:45.136Z,"finish: move the session to the account folder",28637
+2026-10-28T03:12:45.985Z,"finish: total (main profile restored)",29486
+2026-10-28T03:32:18.900Z,"start: find the main profile and Claude.exe",721
+2026-10-28T03:32:22.765Z,"start: close <account> Claude: forced",3863
+2026-10-28T03:32:23.489Z,"start: prepare a clean profile (stashed: true)",23
+2026-10-28T03:32:24.190Z,"start: open <account> sign-in window",701
+2026-10-28T03:32:24.200Z,"start: total",5298
+2026-10-28T03:33:31.215Z,"finish: wait for the cookie write: written",23953
+2026-10-28T03:33:34.937Z,"finish: close <account> sign-in Claude: forced",27675
+2026-10-28T03:33:34.946Z,"finish: move the session to the account folder",27684
+2026-10-28T03:33:35.912Z,"finish: total (main profile restored)",28650
+2026-11-01T02:44:44.705Z,"start: find the main profile and Claude.exe",793
+2026-11-01T02:44:48.718Z,"start: close <account> Claude: forced",3282
+2026-11-01T02:44:49.460Z,"start: prepare a clean profile (stashed: true)",25
+2026-11-01T02:44:50.155Z,"start: open <account> sign-in window",695
+2026-11-01T02:44:50.166Z,"start: total",4730
+2026-11-01T02:49:18.620Z,"start: find the main profile and Claude.exe",567
+2026-11-01T02:49:23.147Z,"start: close <account> Claude: forced",3796
+2026-11-01T02:49:23.957Z,"start: prepare a clean profile (stashed: true)",7
+2026-11-01T02:49:24.637Z,"start: open <account> sign-in window",680
+2026-11-01T02:49:24.646Z,"start: total",5295
+2026-11-01T03:03:57.081Z,"start: find the main profile and Claude.exe",1007
+2026-11-01T03:04:02.913Z,"start: close <account> Claude: forced",5025
+2026-11-01T03:04:19.825Z,"start: stopped (folder)",23751
+2026-11-04T00:45:41.295Z,"start: find the main profile and Claude.exe",5069
+2026-11-04T00:46:08.827Z,"start: find the main profile and Claude.exe",5090
+2026-11-04T01:15:10.017Z,"start: find Claude.exe: cache",1
+2026-11-04T01:15:10.894Z,"start: find the main profile",876
+2026-11-04T01:15:16.434Z,"start: close <account> Claude: forced",4656
+2026-11-04T01:15:17.379Z,"start: prepare a clean profile (stashed: true)",11
+2026-11-04T01:15:17.552Z,"start: open <account> sign-in window",173
+2026-11-04T01:15:17.566Z,"start: total",5788
+2026-11-04T01:17:28.268Z,"finish: wait for the cookie write: written",20893
+2026-11-04T01:17:32.215Z,"finish: close <account> sign-in Claude: forced",24840
+2026-11-04T01:17:32.561Z,"finish: move the session to the account folder",25186
+2026-11-04T01:17:32.706Z,"finish: total (main profile restored)",25331
+2026-11-04T02:02:01.708Z,"startup: cards shown",1472
+2026-11-04T02:02:02.590Z,"startup: process query",881
+2026-11-04T02:02:09.935Z,"startup: cards shown",830
+2026-11-04T02:02:10.520Z,"startup: process query",585
+2026-11-04T02:03:18.693Z,"start: find Claude.exe: cache",1
+2026-11-04T02:03:19.645Z,"start: find the main profile",951
+2026-11-04T02:03:20.661Z,"start: main Claude: running hidden",1014
+2026-11-04T02:03:24.040Z,"start: close <account> Claude: forced",4393
+2026-11-04T02:03:24.937Z,"start: prepare a clean profile (stashed: true)",11
+2026-11-04T02:03:25.123Z,"start: open <account> sign-in window",185
+2026-11-04T02:03:25.131Z,"start: total",5484
+2026-11-04T02:03:53.182Z,"startup: cards shown",5794
+2026-11-04T02:03:53.936Z,"startup: process query",754
+2026-11-04T02:04:03.321Z,"startup: cards shown",899
+2026-11-04T02:04:04.161Z,"startup: process query",840
+2026-11-04T02:04:09.842Z,"startup: cards shown",845
+2026-11-04T02:04:10.459Z,"startup: process query",617
+2026-11-04T02:04:25.627Z,"start: find Claude.exe: cache",0
+2026-11-04T02:04:26.524Z,"start: find the main profile",896
+2026-11-04T02:04:27.445Z,"start: main Claude: running hidden",919
+2026-11-04T02:04:30.848Z,"start: close <account> Claude: forced",4322
+2026-11-04T02:04:31.701Z,"start: prepare a clean profile (stashed: true)",18
+2026-11-04T02:04:31.870Z,"start: open <account> sign-in window",168
+2026-11-04T02:04:31.877Z,"start: total",5351
+2026-11-04T02:05:59.263Z,"finish: wait for the cookie write: written",23510
+2026-11-04T02:06:03.062Z,"finish: close <account> sign-in Claude: forced",27309
+2026-11-04T02:06:03.099Z,"finish: move the session to the account folder",27346
+2026-11-04T02:06:03.117Z,"finish: total (main profile restored)",27363
+2026-11-04T02:06:19.166Z,"startup: cards shown",746
+2026-11-04T02:06:19.696Z,"startup: process query",529
+2026-11-04T02:06:28.322Z,"startup: cards shown",1239
+2026-11-04T02:06:29.101Z,"startup: process query",779
+2026-11-04T02:39:52.954Z,"startup: cards shown",1764
+2026-11-04T02:39:53.978Z,"startup: process query",1023
+2026-11-04T02:45:10.246Z,"startup: cards shown",240
+2026-11-04T02:45:10.815Z,"startup: process query",568
+2026-11-04T02:45:11.329Z,"startup: background refresh of the cached Windows name and main profile",514
+2026-11-04T02:45:14.018Z,"startup: cards shown",219
+2026-11-04T02:45:14.566Z,"startup: process query",546
+2026-11-04T02:45:20.070Z,"startup: cards shown",186
+2026-11-04T02:45:20.647Z,"startup: process query",576
+2026-11-04T02:45:21.125Z,"startup: background refresh of the cached Windows name and main profile",479
+2026-11-04T02:59:58.253Z,"startup: cards shown",497
+2026-11-04T02:59:58.996Z,"startup: process query",742
+2026-11-04T02:59:59.611Z,"startup: background refresh of the cached Windows name and main profile",615
+2026-11-04T03:12:17.671Z,"startup: cards shown",431
+2026-11-04T03:12:18.397Z,"startup: process query",725
+2026-11-04T03:12:19.011Z,"startup: background refresh of the cached Windows name and main profile",614
+2026-11-04T03:14:29.100Z,"startup: cards shown",210
+2026-11-04T03:14:29.665Z,"startup: process query",565
+2026-11-04T03:14:30.222Z,"startup: background refresh of the cached Windows name and main profile",557
+2026-11-04T04:20:22.104Z,"startup: cards shown",648
+2026-11-04T04:20:23.137Z,"startup: process query",1028
+2026-11-04T04:20:23.923Z,"startup: background refresh of the cached Windows name and main profile",785
+2026-11-04T04:20:25.523Z,"update: check failed",1600
+2026-11-04T04:20:36.772Z,"startup: cards shown",325
+2026-11-04T04:20:37.543Z,"startup: process query",770
+2026-11-04T04:20:38.338Z,"startup: background refresh of the cached Windows name and main profile",795
+2026-11-04T04:20:38.896Z,"update: check failed",557
+2026-11-04T04:42:03.748Z,"startup: cards shown",456
+2026-11-04T04:42:04.486Z,"startup: process query",737
+2026-11-04T04:42:05.102Z,"startup: background refresh of the cached Windows name and main profile",616
+2026-11-04T04:42:06.912Z,"update: check: 0.6.1 available; current 0.6.0",1810
+2026-11-04T04:43:17.206Z,"startup: cards shown",526
+2026-11-04T04:43:17.879Z,"startup: process query",672
+2026-11-04T04:43:18.475Z,"startup: background refresh of the cached Windows name and main profile",595
+2026-11-04T04:43:19.652Z,"update: check: 0.6.1 available; current 0.6.0",1177
+2026-11-04T04:43:23.965Z,"update: download 0.6.1",3388
+2026-11-04T04:43:35.004Z,"startup: cards shown",259
+2026-11-04T04:43:35.669Z,"startup: process query",664
+2026-11-04T04:43:36.320Z,"startup: background refresh of the cached Windows name and main profile",651
+2026-11-04T04:43:36.933Z,"update: check: 0.6.1 available; current 0.6.0",613
+2026-11-04T04:43:48.962Z,"startup: cards shown",963
+2026-11-04T04:43:49.989Z,"startup: process query",1023
+2026-11-04T04:43:50.888Z,"startup: background refresh of the cached Windows name and main profile",899
+2026-11-04T04:43:51.510Z,"update: check: none newer than 0.6.1",621
+2026-11-04T17:59:33.466Z,"startup: cards shown",810
+2026-11-04T17:59:34.761Z,"startup: process query",1294
+2026-11-04T17:59:35.369Z,"startup: background refresh of the cached Windows name and main profile",607
+2026-11-04T17:59:37.745Z,"update: check: 0.6.2 available; current 0.6.1",2376
+2026-11-04T17:59:42.542Z,"update: download 0.6.2:",3436
+2026-11-04T18:00:04.866Z,"startup: cards shown",702
+2026-11-04T18:00:05.711Z,"startup: process query",845
+2026-11-04T18:00:06.137Z,"update: check: none newer than 0.6.2",1683
+2026-11-04T18:00:06.388Z,"startup: background refresh of the cached Windows name and main profile",676
+2026-11-05T06:06:04.682Z,"startup: cards shown",1166
+2026-11-05T06:06:05.877Z,"startup: process query",1189
+2026-11-05T06:06:06.410Z,"startup: background refresh of the cached Windows name and main profile",532
+2026-11-05T06:06:06.734Z,"update: check: 0.7.0 available; current 0.6.2",2955
+2026-11-05T06:06:12.445Z,"update: download 0.7.0:",2717
+2026-11-05T06:06:33.540Z,"startup: cards shown",651
+2026-11-05T06:06:34.530Z,"startup: process query",989
+2026-11-05T06:06:35.024Z,"update: check: none newer than 0.7.0",1902
+2026-11-05T06:06:35.231Z,"startup: background refresh of the cached Windows name and main profile",701
+2026-11-05T20:37:40.475Z,"startup: cards shown",1341
+2026-11-05T20:37:41.706Z,"startup: process query",1207
+2026-11-05T20:37:41.802Z,"update: check: none newer than 0.7.0",2242
+2026-11-05T20:37:42.410Z,"startup: background refresh of the cached Windows name and main profile",703
+2026-11-05T20:45:23.752Z,"startup: cards shown",346
+2026-11-05T20:45:24.547Z,"startup: process query",794
+2026-11-05T20:45:25.143Z,"startup: background refresh of the cached Windows name and main profile",596
+2026-11-05T20:45:25.358Z,"update: check: none newer than 0.7.0",1744
+2026-11-05T20:45:50.974Z,"startup: cards shown",231
+2026-11-05T20:45:51.528Z,"startup: process query",553
+2026-11-05T20:45:51.562Z,"update: check: none newer than 0.7.0",665
+2026-11-05T20:45:52.057Z,"startup: background refresh of the cached Windows name and main profile",529
+2026-11-05T20:47:03.515Z,"startup: cards shown",230
+2026-11-05T20:47:04.144Z,"startup: process query",629
+2026-11-05T20:47:04.639Z,"update: check: none newer than 0.7.0",1195
+2026-11-05T20:47:04.734Z,"startup: background refresh of the cached Windows name and main profile",590
+2026-11-08T05:14:05.968Z,"startup: cards shown",1778
+2026-11-08T05:14:06.980Z,"startup: process query",1007
+2026-11-08T05:14:07.137Z,"update: check: 1.0.0 available; current 0.7.0",2225
+2026-11-08T05:14:08.818Z,"startup: background refresh of the cached Windows name and main profile",1837
+2026-11-08T05:14:13.673Z,"update: download 1.0.0:",4596
+2026-11-08T05:14:44.851Z,"startup: cards shown",645
+2026-11-08T05:14:45.353Z,"update: check: none newer than 1.0.0",767
+2026-11-08T05:14:46.228Z,"startup: process query",1376
+2026-11-08T05:14:47.313Z,"startup: background refresh of the cached Windows name and main profile",1085
+2026-11-09T04:47:24.881Z,"startup: cards shown",999
+2026-11-09T04:47:26.868Z,"update: check: none newer than 1.0.0",2374
+2026-11-09T04:47:26.938Z,"startup: process query",2052
+2026-11-09T04:47:27.756Z,"startup: background refresh of the cached Windows name and main profile",817
+2026-11-09T04:47:34.988Z,"startup: cards shown",494
+2026-11-09T04:47:35.866Z,"update: check: none newer than 1.0.0",1017
+2026-11-09T04:47:36.518Z,"startup: process query",1525
+2026-11-09T04:47:37.601Z,"startup: background refresh of the cached Windows name and main profile",1082
+2026-11-09T04:47:58.231Z,"startup: cards shown",495
+2026-11-09T04:47:58.951Z,"update: check: none newer than 1.0.0",874
+2026-11-09T04:47:59.662Z,"startup: process query",1428
+2026-11-09T04:48:00.708Z,"startup: background refresh of the cached Windows name and main profile",1046
+2026-11-09T04:48:08.059Z,"startup: cards shown",306
+2026-11-09T04:48:08.964Z,"update: check: none newer than 1.0.0",1012
+2026-11-09T04:48:09.201Z,"startup: process query",1139
+2026-11-09T04:48:10.134Z,"startup: background refresh of the cached Windows name and main profile",932
+2026-11-09T04:48:17.285Z,"startup: cards shown",250
+2026-11-09T04:48:17.860Z,"update: check: none newer than 1.0.0",649
+2026-11-09T04:48:18.017Z,"startup: process query",729
+2026-11-09T04:48:18.838Z,"startup: background refresh of the cached Windows name and main profile",821
+2026-11-09T04:48:25.565Z,"startup: cards shown",307
+2026-11-09T04:48:26.124Z,"update: check: none newer than 1.0.0",664
+2026-11-09T04:48:26.294Z,"startup: process query",727
+2026-11-09T04:48:26.968Z,"startup: background refresh of the cached Windows name and main profile",674
+2026-11-09T04:48:33.690Z,"startup: cards shown",339
+2026-11-09T04:48:34.443Z,"startup: process query",751
+2026-11-09T04:48:34.528Z,"update: check: none newer than 1.0.0",930
+2026-11-09T04:48:35.134Z,"startup: background refresh of the cached Windows name and main profile",689
+2026-11-09T04:48:42.042Z,"startup: cards shown",306
+2026-11-09T04:48:42.615Z,"update: check: none newer than 1.0.0",682
+2026-11-09T04:48:42.972Z,"startup: process query",928
+2026-11-09T04:48:43.753Z,"startup: background refresh of the cached Windows name and main profile",780
+2026-11-09T04:48:50.573Z,"startup: cards shown",344
+2026-11-09T04:48:51.159Z,"update: check: none newer than 1.0.0",691
+2026-11-09T04:48:51.589Z,"startup: process query",1014
+2026-11-09T04:48:52.656Z,"startup: background refresh of the cached Windows name and main profile",1066
+2026-11-09T04:48:59.531Z,"startup: cards shown",304
+2026-11-09T04:49:00.092Z,"update: check: none newer than 1.0.0",656
+2026-11-09T04:49:00.615Z,"startup: process query",1083
+2026-11-09T04:49:01.591Z,"startup: background refresh of the cached Windows name and main profile",975
+2026-11-09T04:49:08.128Z,"startup: cards shown",343
+2026-11-09T04:49:08.697Z,"update: check: none newer than 1.0.0",681
+2026-11-09T04:49:09.196Z,"startup: process query",1066
+2026-11-09T04:49:10.143Z,"startup: background refresh of the cached Windows name and main profile",946
+2026-11-09T04:49:17.650Z,"startup: cards shown",305
+2026-11-09T04:49:18.541Z,"update: check: none newer than 1.0.0",988
+2026-11-09T04:49:18.660Z,"startup: process query",1008
+2026-11-09T04:49:19.582Z,"startup: background refresh of the cached Windows name and main profile",922
+2026-11-09T04:49:27.113Z,"startup: cards shown",344
+2026-11-09T04:49:27.664Z,"update: check: none newer than 1.0.0",649
+2026-11-09T04:49:28.023Z,"startup: process query",908
+2026-11-09T04:49:28.792Z,"startup: background refresh of the cached Windows name and main profile",768
+2026-11-09T04:49:35.946Z,"startup: cards shown",314
+2026-11-09T04:49:36.513Z,"update: check: none newer than 1.0.0",668
+2026-11-09T04:49:37.093Z,"startup: process query",1144
+2026-11-09T04:49:38.135Z,"startup: background refresh of the cached Windows name and main profile",1042
+2026-11-09T04:49:45.079Z,"startup: cards shown",361
+2026-11-09T04:49:45.678Z,"update: check: none newer than 1.0.0",742
+2026-11-09T04:49:45.957Z,"startup: process query",873
+2026-11-09T04:49:46.625Z,"startup: background refresh of the cached Windows name and main profile",667
+2026-11-09T04:49:53.408Z,"startup: cards shown",340
+2026-11-09T04:49:54.020Z,"update: check: none newer than 1.0.0",719
+2026-11-09T04:49:54.290Z,"startup: process query",879
+2026-11-09T04:49:55.021Z,"startup: background refresh of the cached Windows name and main profile",730
+2026-11-09T04:50:01.748Z,"startup: cards shown",391
+2026-11-09T04:50:02.334Z,"update: check: none newer than 1.0.0",696
+2026-11-09T04:50:02.772Z,"startup: process query",1022
+2026-11-09T04:50:03.457Z,"startup: background refresh of the cached Windows name and main profile",685
+2026-11-09T04:50:10.726Z,"startup: cards shown",346
+2026-11-09T04:50:11.327Z,"update: check: none newer than 1.0.0",715
+2026-11-09T04:50:11.730Z,"startup: process query",1001
+2026-11-09T04:50:12.400Z,"startup: background refresh of the cached Windows name and main profile",669
+2026-11-09T04:50:19.340Z,"startup: cards shown",361
+2026-11-09T04:50:20.105Z,"update: check: none newer than 1.0.0",881
+2026-11-09T04:50:20.148Z,"startup: process query",805
+2026-11-09T04:50:20.834Z,"startup: background refresh of the cached Windows name and main profile",685
+2026-11-09T04:50:27.723Z,"startup: cards shown",342
+2026-11-09T04:50:28.322Z,"update: check: none newer than 1.0.0",716
+2026-11-09T04:50:28.553Z,"startup: process query",828
+2026-11-09T04:50:29.233Z,"startup: background refresh of the cached Windows name and main profile",679
+2026-11-09T04:50:36.813Z,"startup: cards shown",371
+2026-11-09T04:50:37.367Z,"update: check: none newer than 1.0.0",675
+2026-11-09T04:50:37.712Z,"startup: process query",894
+2026-11-09T04:50:38.422Z,"startup: background refresh of the cached Windows name and main profile",708
+2026-11-09T04:50:45.249Z,"startup: cards shown",423
+2026-11-09T04:50:45.849Z,"update: check: none newer than 1.0.0",694
+2026-11-09T04:50:46.052Z,"startup: process query",802
+2026-11-09T04:50:46.697Z,"startup: background refresh of the cached Windows name and main profile",645
+2026-11-09T04:58:30.023Z,"startup: cards shown",635
+2026-11-09T04:58:31.567Z,"startup: process query",1542
+2026-11-09T04:58:32.054Z,"update: check: none newer than 1.0.0",2413
+2026-11-09T04:58:32.755Z,"startup: background refresh of the cached Windows name and main profile",1185

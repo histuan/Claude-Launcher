@@ -1,0 +1,5 @@
+from,to,mode,download_bytes,download_ms,installing_logged_at,next_cards_shown_at,first_start_ms,install_and_restart_ms
+0.6.0,0.6.1,unknown (size not logged yet),,3388,2026-11-04T04:43:23.965Z,2026-11-04T04:43:35.004Z,259,10780
+0.6.1,0.6.2,differential,1277355,3436,2026-11-04T17:59:42.542Z,2026-11-04T18:00:04.866Z,702,21622
+0.6.2,0.7.0,differential,1263410,2717,2026-11-05T06:06:12.445Z,2026-11-05T06:06:33.540Z,651,20444
+0.7.0,1.0.0,differential,1122112,4596,2026-11-08T05:14:13.673Z,2026-11-08T05:14:44.851Z,645,30533

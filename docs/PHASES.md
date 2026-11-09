@@ -279,7 +279,7 @@ Phase N of Multi-Account Launcher for Claude (repo histuan/Claude-Launcher), loc
 If something needs my real data or cannot be done, stop and explain instead of improvising.
 ```
 
-## Phase 7 — Baseline measurements (no version)
+## Phase 7 — Baseline measurements (no version) ✅ (2026-11-09, `docs/perf/README.md`)
 
 Read: `docs/ideas/performance-and-size.md` ("Step 0" and "What to measure").
 
