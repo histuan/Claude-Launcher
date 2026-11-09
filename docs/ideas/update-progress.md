@@ -18,7 +18,8 @@ the new version opens by itself. Show something during that time, so it never lo
 | B. Helper splash | Before quitting, start a tiny window **outside the install folder** (e.g. a PowerShell/WinForms script in `%LOCALAPPDATA%`) that shows "Updating…" with an indeterminate bar and closes when the installer process exits | Independent of NSIS | One more moving part; must never block the installer |
 | C. Second Electron window | Not viable: the install folder is being replaced while it runs | — | File locks |
 
-Lean towards **A** if the NSIS script stays small; B as fallback.
+**Decided (2026-11-09): A.** It is tied to the install itself (cannot hang or close early) and shows real progress.
+Style the NSIS page as far as it allows (icon, colours, texts). B only if A turns out impossible; say why in the PR.
 
 ## "What's new" = the full version history
 Not just a note about the latest version: a scrollable **version history** of the whole project, so anyone can see
