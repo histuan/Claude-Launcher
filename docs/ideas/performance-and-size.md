@@ -1,4 +1,4 @@
-# Performance and size — baseline now (step 0), work in 1.4.0
+# Performance and size — baseline now (step 0), work in 1.6.0 (Phase 13)
 
 ## Goal
 Make start-up, sign-in, opening an account and updating faster, and the installer smaller, based on measurements
@@ -85,11 +85,11 @@ fields, closing Claude or the launcher at the wrong moment, sleeping the PC mid 
 offline start. Each problem becomes an issue with steps to reproduce; nothing is fixed in the same session unless it is
 trivial.
 
-## Tech-debt review (with 1.4)
+## Tech-debt review (with 1.6)
 A short list of code worth simplifying (largest files first: `src/renderer/app.ts`, `src/main/main.ts`,
 `src/main/signInFlow.ts`), each item with the reason and the risk; only clear wins are done.
 
-## Size ideas to test in 1.4 (keep only what the numbers support)
+## Size ideas to test in 1.6 (keep only what the numbers support)
 - electron-builder `compression: "maximum"`; `electronLanguages` limited to the locales actually used.
 - Check what goes into the package (no dev files, no source maps unless wanted, fonts subset).
 - Differential updates already work; check how much the blockmap saves per release.

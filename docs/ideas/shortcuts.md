@@ -1,4 +1,4 @@
-# Shortcuts and quality of life — planned 1.6.0 (Phase 13)
+# Shortcuts and quality of life — planned 1.4.0 (Phase 11)
 
 ## Goal
 Open the right account from anywhere in one step, and make the main screen faster to use every day.

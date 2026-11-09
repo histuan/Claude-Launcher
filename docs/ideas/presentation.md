@@ -1,4 +1,4 @@
-# Presentation: README, media, website — planned 1.5.0
+# Presentation: README, media, website — planned 1.7.0 (Phase 14)
 
 ## Goal
 Make the project easy to understand and trust in a few seconds: a clear GitHub page, short demo videos, and a tiny

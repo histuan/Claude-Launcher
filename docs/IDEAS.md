@@ -48,10 +48,11 @@ make the self-update refuse to offer 1.2 to anyone on 1.12.
 | 8 (#32) | 1.1.0 | Varied greetings (with rare ones) + update progress window + version history ("What's new") | Small, visible, low risk. |
 | 9 (#33) | 1.2.0 | Settings page + theme presets (Warm, Graphite, Light, System) + privacy mode + updates and "at login" settings + copy e-mail on sign-in | Theme and behaviour choices in one place; needed before any video. |
 | 10 (#34) | 1.3.0 | Security review + community files | Before promoting the project. |
-| 11 (#35) | 1.4.0 | Performance and size, using the baseline | Optimise the final shape. |
-| 12 (#36) | 1.5.0 | Presentation: README, GIFs/videos, release notes format, small website, one community post | Shows everything above. |
-| 13 (#37) | 1.6.0 | Shortcuts and quality of life: `--open` command line, taskbar jump list, desktop shortcut per account, quick actions (`claude://`), keys 1–9, drag to reorder, accent colour, hidden windows | High value per hour; builds on the Phase 7 research. |
-| 14 (#38) | 1.7.0 | Português (Brasil) interface | Translate once the texts stop changing. |
+| 11 (#37) | 1.4.0 | Shortcuts and quality of life: `--open` command line, taskbar jump list, desktop shortcut per account, quick actions (`claude://`), keys 1–9, drag to reorder, accent colour, hidden windows | High value per hour; builds on the Phase 7 research. Last feature phase. |
+| 12 (#56) | 1.5.0 | First-run tour (offered on a fresh install, restartable from Settings) | Shows the finished app, so it comes after every feature. |
+| 13 (#35) | 1.6.0 | Performance and size, using the baseline | Optimise the final shape. |
+| 14 (#36) | 1.7.0 | Presentation: README, GIFs/videos, release notes format, small website, one community post | Shows everything above, the tour included. |
+| 15 (#38) | 1.8.0 | Português (Brasil) interface | Translate once the texts stop changing (the tour included). |
 | — | later | Claude Code profiles, copy MCP servers between accounts, sync folder | Bigger or less urgent. |
 
 Small fixes ship as PATCH versions between phases (1.1.1, 1.1.2 …).
@@ -66,6 +67,9 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 - ✅ **Rare greetings** (about 1 in 200 opens, a special line) — 1.1, nearly free once greetings vary — `ideas/greetings.md`
 - 💤 Seasonal themes (holidays), local stats ("opened 120 times"), sounds
 
+### First-run tour
+- ✅ **First-run tour**: on a fresh install, "First time here?" Show me / Not now; spotlight + coach-mark tour over every part of the app; restartable from Settings → Help — 1.5 — `ideas/onboarding.md`
+
 ### Settings and themes
 - ✅ **Settings page** — 1.2 — `ideas/settings-and-theme.md`
 - ✅ **Theme presets**: Warm dark (default), Graphite dark (like the newer Claude look), Light, System — 1.2
@@ -78,7 +82,7 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 - ✅ **After opening an account**: close the launcher (today) · keep it open — 1.2
 - ✅ **Export / Import launcher settings** (cards, names, photos; never session data) and **Reset launcher
   settings** — 1.2, also the manual version of sync
-- ✅ **Languages**: Português (Brasil) after English — 1.7
+- ✅ **Languages**: Português (Brasil) after English — 1.8
 
 ### Updates and history
 - ✅ **Something on screen during the ~20 s install** — 1.1 — `ideas/update-progress.md`
@@ -86,28 +90,28 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
   **"Release notes on GitHub"** and **"GitHub page"** buttons — 1.1 — `ideas/update-progress.md`
 - ✅ **Plain-language Highlights** per version, reused for the release notes — 1.1
 - ✅ **Compatibility notice**: when Claude Desktop updates to a version never tested with the launcher, say so calmly;
-  the same data fills a **"Tested with Claude <version>"** line in the README and the diagnostics — 1.6 or a patch — #55
-- ✅ **Faster first start after install** (5.8 s measured; normal starts ~0.3–1 s) — 1.4
+  the same data fills a **"Tested with Claude <version>"** line in the README and the diagnostics — 1.4 or a patch — #55
+- ✅ **Faster first start after install** (5.8 s measured; normal starts ~0.3–1 s) — 1.6
 - ⚠️ **Smaller installer**: only cheap settings (compression, unused locales); Electron itself is most of the size, so
-  expect tens of percent at best, not halves — 1.4
-- ⚠️ **Faster sign-in window**: much of it is Claude's own start-up; measure first — 1.4
+  expect tens of percent at best, not halves — 1.6
+- ⚠️ **Faster sign-in window**: much of it is Claude's own start-up; measure first — 1.6
 - 💤 Beta channel (pre-releases through the updater; needs version suffixes the updater rejects today)
 - 💤 winget / Scoop distribution (only if people ask; SmartScreen stays the same)
 - 🚫 Code signing for now (yearly cost; revisit with real users)
 
 ### Shortcuts and accounts
-- ✅ **`--open <card>` command line**: the base for every shortcut below — 1.6 — `ideas/shortcuts.md`
-- ✅ **Taskbar jump list**: right-click the launcher in the taskbar → open an account directly — 1.6
-- ✅ **Desktop shortcut per account** ("Create shortcut" in the card menu) — 1.6
+- ✅ **`--open <card>` command line**: the base for every shortcut below — 1.4 — `ideas/shortcuts.md`
+- ✅ **Taskbar jump list**: right-click the launcher in the taskbar → open an account directly — 1.4
+- ✅ **Desktop shortcut per account** ("Create shortcut" in the card menu) — 1.4
 - ✅ **Quick actions per card** with Claude's `claude://` links: New chat · New Code session · New Cowork task.
-  Needs the Phase 7 test that a link reaches the right profile — 1.6
-- ✅ **Keys 1–9** open the first nine cards; **drag to reorder** cards — 1.6
-- ✅ **Accent colour per account** (ring on the avatar) — 1.6
+  Needs the Phase 7 test that a link reaches the right profile — 1.4
+- ✅ **Keys 1–9** open the first nine cards; **drag to reorder** cards — 1.4
+- ✅ **Accent colour per account** (ring on the avatar) — 1.4
 - ✅ **Hidden Claude windows**: "Running (hidden)" with Show / Close (a real problem: Claude keeps running hidden
-  after its window closes on some PCs) — 1.6
-- ✅ **"Restart all accounts"** to let a pending Claude update apply, if Phase 7 shows several open instances delay it — 1.6
+  after its window closes on some PCs) — 1.4
+- ✅ **"Restart all accounts"** to let a pending Claude update apply, if Phase 7 shows several open instances delay it — 1.4
 - ⚠️ **"Usage" quick action**: the honest version of a usage meter. Opens that account's own usage page inside its
-  Claude window, if Phase 7 finds a link that does it; the launcher never reads the numbers itself — 1.6, if possible
+  Claude window, if Phase 7 finds a link that does it; the launcher never reads the numbers itself — 1.4, if possible
 - ✅ **Duplicate e-mail warning** when a second card uses the same e-mail — any patch
 - ⚠️ **Last opened** on the card ("2 h ago") — small, only if the card stays uncluttered — #44
 - ⚠️ **Card notes** (a short line like "client X") — small, privacy mode hides it — #44
@@ -125,13 +129,13 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
   that degrades to "unknown", "I'm signed in" button, exe from the package manifest, process and package fallbacks,
   self-check after a Claude update, fixtures per Claude version — 1.0.1 — #39 — `ideas/resilience.md`
 - ✅ **Agent-run measurements on a real PC**: the AI agent runs commands and drives the screen, repeats each
-  measurement dozens of times and records the timings (too tiring by hand) — Phase 7 and 1.4 —
+  measurement dozens of times and records the timings (too tiring by hand) — Phase 7 and 1.6 —
   `ideas/performance-and-size.md`
 - ✅ **Deep study of how the Claude desktop app behaves** (start-up per profile, single-instance lock, first start of a
   new profile, `claude://` links, how its updates apply) to find faster paths and new ways to connect — Phase 7
 - ✅ **Bug-hunt round**: the agent uses the app on the PC like a person would (every menu, odd inputs, closing things
   at the wrong moment) and files what breaks — after 1.3, then before each MINOR release
-- ✅ **Tech-debt review**: a short list of code worth simplifying, kept with the performance round — 1.4
+- ✅ **Tech-debt review**: a short list of code worth simplifying, kept with the performance round — 1.6
 - ✅ **Accessibility pass** in every UI phase: screen-reader names, keyboard-only use, reduced motion — ongoing
 - ✅ **Visual polish pass**: spacing, alignment and states checked against the design rules once the settings and
   themes exist — with 1.2
@@ -152,15 +156,15 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
 
 ### Presentation and community
 - ✅ **README overhaul with GIFs** (a GIF at the top is worth more than any page), nicer Releases page, repository
-  topics and social preview — 1.5 — `ideas/presentation.md`
+  topics and social preview — 1.7 — `ideas/presentation.md`
 - ✅ **Demo videos** showing the app working in dark and light themes; the agent writes the storyboard and the
-  recording checklist and cuts/compresses with ffmpeg; recording by hand looks better — 1.5
+  recording checklist and cuts/compresses with ffmpeg; recording by hand looks better — 1.7
 - ✅ **One helpful post** where people ask for this (the multi-account request on Anthropic's GitHub, a Claude
-  community forum), clearly "not affiliated" — 1.5
+  community forum), clearly "not affiliated" — 1.7
 - ✅ **Write-up of how it was built** (problem, design, testing, releases) for a blog or portfolio — any time
 - ✅ **Small website** (HTML, CSS, a little JS; video, download button, open source link), on a host that browsers
   trust for downloads: check the domain is not flagged by Safe Browsing first, and use Vercel or Netlify if it is —
-  1.5
+  1.7
 
 ### Platforms
 - 💤 **macOS and Linux**: Claude Desktop exists on both now, but the launcher's core (MSIX paths, PowerShell,

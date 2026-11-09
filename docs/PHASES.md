@@ -344,39 +344,47 @@ Read: `docs/ideas/security-review.md`.
 - After the merge: first **bug-hunt round** on the installed 1.3.0 (`docs/ideas/performance-and-size.md`), one issue
   per problem found.
 
-## Phase 11 — Performance and size (1.4.0)
+## Phase 11 — Shortcuts and quality of life (1.4.0)
+
+Read: `docs/ideas/shortcuts.md`, the Phase 7 research answers (`docs/perf/README.md`) and the comments on issue #37.
+
+- `--open <card id>` command line; taskbar jump list; "Create shortcut" on the desktop per account.
+- Quick actions with `claude://` links (New chat, New Code session, New Cowork task, Usage): Phase 7 and a manual
+  check confirmed they reach the right profile.
+- Keys 1–9, drag to reorder, accent colour per account, "Running (hidden)" with Show / Close (find the window with
+  `EnumWindows`), duplicate e-mail warning; "Restart all accounts" if it proves needed.
+
+## Phase 12 — First-run tour (1.5.0)
+
+Read: `docs/ideas/onboarding.md`.
+
+- Offer on a fresh install only; "Not now" points to Settings → Help; the tour can start again from there.
+- Spotlight + coach-mark tour over every part of the app, keyboard and screen-reader friendly, reduced motion
+  respected; nothing that changes accounts runs during it.
+
+## Phase 13 — Performance and size (1.6.0)
 
 Read: `docs/ideas/performance-and-size.md`, the Phase 7 summary.
 
 - Each change measured before/after with the Phase 7 method; keep only what helps. Installer size, first start,
-  sign-in window, opening an account.
+  sign-in window, opening an account (already-running case: ~2.6 s), launcher memory.
 
-## Phase 12 — Presentation (1.5.0)
+## Phase 14 — Presentation (1.7.0)
 
 Read: `docs/ideas/presentation.md`.
 
 - README overhaul with GIFs and screenshots of the theme presets, release notes format (from the Highlights),
   repository topics and social preview.
-- Three short demo clips recorded with privacy mode on and test accounts.
+- Three short demo clips recorded with privacy mode on and test accounts (the tour can appear in one).
 - Small website (`site/`) with the Download button for the latest release, on a host that is not flagged by Safe
   Browsing (GitHub Pages, or Vercel / Netlify if the github.io domain is flagged).
 - Draft of one community post (published by the maintainer).
 
-## Phase 13 — Shortcuts and quality of life (1.6.0)
-
-Read: `docs/ideas/shortcuts.md`, the Phase 7 research answers.
-
-- `--open <card id>` command line; taskbar jump list; "Create shortcut" on the desktop per account.
-- Quick actions with `claude://` links (New chat, New Code session, New Cowork task; Usage if found), only if Phase 7
-  showed they reach the right profile.
-- Keys 1–9, drag to reorder, accent colour per account, "Running (hidden)" with Show / Close, duplicate e-mail
-  warning; "Restart all accounts" if Phase 7 showed it is needed.
-
-## Phase 14 — Português (Brasil) (1.7.0)
+## Phase 15 — Português (Brasil) (1.8.0)
 
 Read: `docs/ideas/settings-and-theme.md` ("Languages").
 
 - One strings table per language with the same keys; a test checks every key and `{placeholder}` exists in every
   language; the Language setting from Phase 9 switches at once.
-- Português (Brasil) translation of the whole interface, written naturally (not word by word); English stays the
-  fallback.
+- Português (Brasil) translation of the whole interface, the tour included, written naturally (not word by word);
+  English stays the fallback.
