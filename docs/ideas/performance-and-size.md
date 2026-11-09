@@ -14,6 +14,10 @@ Checked 2026-11-09: computer use can be granted for the **launcher** window, but
 not resolve as a controllable app (most likely because it is the app running computer use). Plan for that: drive
 and time the launcher by screen; time Claude's own windows by process and window queries (PowerShell), not by clicks;
 steps inside Claude's interface (for example the memory menus) are done by the maintainer, with screenshots.
+On Windows (Nov 2026) computer use has no background mode: it moves the real cursor, takes focus, minimizes windows
+of non-granted apps and may restore them afterwards (anthropics/claude-code #108390, #69286, #91794). So: time
+windows by command line wherever possible, keep click-driven runs in one block, ask the maintainer to leave the PC
+alone during that block, and drop or redo runs where a click had to retry.
 
 Ground rules:
 - Back up the default Claude profile before any run that could touch it; prefer test profiles.
