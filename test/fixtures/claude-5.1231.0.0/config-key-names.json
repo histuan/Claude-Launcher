@@ -1,0 +1,32 @@
+{
+  "profile": "main (signed in)",
+  "keys": [
+    "bootFrameLayout",
+    "bootPlaceholderColors",
+    "bootSideSessions",
+    "bootSidebarPlaceholder",
+    "dxt:allowlistCache:<uuid>",
+    "dxt:allowlistEnabled:<uuid>",
+    "dxt:allowlistLastUpdated:<uuid>",
+    "first_launch_at",
+    "hasTrackedInitialActivation",
+    "hostGitConfinedInstall",
+    "lastGoodMainViewLoad",
+    "lastKnownAccountUuid",
+    "lastSeenRequireCoworkFullVmSandbox",
+    "locale",
+    "oauth:tokenCache",
+    "oauth:tokenCacheV2",
+    "rememberedDriveConnectors",
+    "remote_marketplace_migration_done_v1",
+    "remote_uploads_migration_done_v1_<hex>",
+    "sshTransportFlagLastAnswer",
+    "terminalCliPowerShellPath",
+    "updaterBannerStagedAt",
+    "updaterLastSeenVersion",
+    "updaterStagedPayloadKind",
+    "userThemeMode",
+    "version_first_launch",
+    "windowSizeWasSignedIn"
+  ]
+}

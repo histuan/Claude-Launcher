@@ -1,0 +1,89 @@
+{
+  "table": "cookies",
+  "columns": [
+    {
+      "name": "creation_utc",
+      "type": "INTEGER"
+    },
+    {
+      "name": "host_key",
+      "type": "TEXT"
+    },
+    {
+      "name": "top_frame_site_key",
+      "type": "TEXT"
+    },
+    {
+      "name": "name",
+      "type": "TEXT"
+    },
+    {
+      "name": "value",
+      "type": "TEXT"
+    },
+    {
+      "name": "encrypted_value",
+      "type": "BLOB"
+    },
+    {
+      "name": "path",
+      "type": "TEXT"
+    },
+    {
+      "name": "expires_utc",
+      "type": "INTEGER"
+    },
+    {
+      "name": "is_secure",
+      "type": "INTEGER"
+    },
+    {
+      "name": "is_httponly",
+      "type": "INTEGER"
+    },
+    {
+      "name": "last_access_utc",
+      "type": "INTEGER"
+    },
+    {
+      "name": "has_expires",
+      "type": "INTEGER"
+    },
+    {
+      "name": "is_persistent",
+      "type": "INTEGER"
+    },
+    {
+      "name": "priority",
+      "type": "INTEGER"
+    },
+    {
+      "name": "samesite",
+      "type": "INTEGER"
+    },
+    {
+      "name": "source_scheme",
+      "type": "INTEGER"
+    },
+    {
+      "name": "source_port",
+      "type": "INTEGER"
+    },
+    {
+      "name": "last_update_utc",
+      "type": "INTEGER"
+    },
+    {
+      "name": "source_type",
+      "type": "INTEGER"
+    },
+    {
+      "name": "has_cross_site_ancestor",
+      "type": "INTEGER"
+    }
+  ],
+  "meta": {
+    "last_compatible_version": "24",
+    "version": "24"
+  }
+}

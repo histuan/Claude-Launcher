@@ -140,13 +140,13 @@ docs only): baseline and research answers in `docs/perf/README.md`, fixtures in 
   the manifest and Anthropic-publisher fallback (`pickClaudePackage` in `src/core/claudeApp.ts`); process queries
   match the found exe first. Self-check (`src/core/selfCheck.ts`) after the cards when Claude's version changed or
   the last check failed; config `claudeCheck`; notice only for a new failure. `--simulate-claude-change`: renamed
-  cookie and keys, self-check forced, config never written. Fixtures tested per version (`test/resilience.test.ts`).
+  cookie and keys, self-check forced, config never written. Fixtures tested per version (`test/resilience.test.ts`);
+  added `test/fixtures/claude-5.1231.0.0/` (Claude updated to 5.x on 2026-11-10: same manifest apps, account key
+  names and cookie columns as 4.23118).
 
 ## Missing
 
 - Nothing for v1. Post-v1 work: Phases 7.5–14 (issues #32–#38, milestone "Multi-Account Launcher v1.x").
-- Fixtures of Claude 4.23118.1.0 (on the PC since 2026-11-10; stored: 4.23118.0.0): run
-  `node docs/perf/scripts/capture-fixtures.cjs` (reads config.json key names only, opens a throwaway Claude in %TEMP%).
 - Phase 7 leftovers (need eyes on Claude's own window or real accounts, `docs/perf/README.md` → "Not measured"):
   whether `claude://claude.ai/new` shows a new chat (it reaches the right account); the memory menu labels in English
   and Portuguese (screenshot, again after 2026-11-10); the memory assistant walk up to (not including) Confirm;
@@ -224,7 +224,7 @@ docs only): baseline and research answers in `docs/perf/README.md`, fixtures in 
 
 1. **Normal start.** Every card opens with one click, also one that shows **Not signed in** (Claude shows its own
    sign-in there). The ⋯ menu of every extra account has **Sign in again**; Main has none. The log
-   (`%APPDATA%\claude-launcher\sign-in-timings.log`) has `self-check after Claude 4.23118.1.0: ok: … ms` on the first
+   (`%APPDATA%\claude-launcher\sign-in-timings.log`) has `self-check after Claude 5.1231.0.0: ok: … ms` on the first
    start (it runs once), and not on the next start. No notice appears.
 2. **Copy diagnostics** → paste: a `Claude check: ok (Claude …)` line; card states as before.
 3. **Forced failure** (nothing is saved to the config in this mode). In PowerShell:

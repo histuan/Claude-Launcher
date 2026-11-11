@@ -35,7 +35,7 @@ launcher degrades instead of breaking (`docs/ideas/resilience.md`).
   calm notice appears only for a new failure.
 - **Copy diagnostics** shows the self-check result, unknown card states and an unsure detection.
 - Tests run the parsers against the stored fixtures of every Claude version (`test/fixtures/claude-<version>/`) and
-  check that no behaviour depends on Claude's version string.
+  check that no behaviour depends on Claude's version string. New fixtures for Claude 5.1231.0.0.
 
 ## [1.0.0] - 2026-11-07
 
