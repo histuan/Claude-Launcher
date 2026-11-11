@@ -141,6 +141,11 @@ export const strings = {
       title: 'Could not change the profile folder',
       body: 'Nothing was changed. Close Claude for this account and try again.',
     },
+    simulated: {
+      title: 'Turned off in this test mode',
+      body: 'The launcher was started with --simulate-claude-change, which saves nothing. Adding, signing in, '
+        + 'removing and photos are off. Start the launcher the usual way to use them.',
+    },
     noProfile: {
       title: 'Sign-in is turned off',
       body: 'The launcher could not find your main Claude profile with confidence, so it will not move anything. '
@@ -185,6 +190,8 @@ export const strings = {
   cancel: 'Cancel',
   addAccount: 'Add account',
   signInOff: 'Adding accounts is turned off: the main Claude profile was not found.',
+  /** Tooltip of what --simulate-claude-change turns off (1.0.1). */
+  simulatedOff: 'Turned off: the launcher was started with --simulate-claude-change (a test mode that saves nothing).',
   status: {
     running: 'Running',
     runningSignedOut: 'Running · Not signed in',

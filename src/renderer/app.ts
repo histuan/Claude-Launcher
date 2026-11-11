@@ -45,7 +45,12 @@ const PENCIL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const cardName = (a: Account): string => a.label ?? strings.mainAccount;
 const isMain = (a: Account): boolean => a.profileDir === null;
 const isSignedOut = (a: Account): boolean => state.signedOut.includes(a.id);
-const signInOff = (): boolean => !state.signInAvailable;
+const signInOff = (): boolean => !state.signInAvailable || state.simulated;
+/** Why sign-in is off (tooltip and note). */
+const signInOffText = (): string => (state.simulated ? strings.simulatedOff : strings.signInOff);
+/** --simulate-claude-change: a greyed item that says why. */
+const simulatedItem = (text: string, extra: Record<string, string> = {}): HTMLButtonElement =>
+  menuItem(text, null, { ...extra, title: strings.simulatedOff });
 const initial = (name: string): string => (Array.from(name.trim())[0] ?? '?').toLocaleUpperCase();
 
 // ---------- Greeting (SCOPE §2.1) ----------
@@ -215,18 +220,22 @@ function openMenu(account: Account, owner: HTMLElement): void {
   closeMenu();
   const item = menuItem;
   const items = isMain(account) ? []
-    : [signInOff() ? item(strings.menu.signIn, null, { title: strings.signInOff }) : item(strings.menu.signIn, () => void signIn(account))];
+    : [signInOff() ? item(strings.menu.signIn, null, { title: signInOffText() }) : item(strings.menu.signIn, () => void signIn(account))];
   items.push(
     item(strings.menu.rename, () => void rename(account)),
     item(strings.menu.editDetails, () => void editDetails(account)),
-    item(strings.menu.changePhoto, () => pickPhoto(account)),
-    ...(state.photos[account.id] ? [item(strings.menu.removePhoto, () => void setPhoto(account, null))] : []),
+    state.simulated ? simulatedItem(strings.menu.changePhoto) : item(strings.menu.changePhoto, () => pickPhoto(account)),
+    ...(!state.photos[account.id] ? [] : state.simulated ? [simulatedItem(strings.menu.removePhoto)]
+      : [item(strings.menu.removePhoto, () => void setPhoto(account, null))]),
     memoriesItem(account, owner),
     running.has(account.id)
       ? item(strings.menu.close, () => void closeAccount(account))
       : item(strings.menu.close, null, { title: strings.menu.closeOff }),
   );
-  if (!isMain(account)) items.push(item(strings.menu.remove, () => void remove(account), { class: 'danger' }));
+  if (!isMain(account)) {
+    items.push(state.simulated ? simulatedItem(strings.menu.remove, { class: 'danger' })
+      : item(strings.menu.remove, () => void remove(account), { class: 'danger' }));
+  }
   showMenu(owner, items);
 }
 
@@ -781,16 +790,16 @@ memoriesText.addEventListener('drop', (e) => {
 /** Sign-in is off when the main Claude profile was not found with confidence: explain instead of starting. */
 async function explainSignInOff(): Promise<boolean> {
   if (!signInOff()) return false;
-  await showResult({ state, error: 'noProfile' });
+  await showResult({ state, error: state.simulated ? 'simulated' : 'noProfile' });
   return true;
 }
 
 function renderSignInAvailability(): void {
   const off = signInOff();
   add.setAttribute('aria-disabled', String(off));
-  add.title = off ? strings.signInOff : '';
+  add.title = off ? signInOffText() : '';
   const note = byId('signin-note');
-  note.textContent = off ? strings.signInOff : '';
+  note.textContent = off ? signInOffText() : '';
   note.hidden = !off;
 }
 

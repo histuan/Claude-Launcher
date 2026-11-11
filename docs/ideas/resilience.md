@@ -3,8 +3,9 @@
 Built as below, with these decisions: the two signals are applied strictly (a sign-out inside Claude keeps its
 `oauth:*` keys, so it shows as unknown); "Claude changed" = the cached exe no longer exists; the self-check runs
 when Claude's version changed or while the last one failed, and notifies only a new failure; a finish by hand
-counts any cookie write since the sign-in window opened; `--simulate-claude-change` tests it on a PC without
-writing the config.
+counts any cookie write since the sign-in window opened, but an existing card's folder is replaced only by a profile
+whose cookie files hold a session (else it stays and the sign-in Claude opens again); `--simulate-claude-change`
+tests it on a PC without writing the config, with Add account, Sign in again, Remove and photos turned off.
 
 ## Goal
 Claude Desktop updates itself often. An update must never stop the launcher from **opening** an account. Anything

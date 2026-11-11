@@ -47,6 +47,8 @@ export interface LauncherState {
   checking: string[];
   /** false when the default Claude profile could not be found with confidence: Add account / Sign in are off. */
   signInAvailable: boolean;
+  /** Started with --simulate-claude-change: Add account, Sign in again, Remove and photo changes are off. */
+  simulated: boolean;
   /** Diagnostics file listing the folders checked (paths only). */
   signInLog: string;
   /** sign-in-timings.log (step names, paths and durations only), shown as the version label's tooltip. */
@@ -68,7 +70,9 @@ export type ActionError =
   // sign-in
   | 'noProfile' | 'pending' | 'defaultRunning' | 'reopened' | 'profileInUse' | 'disk'
   // Receive memories from… (Phase 5.1): the source is no longer signed in
-  | 'notSignedIn';
+  | 'notSignedIn'
+  // 1.0.1: --simulate-claude-change keeps the config read-only, so nothing that changes folders or photos runs
+  | 'simulated';
 
 export interface ActionResult {
   state: LauncherState;

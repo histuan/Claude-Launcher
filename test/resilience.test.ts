@@ -10,7 +10,7 @@ import { pickClaudePackage, type AppxPackage } from '../src/core/claudeApp.js';
 import { defaultConfig } from '../src/core/config.js';
 import { defaultProfileFromProcesses, parseClaudeProcesses, parseProcessList } from '../src/core/processes.js';
 import {
-  missingCookieColumns, runSelfCheck, shouldNotify, shouldSelfCheck, type SelfCheckDeps,
+  claudeChangedSince, missingCookieColumns, runSelfCheck, shouldNotify, shouldSelfCheck, type SelfCheckDeps,
 } from '../src/core/selfCheck.js';
 import { accountKeyNames, cardState } from '../src/core/signIn.js';
 import { ConfigStore } from '../src/main/configStore.js';
@@ -19,6 +19,12 @@ import { queryClaudeProcesses, queryClaudeWindows } from '../src/main/system/cla
 const LOC = 'C:\\Program Files\\WindowsApps\\Claude_5.1.0.0_x64__pzs8sxrjxfjjc';
 const ANTHROPIC = 'CN="Anthropic, PBC", O="Anthropic, PBC", C=US';
 const exists = (files: string[]) => (p: string) => files.includes(p);
+
+test('account key names: an unparseable or non-object config.json is unreadable (null), not "no keys"', () => {
+  assert.deepEqual(accountKeyNames('{"locale":"en"}'), []);
+  assert.deepEqual(accountKeyNames('{"lastKnownAccountUuid":"x"}'), ['lastKnownAccountUuid']);
+  for (const bad of ['', '{"locale":', '[]', 'null', '42']) assert.equal(accountKeyNames(bad), null, JSON.stringify(bad));
+});
 
 test('guard 3: "signed out" only when the cookie and the account keys agree; disagreement = unknown', () => {
   assert.equal(cardState('found', []), 'signedIn');
@@ -69,17 +75,13 @@ test('guard 6: processes match the exe actually found, with the usual path as th
   assert.equal(defaultProfileFromProcesses(list, moved), 'C:\\d\\claude_x');
 });
 
-test('guard 6: the process queries add the found exe\'s own file name; anything odd in it is never put in the script', async () => {
+test('guard 6: the process scripts never contain the exe path (it is matched in parseClaudeProcesses only)', async () => {
   const scripts: string[] = [];
   const run = async (script: string) => { scripts.push(script); return '[]'; };
-  await queryClaudeProcesses(run, `${LOC}\\bin\\claude-desktop.exe`);
-  await queryClaudeWindows(run, `${LOC}\\bin\\claude-desktop.exe`);
-  await queryClaudeProcesses(run, `${LOC}\\app\\x';Remove-Item C:\\.exe`);
-  await queryClaudeProcesses(run);
-  assert.match(scripts[0]!, /Name='claude\.exe' OR Name='claude-desktop\.exe'/);
-  assert.match(scripts[1]!, /Get-Process -Name claude,claude-desktop /);
-  for (const s of scripts.slice(2)) assert.match(s, /-Filter "Name='claude\.exe'"/);
-  assert.equal(scripts.some((s) => s.includes('Remove-Item')), false);
+  await queryClaudeProcesses(run, `${LOC}\\app\\x';Remove-Item C:\\Claude.exe`);
+  await queryClaudeWindows(run, `${LOC}\\app\\Claude.exe`);
+  for (const s of scripts) assert.match(s, /-Filter "Name='claude\.exe'"/);
+  assert.equal(scripts.some((s) => s.includes('Remove-Item') || s.includes('WindowsApps')), false);
 });
 
 const passing = (over: Partial<SelfCheckDeps> = {}): SelfCheckDeps => ({
@@ -87,6 +89,7 @@ const passing = (over: Partial<SelfCheckDeps> = {}): SelfCheckDeps => ({
   mainProfile: async () => 'C:\\d\\claude_x',
   processQuery: async () => [],
   accountKeys: async () => ['lastKnownAccountUuid'],
+  everSignedIn: async () => true,
   cookieColumns: async () => ['name', 'host_key', 'expires_utc', 'value', 'encrypted_value', 'path'],
   ...over,
 });
@@ -105,6 +108,15 @@ test('guard 9: the self-check names each broken assumption; a throwing check fai
   assert.deepEqual(missingCookieColumns(['name', 'value']), ['host_key', 'expires_utc', 'encrypted_value']);
 });
 
+test('guard 9: a main profile never signed in skips the account keys check; a skipped check keeps its last result', async () => {
+  const neverSignedIn = passing({ accountKeys: async () => [], everSignedIn: async () => false });
+  assert.deepEqual(await runSelfCheck(neverSignedIn), [], 'nothing to judge: not a failure');
+  assert.deepEqual(await runSelfCheck(neverSignedIn, ['accountKeys']), ['accountKeys'], 'skipped: the last result stays');
+  const allRunning = passing({ cookieColumns: async () => null });
+  assert.deepEqual(await runSelfCheck(allRunning, ['cookieColumns', 'exe']), ['cookieColumns'],
+    'cookieColumns skipped: kept; exe ran and passed: dropped');
+});
+
 test('guard 9: when it runs and when it shows the notice (only a new failure)', () => {
   assert.equal(shouldSelfCheck(null, '4.23118.0.0'), true, 'never run');
   assert.equal(shouldSelfCheck({ version: '4.23118.0.0', failed: [] }, '4.23118.0.0'), false, 'same version, clean');
@@ -115,8 +127,20 @@ test('guard 9: when it runs and when it shows the notice (only a new failure)', 
   assert.equal(shouldNotify(null, ['accountKeys']), true);
   assert.equal(shouldNotify({ version: 'a', failed: ['accountKeys'] }, ['accountKeys']), false, 'a repeat only logs');
   assert.equal(shouldNotify({ version: 'a', failed: ['accountKeys'] }, ['accountKeys', 'exe']), true);
-  assert.equal(shouldNotify({ version: 'a', failed: ['exe', 'accountKeys'] }, ['accountKeys']), true, 'a different list');
+  assert.equal(shouldNotify({ version: 'a', failed: ['exe', 'accountKeys'] }, ['accountKeys']), false, 'a shorter list: no notice');
+  assert.equal(shouldNotify({ version: 'a', failed: ['exe'] }, ['accountKeys']), true, 'a new name');
   assert.equal(shouldNotify({ version: 'a', failed: ['exe'] }, []), false, 'fixed: no notice');
+});
+
+test('round 1 after a Claude change: the cached exe is gone, or its version differs from the last self-check', () => {
+  const exe = `${LOC}\app\Claude.exe`;
+  const all = () => true;
+  assert.equal(claudeChangedSince(null, null, all), false, 'first run: nothing to compare');
+  assert.equal(claudeChangedSince({ exe, family: null }, { version: '5.1.0.0', failed: [] }, all), false);
+  assert.equal(claudeChangedSince({ exe, family: null }, { version: '5.1.0.0', failed: [] }, () => false), true, 'exe gone');
+  assert.equal(claudeChangedSince({ exe, family: null }, { version: '4.23118.0.0', failed: [] }, all), true,
+    'new exe cached by a click in the previous session');
+  assert.equal(claudeChangedSince({ exe, family: null }, null, all), true, 'never checked');
 });
 
 test('guard 8: Claude\'s version string decides nothing (only logged, shown, or compared for a change)', () => {
@@ -172,9 +196,9 @@ for (const version of versions) {
     assert.ok(mains.every((m) => raw.find((r) => r.pid === m.pid)?.args.every((a) => !a.startsWith('--type='))));
     assert.match(defaultProfileFromProcesses(raw, app?.exe) ?? '', /Claude-Data\\claude_/);
 
-    const keys = (file: string): string[] => accountKeyNames(JSON.stringify(Object.fromEntries(
+    const keys = (file: string): string[] | null => accountKeyNames(JSON.stringify(Object.fromEntries(
       fixture<{ keys: string[] }>(version, file).keys.map((k) => [k, 1]))));
-    assert.ok(keys('config-key-names.json').length > 0, 'a signed-in profile has account keys');
+    assert.ok((keys('config-key-names.json') ?? []).length > 0, 'a signed-in profile has account keys');
     assert.deepEqual(keys('config-key-names-new-profile.json'), [], 'a new profile has none');
     assert.equal(cardState('missing', keys('config-key-names-new-profile.json')), 'signedOut');
 
@@ -182,3 +206,28 @@ for (const version of versions) {
     assert.deepEqual(missingCookieColumns(columns), []);
   });
 }
+
+// ---------- Renderer and main wiring (source checks, like test/review.test.ts) ----------
+
+const appSource = readFileSync('src/renderer/app.ts', 'utf8');
+const mainSource = readFileSync('src/main/main.ts', 'utf8');
+
+test('guard 1: a card click opens the account in every state (signed in, Not signed in, unknown, Checking…, running)', () => {
+  const clicks = appSource.split('\n').filter((l) => l.includes("open.addEventListener('click'")).map((l) => l.trim());
+  assert.deepEqual(clicks, ["open.addEventListener('click', () => void openAccount(account, open));"], 'no condition on the state');
+  assert.equal((appSource.match(/signIn\(account\)/g) ?? []).length, 1, 'Sign in again only from the ⋯ menu');
+  assert.match(appSource, /const items = isMain\(account\) \? \[\]/, 'every extra account has Sign in again');
+});
+
+test('--simulate-claude-change: Add account, Sign in again, Remove and photos are refused in main and greyed with a reason', () => {
+  for (const fn of ['startSignIn', 'removeExisting']) {
+    const body = mainSource.slice(mainSource.indexOf(`async function ${fn}(`)).split('\n').slice(0, 3).join('\n');
+    assert.match(body, /if \(simulate\) return result\(store\.current, 'simulated'\)/, fn);
+  }
+  assert.match(mainSource, /'launcher:setPhoto'[\s\S]{0,200}if \(simulate \|\|/);
+  assert.match(appSource, /const signInOff = \(\): boolean => !state\.signInAvailable \|\| state\.simulated;/);
+  for (const text of ['changePhoto', 'removePhoto', 'remove']) {
+    assert.ok(appSource.includes(`simulatedItem(strings.menu.${text})`)
+      || appSource.includes(`simulatedItem(strings.menu.${text},`), text);
+  }
+});

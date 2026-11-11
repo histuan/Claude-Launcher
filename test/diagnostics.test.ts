@@ -103,3 +103,21 @@ test('redact: a name inside a longer word stays (no false matches), a bare drive
   assert.equal(redact('Johndsomething johnd', { USERNAME: 'johnd' }, ['John Doe']), 'Johndsomething <name>');
   assert.equal(redact('C:\\Windows', { USERPROFILE: 'C:\\' }, []), 'C:\\Windows');
 });
+
+test('(1.0.1) the Claude check, an unsure detection and the simulated mode each get a line; unknown cards say so', () => {
+  const plain = buildDiagnostics(input(''), strings.diagnostics.report);
+  assert.match(plain, /^Claude check: not run yet$/m);
+  assert.doesNotMatch(plain, /Simulated|unsure/);
+  const report = buildDiagnostics(input('', {
+    claudeCheck: { version: '5.1231.0.0', failed: ['accountKeys', 'cookieColumns'] },
+    detectionUnsure: true,
+    simulated: true,
+    accounts: [{ label: 'Work', state: 'unknown', running: false }],
+  }), strings.diagnostics.report);
+  assert.match(report, /^Claude check: failed: accountKeys, cookieColumns \(Claude 5\.1231\.0\.0\)$/m);
+  assert.match(report, /^Sign-in detection: unsure /m);
+  assert.match(report, /^Simulated Claude change: yes$/m);
+  assert.match(report, /^- Work: unknown$/m);
+  const ok = buildDiagnostics(input('', { claudeCheck: { version: '5.1231.0.0', failed: [] } }), strings.diagnostics.report);
+  assert.match(ok, /^Claude check: ok \(Claude 5\.1231\.0\.0\)$/m);
+});

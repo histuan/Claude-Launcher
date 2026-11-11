@@ -21,29 +21,16 @@ const APPX_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(${CLAUDE_P
   + '[pscustomobject]@{ Name = $p.Name; Publisher = $p.Publisher; InstallLocation = $p.InstallLocation; '
   + 'PackageFamilyName = $p.PackageFamilyName; Executables = $e } })';
 
-/**
- * WMI name filter: claude.exe, plus the found exe's own file name when the manifest names another one (guard 6).
- * The name comes from a file path, so only plain file names are put into the script.
- */
-function nameFilter(exe?: string | null): { wmi: string; ps: string } {
-  const name = exe ? path.win32.basename(exe) : '';
-  const extra = /^[\w.-]+\.exe$/i.test(name) && name.toLowerCase() !== 'claude.exe' ? name : null;
-  return extra
-    ? { wmi: `Name='claude.exe' OR Name='${extra}'`, ps: `claude,${extra.slice(0, -4)}` }
-    : { wmi: "Name='claude.exe'", ps: 'claude' };
-}
-
-// Filtering by exe path happens in parseClaudeProcesses (tested), not here.
-const processScript = (exe?: string | null): string => `${UTF8}; ConvertTo-Json -Compress -InputObject `
-  + `@(Get-CimInstance Win32_Process -Filter "${nameFilter(exe).wmi}" `
+// Filtering by exe path happens in parseClaudeProcesses (tested), not here. pickClaudePackage only ever returns a
+// Claude.exe, so the name filter stays fixed and nothing from a path is put into these scripts.
+const PROCESS_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -Filter "Name='claude.exe'" `
   + '| Select-Object ProcessId, ParentProcessId, ExecutablePath, CommandLine)';
 
 // Same list plus each process's main window handle (0 = no visible window, e.g. Claude running after its window was closed).
 // Get-Process gives the handle, Win32_Process the command line; joined by process id.
-const windowScript = (exe?: string | null): string => `${UTF8}; $w = @{}; `
-  + `Get-Process -Name ${nameFilter(exe).ps} -ErrorAction SilentlyContinue `
+const WINDOW_SCRIPT = `${UTF8}; $w = @{}; Get-Process -Name claude -ErrorAction SilentlyContinue `
   + '| ForEach-Object { $w[[int]$_.Id] = [int64]$_.MainWindowHandle }; '
-  + `ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -Filter "${nameFilter(exe).wmi}" `
+  + `ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -Filter "Name='claude.exe'" `
   + "| Select-Object ProcessId, ExecutablePath, CommandLine, @{n='MainWindowHandle';e={$w[[int]$_.ProcessId]}})";
 
 // Every process, exe path only (no command lines): to find programs running from inside a profile folder.
@@ -96,17 +83,17 @@ export async function lookUpClaudeApp(
 
 /** Running Claude Desktop main processes. Throws if the query fails (the sign-in flow must not guess). */
 export async function queryClaudeProcesses(run: RunPowerShell, exe?: string | null): Promise<ClaudeProcess[]> {
-  return parseClaudeProcesses(await run(processScript(exe)), exe);
+  return parseClaudeProcesses(await run(PROCESS_SCRIPT), exe);
 }
 
 /** Claude Desktop main processes with hasWindow set (to confirm a window appeared after opening). Throws. */
 export async function queryClaudeWindows(run: RunPowerShell, exe?: string | null): Promise<ClaudeProcess[]> {
-  return parseClaudeProcesses(await run(windowScript(exe)), exe);
+  return parseClaudeProcesses(await run(WINDOW_SCRIPT), exe);
 }
 
 /** Every claude.exe with its parent and command line (to read the default profile from its children). Throws. */
 export async function queryClaudeProcessList(run: RunPowerShell, exe?: string | null): Promise<RawProcess[]> {
-  return parseProcessList(await run(processScript(exe)));
+  return parseProcessList(await run(PROCESS_SCRIPT));
 }
 
 /** Every process with its exe path. Throws if the query fails. */

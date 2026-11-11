@@ -19,8 +19,8 @@ export interface SignedInDeps {
   accountKeys(profileDir: string): Promise<string[] | null>;
   /** Claude changed since the last start (its cached exe is gone): the first round uses the all-flip rule. */
   claudeChanged?(): boolean;
-  /** The latest self-check has failures: no card is shown as "not signed in". */
-  checkFailed?(): boolean;
+  /** The latest self-check has failures: no card is shown as "not signed in". A promise while one is running. */
+  checkFailed?(): boolean | Promise<boolean>;
   /** One line per final decision (e.g. "card check work: cookie not found"). No cookie data. */
   log?(line: string): void;
   /** The cards must be drawn again ("Checking…" started, or a read changed what a card shows). */
@@ -56,7 +56,7 @@ export class SignedInTracker {
   private readonly retrying = new Set<string>();
   /** First round after a Claude change: "signed in → not signed in" decisions wait for the whole round. */
   private flips: Map<string, string> | null = null;
-  /** In that round: the cards that read as signed in. */
+  /** In that round: the cards that read as signed in (any one shows the detection still works). */
   private readIn = new Set<string>();
   private flipRound: Promise<void> | null = null;
   private firstCheck = true;
@@ -91,7 +91,6 @@ export class SignedInTracker {
     const flipRound = this.firstCheck && (this.deps.claudeChanged?.() ?? false);
     this.firstCheck = false;
     if (flipRound) this.flips = new Map();
-    const before = new Map(this.known);
     const started: string[] = [];
     for (const a of accounts) {
       if (a.profileDir === null) continue;
@@ -102,7 +101,7 @@ export class SignedInTracker {
         started.push(a.id);
       }
     }
-    if (flipRound) this.flipRound = this.endFlipRound(started, before);
+    if (flipRound) this.flipRound = this.endFlipRound(started);
   }
 
   /** Resolves once the account's current retry loop (if any) has finished, and the first round's flip rule. */
@@ -118,15 +117,16 @@ export class SignedInTracker {
   }
 
   /**
-   * Guard 2: right after a Claude update, if every signed-in card that was read now reads as signed out, the
-   * detection is unsure and they all become unknown. Otherwise (one card of several, say) the flips are applied.
+   * Guard 2: right after a Claude update, "not signed in" decisions for cards not already remembered so wait for the
+   * whole round. If no card read as signed in, the detection is unsure and they all become unknown; otherwise (one
+   * card of several, say) they are applied.
    */
-  private async endFlipRound(ids: string[], before: Map<string, boolean | null>): Promise<void> {
+  private async endFlipRound(ids: string[]): Promise<void> {
     await Promise.all(ids.map((id) => this.loops.get(id)));
     const flips = this.flips ?? new Map<string, string>();
     this.flips = null;
     if (flips.size === 0) return;
-    this.unsure = !ids.some((id) => before.get(id) === true && this.readIn.has(id));
+    this.unsure = this.readIn.size === 0;
     let changed = false;
     for (const [id, label] of flips) {
       changed = this.remember(id, this.unsure ? null : false) || changed;
@@ -149,11 +149,11 @@ export class SignedInTracker {
           let next = cardState(cookie.state, keys);
           let label = LABELS[cookie.state];
           if (next === 'unknown') label += `, account keys ${keys === null ? 'unreadable' : 'present'} -> unknown`;
-          if (next === 'signedOut' && this.deps.checkFailed?.()) {
+          if (next === 'signedOut' && (await this.deps.checkFailed?.())) {
             next = 'unknown';
             label += ' -> unknown (the last self-check failed)';
           }
-          if (next === 'signedOut' && this.flips && this.known.get(id) === true) {
+          if (next === 'signedOut' && this.flips && this.known.get(id) !== false) {
             this.flips.set(id, label); // decided by endFlipRound once the whole round is read
             this.done.add(id);
             return;

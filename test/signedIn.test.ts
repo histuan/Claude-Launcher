@@ -191,10 +191,10 @@ test('guard 2, round 1 after a Claude update: every signed-in card flips at once
   const accounts = [main, account('work', true), account('home', true), account('never', null)];
   t.seed(accounts);
   await checkAll(accounts, []);
-  assert.deepEqual(t.cards(accounts, []).signedOut, ['never'], 'a card that was not signed in is decided normally');
-  assert.deepEqual(t.unknown(accounts), ['work', 'home']);
+  assert.deepEqual(t.cards(accounts, []).signedOut, [], 'a card remembered as unknown waits for the round too');
+  assert.deepEqual(t.unknown(accounts), ['work', 'home', 'never']);
   assert.equal(t.unsure, true);
-  assert.deepEqual(saved.sort(), ['home=null', 'never=false', 'work=null'], 'never saved as signed out');
+  assert.deepEqual(saved.sort(), ['home=null', 'never=null', 'work=null'], 'never saved as signed out');
   assert.ok(lines.some((l) => l === 'card check work: cookie not found -> unknown (every signed-in card flipped after a Claude update)'));
 });
 
@@ -229,5 +229,30 @@ test('round 2 with both signals broken: the cards are already unknown, a failed 
     } else {
       assert.deepEqual(t.cards(accounts, []).signedOut, ['work', 'home'], 'check passing: both signals agree');
     }
+  }
+});
+
+test('guard 2: a card remembered as not signed in is decided at once in round 1 (nothing to protect)', async () => {
+  const { t, saved, checkAll } = setup(() => ({ state: 'missing' }), { claudeChanged: () => true });
+  const accounts = [main, account('gone', false), account('work', true)];
+  t.seed(accounts);
+  await checkAll(accounts, []);
+  assert.deepEqual(t.cards(accounts, []).signedOut, ['gone']);
+  assert.deepEqual(saved, ['work=null']);
+});
+
+test('a "Not signed in" decision waits for a self-check that is still running, then follows it', async () => {
+  for (const failed of [true, false]) {
+    let finish!: (v: boolean) => void;
+    const pending = new Promise<boolean>((r) => { finish = r; });
+    const { t, saved, flush, done } = setup(() => ({ state: 'missing' }), { checkFailed: () => pending });
+    const accounts = [main, account('work', null)];
+    t.seed(accounts);
+    t.check(accounts, []);
+    await flush();
+    assert.deepEqual(saved, [], 'not decided while the self-check runs');
+    finish(failed);
+    await done('work');
+    assert.deepEqual(saved, [failed ? 'work=null' : 'work=false']);
   }
 });

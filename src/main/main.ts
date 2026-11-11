@@ -19,8 +19,8 @@ import { cleanDisplayName } from '../core/name.js';
 import { launchUntilWindow } from '../core/launch.js';
 import { memorySources } from '../core/memories.js';
 import { pidsForProfile, pidsInsideFolder, runningAccountIds, windowPid } from '../core/processes.js';
-import { runSelfCheck, shouldNotify, shouldSelfCheck } from '../core/selfCheck.js';
-import { accountKeyNames, claudeVersion, type Marker, type MarkerAccount } from '../core/signIn.js';
+import { claudeChangedSince, runSelfCheck, shouldNotify, shouldSelfCheck } from '../core/selfCheck.js';
+import { accountKeyNames, claudeVersion, containsSessionKey, type Marker, type MarkerAccount } from '../core/signIn.js';
 import { installerRunning, mayBeInstalling } from '../core/updateInstall.js';
 import { releasePageUrl } from '../core/version.js';
 import { strings } from '../renderer/strings.js';
@@ -64,6 +64,8 @@ const knownExe = (): string | null => store.current.claudeApp?.exe ?? null;
 let claudeChanged = false;
 /** The latest self-check (saved, or run on this start). */
 let lastCheck: ClaudeCheck | null = null;
+/** This start's self-check (started with the first card checks; a "Not signed in" decision waits for it). */
+let selfCheckRun: Promise<void> = Promise.resolve();
 const signInLog = path.join(app.getPath('userData'), 'sign-in-check.log');
 /** Step timings of Add account / Sign in (paths and durations only, no secrets). Appended; restarted past 64 KB. */
 const timingsLog = path.join(app.getPath('userData'), 'sign-in-timings.log');
@@ -91,7 +93,11 @@ const signedInTracker = new SignedInTracker({
   sessionCookie: (dir) => readSessionCookie(dir, undefined, undefined, simulate ? 'renamedByASimulatedUpdate' : SESSION_COOKIE),
   accountKeys: (dir) => profileAccountKeys(dir),
   claudeChanged: () => claudeChanged,
-  checkFailed: () => simulate || (lastCheck?.failed.length ?? 0) > 0,
+  checkFailed: async () => {
+    if (simulate) return true;
+    await selfCheckRun;
+    return (lastCheck?.failed.length ?? 0) > 0;
+  },
   log: (line) => logTiming(line),
   onChange: cardsChanged,
   save: (id, signedIn) => {
@@ -135,6 +141,7 @@ async function state(cfg: LauncherConfig): Promise<LauncherState> {
     })),
     ...signedInTracker.cards(cfg.accounts, lastRunning),
     signInAvailable,
+    simulated: simulate,
     signInLog,
     timingsLog,
     signIn: signInStatus,
@@ -165,6 +172,7 @@ async function onCardsShown(): Promise<void> {
   const t0 = performance.now();
   const running = await runningIds();
   logTiming(`startup: process query: ${ms(performance.now() - t0)}`);
+  selfCheckRun = selfCheck().catch((err: unknown) => console.warn(`Self-check failed: ${(err as Error).message}`));
   signedInTracker.check(store.current.accounts, running);
   const t1 = performance.now();
   const [name, profile] = await Promise.all([windowsName.refresh(), mainProfile.refresh()]);
@@ -172,7 +180,6 @@ async function onCardsShown(): Promise<void> {
     logTiming(`startup: background refresh of the cached ${[name && 'Windows name', profile && 'main profile'].filter(Boolean).join(' and ')}: `
       + `${ms(performance.now() - t1)}`);
   }
-  await selfCheck();
 }
 
 /**
@@ -192,8 +199,11 @@ async function selfCheck(): Promise<void> {
     mainProfile: () => mainProfile.get(),
     processQuery: () => queryClaudeProcesses(runPowerShell, exe),
     accountKeys: async (dir) => (await profileAccountKeys(dir)) ?? [],
+    everSignedIn: async (dir) => containsSessionKey(await Promise.all(['Cookies', 'Cookies-journal', 'Cookies-wal']
+      .flatMap((f) => [path.join(dir, 'Network', f), path.join(dir, f)])
+      .map((f) => readFile(f).catch(() => Buffer.alloc(0))))),
     cookieColumns: closedCookieColumns,
-  });
+  }, saved?.failed ?? []);
   lastCheck = { version, failed };
   logTiming(`self-check after Claude ${version ?? 'unknown'}${simulate ? ' (simulated change)' : ''}: `
     + `${failed.length ? `failed: ${failed.join(', ')}` : 'ok'}: ${Math.round(performance.now() - t0)} ms`);
@@ -399,6 +409,7 @@ const START_ERRORS: Record<StartError, ActionError> = {
 };
 
 async function startSignIn(target: SignInTarget): Promise<ActionResult> {
+  if (simulate) return result(store.current, 'simulated');
   if (!flow) return result(store.current, 'noProfile');
   if (flow.active || updates.active) return result(store.current, 'pending');
   const t0 = Date.now();
@@ -484,6 +495,7 @@ async function recoverSignIn(marker: Marker): Promise<void> {
  * chose "Close and remove": then only that account's Claude is closed first.
  */
 async function removeExisting(id: string, closeFirst: boolean): Promise<ActionResult> {
+  if (simulate) return result(store.current, 'simulated'); // the folder would go, the card would come back
   const account = store.current.accounts.find((a) => a.id === id);
   if (!account || isMain(account) || account.profileDir === null) return result(store.current);
   const dir = account.profileDir;
@@ -639,7 +651,7 @@ function registerIpc(): void {
   });
   ipcMain.handle('launcher:setPhoto', async (_e, id: unknown, dataUrl: unknown) => {
     if (!isText(id) || (dataUrl !== null && !isText(dataUrl))) throw new Error('Invalid arguments');
-    if (!store.current.accounts.some((a) => a.id === id)) return state(store.current);
+    if (simulate || !store.current.accounts.some((a) => a.id === id)) return state(store.current);
     if (dataUrl === null) {
       photos.delete(id);
       await deletePhoto(photosDir, id);
@@ -754,7 +766,7 @@ async function start(): Promise<void> {
   // First run: only Main. Phase 2 sample accounts (demo-*) are dropped by parseConfig.
   await store.load(defaultConfig);
   const cachedClaude = store.current.claudeApp;
-  claudeChanged = simulate || (cachedClaude !== null && !existsSync(cachedClaude.exe));
+  claudeChanged = simulate || claudeChangedSince(cachedClaude, store.current.claudeCheck, existsSync);
   lastCheck = store.current.claudeCheck;
   if (simulate) logTiming('startup: --simulate-claude-change (nothing is saved to the config)');
   signedInTracker.seed(store.current.accounts);

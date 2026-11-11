@@ -151,7 +151,12 @@ test('Claude.exe cache: kept only for an MSIX Claude.exe path; default and bad v
   const good = { accounts: [], claudeApp: { exe, family: 'Claude_pzs8sxrjxfjjc' } };
   assert.deepEqual(parseConfig(good).claudeApp, { exe, family: 'Claude_pzs8sxrjxfjjc' });
   assert.deepEqual(parseConfig({ accounts: [], claudeApp: { exe } }).claudeApp, { exe, family: null });
-  for (const bad of [{ exe: 'C:\\Temp\\evil.exe' }, { exe: 42 }, 'x', null, undefined]) {
+  const pkg = 'C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc';
+  assert.equal(parseConfig({ accounts: [], claudeApp: { exe: `${pkg}\\bin\\Claude.exe` } }).claudeApp?.exe,
+    `${pkg}\\bin\\Claude.exe`, 'a manifest exe in another folder of the package');
+  for (const bad of [{ exe: 'C:\\Temp\\evil.exe' }, { exe: 42 }, 'x', null, undefined,
+    { exe: `${pkg}\\app\\other.exe` }, { exe: `${pkg}\\..\\..\\Temp\\Claude.exe` },
+    { exe: `${pkg}\\Claude.exe.bak` }]) {
     assert.equal(parseConfig({ accounts: [], claudeApp: bad }).claudeApp, null, JSON.stringify(bad));
   }
   const cfg = setClaudeApp(defaultConfig(), { exe, family: null });

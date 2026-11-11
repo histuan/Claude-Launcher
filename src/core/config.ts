@@ -84,15 +84,16 @@ function slugFor(label: string): string {
 
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 
-// An exe inside an MSIX package folder (1.0.1: the exe comes from the package manifest, so not always app\Claude.exe).
-const PACKAGE_EXE = /\\WindowsApps\\[^\\]+\\.+\.exe$/i;
+// A Claude.exe inside an MSIX package folder (1.0.1: from the package manifest, so not always app\Claude.exe).
+const PACKAGE_EXE = /\\WindowsApps\\[^\\]+\\(?:[^\\]+\\)*Claude\.exe$/i;
 
 /** Only an exe inside a WindowsApps package is trusted from disk: anything else is dropped (looked up again). */
 function parseCachedClaude(value: unknown): CachedClaude | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
   const exe = text(v.exe);
-  return exe && PACKAGE_EXE.test(exe) ? { exe, family: text(v.family) || null } : null;
+  const safe = exe !== null && PACKAGE_EXE.test(exe) && !exe.split(/[\\/]/).includes('..');
+  return safe ? { exe, family: text(v.family) || null } : null;
 }
 
 function parseClaudeCheck(value: unknown): ClaudeCheck | null {

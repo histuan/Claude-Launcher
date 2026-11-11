@@ -136,7 +136,9 @@ docs only): baseline and research answers in `docs/perf/README.md`, fixtures in 
   names in `<profile>\config.json` (`cardState` in `src/core/signIn.ts`): "Not signed in" only when both say so,
   otherwise unknown (shown like signed in). First round after a Claude change (cached exe gone): every signed-in card
   flipping = all unknown (`SignedInTracker.unsure`). While the last self-check failed, no "Not signed in". **I'm
-  signed in** after notFound (`SignInFlow.finishByHand`: any cookie write since the sign-in window opened). Exe from
+  signed in** after notFound (`SignInFlow.finishByHand`: any cookie write since the sign-in window opened); an
+  existing card's folder is replaced only by a profile with a session (set aside as `<id>.launcher-old`, deleted
+  after the move; otherwise kept and the sign-in Claude opens again). Exe from
   the manifest and Anthropic-publisher fallback (`pickClaudePackage` in `src/core/claudeApp.ts`); process queries
   match the found exe first. Self-check (`src/core/selfCheck.ts`) after the cards when Claude's version changed or
   the last check failed; config `claudeCheck`; notice only for a new failure. `--simulate-claude-change`: renamed
@@ -230,6 +232,7 @@ docs only): baseline and research answers in `docs/perf/README.md`, fixtures in 
 3. **Forced failure** (nothing is saved to the config in this mode). In PowerShell:
    `& "$env:LOCALAPPDATA\Programs\Multi-Account Launcher for Claude\Multi-Account Launcher for Claude.exe" --simulate-claude-change`
    - No card shows **Not signed in**; every card still opens (try each one, closing Claude in between if you like).
+   - **Add account**, **Sign in again**, **Remove** and **Change photo** are greyed; hovering says why (test mode).
    - A calm notice: "A Claude update changed something" / "Opening accounts still works…". OK closes it.
    - **Copy diagnostics**: `Claude check: failed: accountKeys (Claude …)`, `Simulated Claude change: yes`, extra
      accounts `unknown` (or `checking` if one was just closed). The log: `startup: --simulate-claude-change …`,
@@ -238,6 +241,9 @@ docs only): baseline and research answers in `docs/perf/README.md`, fixtures in 
    `Claude check: ok` again (the simulation saved nothing).
 5. Optional, **sign-in by hand**: Add account, sign in in the Claude window, press **I've signed in** before the
    automatic step; if it says "No sign-in found yet", the button turns into **I'm signed in** and finishes it.
+6. Optional, **Sign in again keeps a working account**: on a signed-in extra card, ⋯ → **Sign in again**, do NOT sign
+   in, press **I've signed in**, then **I'm signed in**: "The sign-in was not saved yet" and the Claude window opens
+   again. **Cancel**: the card still opens signed in.
 
 ### 1.0.0 (kept for reference)
 
