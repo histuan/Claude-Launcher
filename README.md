@@ -1,5 +1,7 @@
 # Multi-Account Launcher for Claude
 
+<img src="docs/screenshots/1.0.1-main.png" alt="The launcher with three account cards: Main, Work (running) and Personal" width="675">
+
 <p>
   <a href="https://github.com/histuan/Claude-Launcher/releases/latest/download/Claude-Launcher-Setup.exe"><img src="docs/badges/download.svg" alt="Download for Windows" height="38"></a>
   <img src="docs/badges/windows.svg" alt="Windows 10 / 11" height="36">
