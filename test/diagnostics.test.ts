@@ -36,6 +36,9 @@ function input(log: string, over: Partial<DiagnosticsInput> = {}): DiagnosticsIn
     log,
     env,
     personal: [EMAIL, REAL_NAME, WINDOWS_NAME, GREETING],
+    claudeCheck: null,
+    detectionUnsure: false,
+    simulated: false,
     ...over,
   };
 }

@@ -84,6 +84,20 @@ export function accountKeyNames(configJson: string): string[] {
   }
 }
 
+export type CardState = 'signedIn' | 'signedOut' | 'unknown';
+
+/**
+ * A card's state from two signals (1.0.1): the sessionKey cookie and the account key NAMES in the profile's
+ * config.json (null = config.json could not be read). A found cookie = signed in. "Signed out" only when both agree
+ * (no cookie and no account key); when they disagree the state is unknown, never "signed out": a Claude update that
+ * renames its cookie must not mark every card signed out. Shortcut: a real sign-out inside Claude keeps its oauth:*
+ * keys, so it now shows as unknown (the card still opens and Claude shows its own sign-in).
+ */
+export function cardState(cookie: 'found' | 'missing' | 'expired' | 'empty', keys: string[] | null): CardState {
+  if (cookie === 'found') return 'signedIn';
+  return keys !== null && keys.length === 0 ? 'signedOut' : 'unknown';
+}
+
 /**
  * The sign-in signal, version-tolerant: the first account-related key name that was not in `baseline` (the key
  * names when the sign-in window opened), or null.

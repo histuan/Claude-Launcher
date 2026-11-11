@@ -92,6 +92,8 @@ export interface LauncherApi {
   /** "I've signed in": read-only check, then finishes or reports notFound (fallback for the automatic detection). */
   confirmSignIn(): Promise<void>;
   cancelSignIn(): Promise<void>;
+  /** "I'm signed in" after notFound: finishes without the sign-in signal (same cookie-write wait). */
+  finishSignIn(): Promise<void>;
   /** "Wait longer" after notSaved: another ~45 s wait for the cookie write. */
   waitLongerSignIn(): Promise<void>;
   onSignIn(listener: (status: SignInStatus) => void): void;

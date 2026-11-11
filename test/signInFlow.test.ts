@@ -743,3 +743,31 @@ test('detection: the baseline is taken when the sign-in window shows; keys writt
   assert.deepEqual(last(w), { phase: 'done', account: w.account });
   assert.ok(w.logs.includes('detect: new account key: selectedAccount'));
 });
+
+test('(1.0.1) "I\'m signed in" after notFound: finishes without the signal when Claude renamed both', async (t) => {
+  const w = await world(t);
+  clockFor(w);
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await blankClaude(w);
+  // A future Claude: new key names and a renamed cookie, so neither signal is ever seen.
+  await writeFile(path.join(w.slot, 'config.json'), JSON.stringify({ locale: 'en', 'auth:v3': 'x' }));
+  await writeFile(cookieFile(w), 'claude.ai renamedSession');
+  await flow.confirm();
+  assert.deepEqual(last(w), { phase: 'notFound' });
+  await flow.finishByHand();
+  assert.deepEqual(last(w), { phase: 'done', account: w.account }, 'the cookie database changed since the window opened');
+  assert.match(await read(path.join(w.target, 'Network', 'Cookies')), /renamedSession/);
+  assert.ok(w.logs.includes('finish: by hand (I\'m signed in)'));
+});
+
+test('(1.0.1) "I\'m signed in" with nothing written since the window opened: notSaved, nothing moved', async (t) => {
+  const w = await world(t);
+  w.deps.cookieWaitMs = 1000;
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await flow.finishByHand();
+  assert.deepEqual(last(w), { phase: 'notSaved' });
+  assert.equal(existsSync(w.target), false);
+  assert.equal(await read(path.join(w.stash, 'main.txt')), 'MAIN', 'the main profile is still set aside');
+});

@@ -25,6 +25,7 @@ function setup(read: (id: string) => CookieCheck | Promise<CookieCheck>, over: P
   const sleeps: (() => void)[] = [];
   const t = new SignedInTracker({
     sessionCookie: async (dir) => { const id = path.win32.basename(dir); reads.push(id); return read(id); },
+    accountKeys: async () => [], // no account keys: the cookie alone decides (as before 1.0.1)
     log: (line) => lines.push(line),
     onChange: () => { changes++; },
     save: (id, signedIn) => saved.push(`${id}=${signedIn}`),
@@ -164,4 +165,69 @@ test('forget: the next check reads the profile again', async () => {
   t.forget('work');
   await checkAll([account('work')], []);
   assert.deepEqual(t.cards([account('work')], []).signedOut, ['work']);
+});
+
+// ---------- 1.0.1: second vote, all-flip rule, self-check failures (docs/ideas/resilience.md, guards 2 and 3) ----------
+
+test('guard 3: no cookie but account keys in config.json = unknown, never "Not signed in"; saved as unknown', async () => {
+  const { t, lines, saved, checkAll } = setup(() => ({ state: 'missing' }), {
+    accountKeys: async (dir) => (dir.endsWith('kept') ? ['oauth:tokenCache'] : dir.endsWith('locked') ? null : []),
+  });
+  const accounts = [main, account('kept', true), account('locked', true), account('gone', true)];
+  t.seed(accounts);
+  await checkAll(accounts, []);
+  assert.deepEqual(t.cards(accounts, []).signedOut, ['gone']);
+  assert.deepEqual(t.unknown(accounts), ['kept', 'locked']);
+  assert.deepEqual(saved.sort(), ['gone=false', 'kept=null', 'locked=null']);
+  assert.ok(lines.includes('card check kept: cookie not found, account keys present -> unknown'), lines.join('\n'));
+  assert.ok(lines.includes('card check locked: cookie not found, account keys unreadable -> unknown'));
+});
+
+test('guard 2, round 1 after a Claude update: every signed-in card flips at once → all unknown', async () => {
+  const changes: string[] = [];
+  const { t, lines, saved, checkAll } = setup(() => ({ state: 'missing' }), {
+    claudeChanged: () => true, onChange: () => { changes.push('redraw'); },
+  });
+  const accounts = [main, account('work', true), account('home', true), account('never', null)];
+  t.seed(accounts);
+  await checkAll(accounts, []);
+  assert.deepEqual(t.cards(accounts, []).signedOut, ['never'], 'a card that was not signed in is decided normally');
+  assert.deepEqual(t.unknown(accounts), ['work', 'home']);
+  assert.equal(t.unsure, true);
+  assert.deepEqual(saved.sort(), ['home=null', 'never=false', 'work=null'], 'never saved as signed out');
+  assert.ok(lines.some((l) => l === 'card check work: cookie not found -> unknown (every signed-in card flipped after a Claude update)'));
+});
+
+test('guard 2: one card of several flipping after a Claude update stays "Not signed in"', async () => {
+  const { t, checkAll } = setup((id) => (id === 'work' ? { state: 'missing' } : { state: 'found' }), { claudeChanged: () => true });
+  const accounts = [main, account('work', true), account('home', true)];
+  t.seed(accounts);
+  await checkAll(accounts, []);
+  assert.deepEqual(t.cards(accounts, []).signedOut, ['work']);
+  assert.equal(t.unsure, false);
+});
+
+test('guard 2: without a Claude change a flip is applied at once (a real sign-out with its keys gone)', async () => {
+  const { t, checkAll } = setup(() => ({ state: 'missing' }));
+  const accounts = [main, account('work', true), account('home', true)];
+  t.seed(accounts);
+  await checkAll(accounts, []);
+  assert.deepEqual(t.cards(accounts, []).signedOut, ['work', 'home']);
+});
+
+test('round 2 with both signals broken: the cards are already unknown, a failed self-check keeps them so', async () => {
+  // The next start: the config says unknown (null), Claude did not change again, cookie and keys still renamed.
+  const accounts = [main, account('work', null), account('home', null)];
+  for (const failed of [true, false]) {
+    const { t, lines, checkAll } = setup(() => ({ state: 'missing' }), { checkFailed: () => failed });
+    t.seed(accounts);
+    await checkAll(accounts, []);
+    if (failed) {
+      assert.deepEqual(t.cards(accounts, []).signedOut, [], 'check failed: never "Not signed in"');
+      assert.deepEqual(t.unknown(accounts), ['work', 'home']);
+      assert.ok(lines.includes('card check work: cookie not found -> unknown (the last self-check failed)'));
+    } else {
+      assert.deepEqual(t.cards(accounts, []).signedOut, ['work', 'home'], 'check passing: both signals agree');
+    }
+  }
 });

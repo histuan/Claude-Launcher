@@ -100,7 +100,8 @@ function renderCards(): void {
       h('span', { class: 'email clip' }, account.email ?? ''),
       h('span', { class: 'real-name clip' }, account.realName ?? ''),
     );
-    open.addEventListener('click', () => void (isSignedOut(account) ? signIn(account) : openAccount(account, open)));
+    // 1.0.1: a click always opens the account (a signed-out one shows Claude's own sign-in); Sign in again is in ⋯.
+    open.addEventListener('click', () => void openAccount(account, open));
     const shown = cardStatus(running.has(account.id), isSignedOut(account), state.checking.includes(account.id));
     const kind = shown === 'checking' ? ' checking' : shown === 'signedOut' ? ' signed-out' : '';
     const status = h('span', { class: `running${kind}` }, shown ? strings.status[shown] : '');
@@ -213,7 +214,7 @@ function openMenu(account: Account, owner: HTMLElement): void {
   if (menuOwner === owner) return closeMenu();
   closeMenu();
   const item = menuItem;
-  const items = !isSignedOut(account) ? []
+  const items = isMain(account) ? []
     : [signInOff() ? item(strings.menu.signIn, null, { title: strings.signInOff }) : item(strings.menu.signIn, () => void signIn(account))];
   items.push(
     item(strings.menu.rename, () => void rename(account)),
@@ -840,7 +841,7 @@ signInDialog.addEventListener('cancel', (e) => e.preventDefault()); // Esc does 
 const lockSignIn = (): void => { signInConfirm.disabled = true; signInCancel.disabled = true; };
 signInConfirm.addEventListener('click', () => {
   lockSignIn();
-  void (shownPhase === 'notSaved' ? api.waitLongerSignIn() : api.confirmSignIn());
+  void (shownPhase === 'notSaved' ? api.waitLongerSignIn() : shownPhase === 'notFound' ? api.finishSignIn() : api.confirmSignIn());
 });
 signInCancel.addEventListener('click', () => { lockSignIn(); void api.cancelSignIn(); });
 const signInSteps = byId<HTMLOListElement>('signin-steps');
@@ -856,7 +857,8 @@ function renderSteps(current: StartStep): void {
 function showSignIn(status: SignInStatus): void {
   if (status.phase === 'starting' && !starting) return; // a step that arrived after the reply
   shownPhase = status.phase;
-  signInConfirm.textContent = status.phase === 'notSaved' ? strings.signIn.notSaved.waitLonger : strings.signIn.confirm;
+  signInConfirm.textContent = status.phase === 'notSaved' ? strings.signIn.notSaved.waitLonger
+    : status.phase === 'notFound' ? strings.signIn.finishByHand : strings.signIn.confirm;
   signInSteps.hidden = status.phase !== 'starting';
   signInConfirm.hidden = status.phase === 'starting'; // nothing to confirm before the sign-in window is up
   if (status.phase === 'starting') {

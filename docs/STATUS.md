@@ -3,8 +3,8 @@
 **Current state:** **v1.0.0 released** (2026-11-08, PR #30; docs and CI only, same code as 0.7.0). The self-update
 0.7.0 → 1.0.0 worked on Windows 11 (the installed launcher reports 1.0.0). **Phase 7 done** (2026-11-09, #31,
 docs only): baseline and research answers in `docs/perf/README.md`, fixtures in `test/fixtures/claude-4.23118.0.0/`.
-Next: **Phase 7.5** (1.0.1, resilience), then Phases 8–14 in `docs/PHASES.md` → "After v1.0". Ideas, verdicts and
-what was decided against: `docs/IDEAS.md`.
+**Phase 7.5** (1.0.1, resilience against Claude updates, #39): PR open, waiting for the PC test below. Next: Phases
+8–14 in `docs/PHASES.md` → "After v1.0". Ideas, verdicts and what was decided against: `docs/IDEAS.md`.
 
 ## Done
 
@@ -131,9 +131,22 @@ what was decided against: `docs/IDEAS.md`.
   `claude://claude.ai/settings/usage` route inside a given profile, a hidden Claude window has `MainWindowHandle = 0`
   (find it with `EnumWindows`), no winget/Store MSIX for a CI canary.
 
+- Phase 7.5 (1.0.1): resilience against Claude updates (`docs/ideas/resilience.md`, guards 1–10). A card click
+  always opens the account; **Sign in again** in ⋯ for every extra account. Card state = session cookie + account key
+  names in `<profile>\config.json` (`cardState` in `src/core/signIn.ts`): "Not signed in" only when both say so,
+  otherwise unknown (shown like signed in). First round after a Claude change (cached exe gone): every signed-in card
+  flipping = all unknown (`SignedInTracker.unsure`). While the last self-check failed, no "Not signed in". **I'm
+  signed in** after notFound (`SignInFlow.finishByHand`: any cookie write since the sign-in window opened). Exe from
+  the manifest and Anthropic-publisher fallback (`pickClaudePackage` in `src/core/claudeApp.ts`); process queries
+  match the found exe first. Self-check (`src/core/selfCheck.ts`) after the cards when Claude's version changed or
+  the last check failed; config `claudeCheck`; notice only for a new failure. `--simulate-claude-change`: renamed
+  cookie and keys, self-check forced, config never written. Fixtures tested per version (`test/resilience.test.ts`).
+
 ## Missing
 
 - Nothing for v1. Post-v1 work: Phases 7.5–14 (issues #32–#38, milestone "Multi-Account Launcher v1.x").
+- Fixtures of Claude 4.23118.1.0 (on the PC since 2026-11-10; stored: 4.23118.0.0): run
+  `node docs/perf/scripts/capture-fixtures.cjs` (reads config.json key names only, opens a throwaway Claude in %TEMP%).
 - Phase 7 leftovers (need eyes on Claude's own window or real accounts, `docs/perf/README.md` → "Not measured"):
   whether `claude://claude.ai/new` shows a new chat (it reaches the right account); the memory menu labels in English
   and Portuguese (screenshot, again after 2026-11-10); the memory assistant walk up to (not including) Confirm;
@@ -205,6 +218,28 @@ what was decided against: `docs/IDEAS.md`.
   Minimum free space 500 MB on the drive of the default profile. The Add card is created only when the sign-in succeeds.
 
 ## How to test
+
+1.0.1 (resilience, Phase 7.5). Install the installer from the PR's Actions artifact (**Claude-Launcher-Setup**) over
+1.0.0. Accounts, names and photos stay. Close the launcher between steps.
+
+1. **Normal start.** Every card opens with one click, also one that shows **Not signed in** (Claude shows its own
+   sign-in there). The ⋯ menu of every extra account has **Sign in again**; Main has none. The log
+   (`%APPDATA%\claude-launcher\sign-in-timings.log`) has `self-check after Claude 4.23118.1.0: ok: … ms` on the first
+   start (it runs once), and not on the next start. No notice appears.
+2. **Copy diagnostics** → paste: a `Claude check: ok (Claude …)` line; card states as before.
+3. **Forced failure** (nothing is saved to the config in this mode). In PowerShell:
+   `& "$env:LOCALAPPDATA\Programs\Multi-Account Launcher for Claude\Multi-Account Launcher for Claude.exe" --simulate-claude-change`
+   - No card shows **Not signed in**; every card still opens (try each one, closing Claude in between if you like).
+   - A calm notice: "A Claude update changed something" / "Opening accounts still works…". OK closes it.
+   - **Copy diagnostics**: `Claude check: failed: accountKeys (Claude …)`, `Simulated Claude change: yes`, extra
+     accounts `unknown` (or `checking` if one was just closed). The log: `startup: --simulate-claude-change …`,
+     `card check …: … -> unknown …`, `self-check … (simulated change): failed: accountKeys`.
+4. **Back to normal:** start the launcher the usual way: no notice, cards as in step 1, and Copy diagnostics shows
+   `Claude check: ok` again (the simulation saved nothing).
+5. Optional, **sign-in by hand**: Add account, sign in in the Claude window, press **I've signed in** before the
+   automatic step; if it says "No sign-in found yet", the button turns into **I'm signed in** and finishes it.
+
+### 1.0.0 (kept for reference)
 
 1.0.0 (update 0.7.0 → 1.0.0) — done 2026-11-08: the update applied and the installed launcher reports 1.0.0. Kept for
 reference. Needs v1.0.0 on the Releases page. Start with **v0.7.0** installed.

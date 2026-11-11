@@ -4,9 +4,12 @@
 import { copyFile, mkdtemp, rm, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import type { DatabaseSync } from 'node:sqlite';
+
+export const SESSION_COOKIE = 'sessionKey';
 
 const QUERY = 'SELECT expires_utc / 1000000 AS exp, length(value) AS v, length(encrypted_value) AS e FROM cookies '
-  + "WHERE name = 'sessionKey' AND (host_key = 'claude.ai' OR host_key LIKE '%.claude.ai')";
+  + "WHERE name = ? AND (host_key = 'claude.ai' OR host_key LIKE '%.claude.ai')";
 
 /** Seconds between 1601-01-01 (Chromium's epoch) and 1970-01-01. */
 const EPOCH_1601_S = 11_644_473_600;
@@ -40,11 +43,14 @@ export function classifySessionRows(rows: SessionRow[], nowMs: number): 'found' 
 const isFile = (p: string): Promise<boolean> => stat(p).then((s) => s.isFile(), () => false);
 const errText = (err: unknown): string => (err as NodeJS.ErrnoException).code ?? (err as Error).message;
 
-export async function readSessionCookie(profileDir: string, tempRoot = os.tmpdir(), nowMs = Date.now()): Promise<CookieCheck> {
+type CopyRead<T> = { ok: true; value: T } | { ok: false; reason: string };
+
+/** Runs `read` on a temporary copy of the profile's cookie database (with its -journal / -wal), then deletes it. */
+async function onCopy<T>(profileDir: string, tempRoot: string, read: (db: DatabaseSync) => T): Promise<CopyRead<T>> {
   const candidates = [path.join(profileDir, 'Network', 'Cookies'), path.join(profileDir, 'Cookies')];
   let source: string | null = null;
   for (const file of candidates) if (!source && (await isFile(file))) source = file;
-  if (!source) return { state: 'unreadable', reason: 'no cookie file' };
+  if (!source) return { ok: false, reason: 'no cookie file' };
   let dir: string | null = null;
   try {
     dir = await mkdtemp(path.join(tempRoot, 'claude-launcher-cookies-'));
@@ -52,36 +58,49 @@ export async function readSessionCookie(profileDir: string, tempRoot = os.tmpdir
     try {
       await copyFile(source, copy);
     } catch (err) {
-      return { state: 'unreadable', reason: `copy failed (${errText(err)})` };
+      return { ok: false, reason: `copy failed (${errText(err)})` };
     }
     // The journal / WAL hold the latest committed rows (or what a crashed write must roll back): copied alongside.
     for (const suffix of ['-journal', '-wal']) await copyFile(source + suffix, copy + suffix).catch(() => undefined);
     const { DatabaseSync } = await import('node:sqlite');
-    const query = (readOnly: boolean): SessionRow[] => {
+    const query = (readOnly: boolean): T => {
       const db = new DatabaseSync(copy, { readOnly });
       try {
-        return db.prepare(QUERY).all() as unknown as SessionRow[];
+        return read(db);
       } finally {
         db.close();
       }
     };
-    let rows: SessionRow[];
     try {
-      rows = query(true);
+      return { ok: true, value: query(true) };
     } catch {
       // A copied journal / WAL may need to be replayed first; that only ever writes to our private temp copy.
       try {
-        rows = query(false);
+        return { ok: true, value: query(false) };
       } catch (err) {
-        return { state: 'unreadable', reason: `sqlite: ${(err as Error).message}` };
+        return { ok: false, reason: `sqlite: ${(err as Error).message}` };
       }
     }
-    return { state: classifySessionRows(rows, nowMs) };
   } catch (err) {
-    return { state: 'unreadable', reason: errText(err) };
+    return { ok: false, reason: errText(err) };
   } finally {
     // Every SQLite handle is closed above (query's finally) before this: Windows cannot delete an open file. rm
     // retries EBUSY / EPERM a few times (~100 ms apart) for a file that is still being released.
     if (dir) await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }).catch(() => undefined);
   }
+}
+
+/** `cookieName` is SESSION_COOKIE except under --simulate-claude-change (a name Claude never uses). */
+export async function readSessionCookie(
+  profileDir: string, tempRoot = os.tmpdir(), nowMs = Date.now(), cookieName = SESSION_COOKIE,
+): Promise<CookieCheck> {
+  const read = await onCopy(profileDir, tempRoot, (db) => db.prepare(QUERY).all(cookieName) as unknown as SessionRow[]);
+  return read.ok ? { state: classifySessionRows(read.value, nowMs) } : { state: 'unreadable', reason: read.reason };
+}
+
+/** Column names of the cookies table (self-check); [] when there is no such table; null when unreadable. */
+export async function readCookieColumns(profileDir: string, tempRoot = os.tmpdir()): Promise<string[] | null> {
+  const read = await onCopy(profileDir, tempRoot, (db) =>
+    (db.prepare('PRAGMA table_info(cookies)').all() as { name: string }[]).map((c) => c.name));
+  return read.ok ? read.value : null;
 }

@@ -85,6 +85,8 @@ export class SignInFlow {
   private notSaved = false;
   /** Cookie database stats when the keys appeared (kept across "Wait longer"). */
   private cookieBase: string | null = null;
+  /** Cookie database stats when the sign-in window opened: the baseline of a finish by hand. */
+  private windowCookies: string | null = null;
   /**
    * Account-related config.json key names when the sign-in window opened: only a key that is not in this set is a
    * sign-in. Empty after a restart ("continue sign-in"): the profile is a blank one, and the person may have
@@ -184,6 +186,7 @@ export class SignInFlow {
       const keys = accountKeyNames(await this.readConfig(slot));
       if (this.marker !== marker) return;
       this.baseline = keys;
+      this.windowCookies = await cookieDbStats(slot);
       this.baselineSet = true;
       this.log(`start: account keys when the window opened: ${keys.join(', ') || 'none'}`);
     });
@@ -280,6 +283,19 @@ export class SignInFlow {
     } finally {
       this.busy = false;
     }
+  }
+
+  /**
+   * "I'm signed in" after notFound (1.0.1, guard 4): finishes without the sign-in signal, for a Claude whose key names
+   * and cookie name both changed. Same cookie-write wait as the automatic finish; no write = notSaved, nothing moves.
+   */
+  async finishByHand(): Promise<void> {
+    if (!this.marker || this.busy || this.checking || this.notSaved) return;
+    this.log('finish: by hand (I\'m signed in)');
+    // shortcut: the person clicks only after the ~15 s check, usually after Chromium's cookie commit, so any write
+    // since the sign-in window opened counts (a write the session missed opens the account signed out: Sign in again).
+    this.cookieBase ??= this.windowCookies;
+    await this.finish();
   }
 
   /** "Wait longer" after notSaved: another ~45 s wait for the cookie write (same starting point). */
@@ -433,6 +449,7 @@ export class SignInFlow {
     this.marker = null;
     this.notSaved = false;
     this.cookieBase = null;
+    this.windowCookies = null;
     this.baseline = [];
     if (marker.mainWasRunning) await this.deps.launchDefault().catch(() => undefined);
     this.deps.onStatus(outcome);
@@ -443,6 +460,7 @@ export class SignInFlow {
     this.marker = null;
     this.notSaved = false;
     this.cookieBase = null;
+    this.windowCookies = null;
     this.baseline = [];
     this.deps.onStatus({ phase: 'failed', stashPath: marker.stashed ? marker.stash : null });
   }
