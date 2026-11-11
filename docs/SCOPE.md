@@ -61,7 +61,7 @@ All interface texts live in `src/renderer/strings.ts` (English in v1), so other 
 - **Change photo** — picks an image from the PC (png/jpg/webp), cropped to a circle; option "back to the initial".
 - **Remove** — with confirmation. Deletes that account's profile folder. Not available on the Main card.
 - **Receive memories from…** — guided copy and paste of the memories of another signed-in account into this one
-  (`docs/PHASES.md`, Phase 5.1). The text stays only in the launcher's memory and is cleared on Done or Cancel.
+  (`docs/phases-v1.md`, Phase 5.1). The text stays only in the launcher's memory and is cleared on Done or Cancel.
 - **Close this account** — ends that account's Claude. The launcher **stays open** afterwards (intended: the person
   usually closes one account to do something else in the launcher).
 
@@ -123,10 +123,10 @@ macOS and Linux; light theme; migrating scheduled tasks and MCP between profiles
 
 Reviewed for 1.0.0 (2026-11-07), on Claude Desktop 4.23118.0.0:
 
-- ✅ Installs and opens on Windows 11. Windows 10 not tested.
+- ✅ Installs and opens on Windows 11. Windows 10: confirmed working by users after 1.0.1.
 - ✅ Opens the Main account and at least one extra account side by side, each in its own account.
-- ✅ Add account works with e-mail sign-in, and the main profile stays intact afterwards. Google sign-in is
-  supported: it happens in the same Claude window and ends with the same session cookies as the e-mail sign-in.
+- ✅ Add account works with e-mail sign-in and with Google sign-in (both tested), and the main profile stays intact
+  afterwards.
 - ✅ Closing the launcher in the middle of sign-in and reopening it restores the main profile (tested several times).
 - ✅ Greeting, name editing, cards, ⋯ menu and the "● Running" indicator work as described above.
 

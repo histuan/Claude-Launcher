@@ -143,7 +143,7 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
   CodeQL) — 1.3 — `ideas/security-review.md`
 - ✅ **"Report a problem"** button: a pre-filled GitHub issue with the anonymised diagnostics — 1.3
 - ✅ **Contrast test** for every theme preset — 1.2
-- ✅ **README badge says "Windows 11"** until Windows 10 is really tested — 1.1 (small and honest)
+- 🚫 **README badge says "Windows 11"** until Windows 10 is really tested: dropped, users confirmed the launcher works on Windows 10 (November 2026)
 - ✅ **CI**: confirm the `test` job after `ubuntu-latest` moves to Ubuntu 26 — any patch — #45
 - ✅ **Memory assistant review** (Phase 7) and a **1.1.x patch** with what it finds: pick the newest
   `claude-memory-*.zip` from Downloads by itself, open the import screen directly if a link exists, step texts that
@@ -152,7 +152,7 @@ Verdict: ✅ worth it · ⚠️ worth it with the change noted · 💤 fine but 
   real names from diagnostics. Anthropic offers no account-to-account memory transfer, so this assistant stays the
   best route — #43 — `ideas/performance-and-size.md`
 - 💤 End-to-end UI tests with screenshots (worth it only when the UI changes often or more people contribute)
-- 💤 Windows 10 test on a real machine (needs one)
+- 🚫 Windows 10 test on a real machine: dropped, users confirmed the launcher works on Windows 10 (November 2026)
 
 ### Presentation and community
 - ✅ **README overhaul with GIFs** (a GIF at the top is worth more than any page), nicer Releases page, repository
