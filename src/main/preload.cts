@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('launcher', {
   confirmSignIn: () => ipcRenderer.invoke('launcher:confirmSignIn'),
   cancelSignIn: () => ipcRenderer.invoke('launcher:cancelSignIn'),
   waitLongerSignIn: () => ipcRenderer.invoke('launcher:waitLongerSignIn'),
+  finishSignIn: () => ipcRenderer.invoke('launcher:finishSignIn'),
   onSignIn: (listener: (status: unknown) => void) => {
     ipcRenderer.on('launcher:signIn', (_e, status: unknown) => listener(status));
   },

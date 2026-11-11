@@ -7,7 +7,8 @@ export class ConfigStore {
   current: LauncherConfig = defaultConfig();
   private writes: Promise<unknown> = Promise.resolve();
 
-  constructor(private readonly file: string) {}
+  /** readOnly (--simulate-claude-change): changes stay in memory, the file is never written. */
+  constructor(private readonly file: string, private readonly readOnly = false) {}
 
   /** `seed` is used only when there is no file yet (first run). */
   async load(seed: () => LauncherConfig): Promise<LauncherConfig> {
@@ -25,7 +26,7 @@ export class ConfigStore {
       // Keep the broken file for inspection instead of overwriting it.
       const backup = `${this.file}.corrupt-${Date.now()}`;
       console.warn(`Config unreadable (${(err as Error).message}); moved to ${backup}`);
-      await rename(this.file, backup);
+      if (!this.readOnly) await rename(this.file, backup);
       return this.replace(defaultConfig());
     }
   }
@@ -37,6 +38,7 @@ export class ConfigStore {
   }
 
   private async replace(cfg: LauncherConfig): Promise<LauncherConfig> {
+    if (this.readOnly) return (this.current = cfg);
     await mkdir(path.dirname(this.file), { recursive: true });
     const tmp = `${this.file}.tmp`;
     await writeFile(tmp, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');

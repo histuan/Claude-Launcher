@@ -1,0 +1,30 @@
+{
+  "applications": [
+    {
+      "Id": "Claude",
+      "Executable": "app\\Claude.exe"
+    },
+    {
+      "Id": "SshAskpass",
+      "Executable": "app\\resources\\claude-ssh-askpass.exe"
+    },
+    {
+      "Id": "SshProxy",
+      "Executable": "app\\resources\\claude-ssh-proxy.exe"
+    },
+    {
+      "Id": "MakeDataFolder",
+      "Executable": "app\\resources\\claude-make-data-folder.exe"
+    }
+  ],
+  "protocols": [
+    "claude"
+  ],
+  "executionAliases": [
+    "claude-desktop.exe",
+    "claude-ssh-askpass.exe",
+    "claude-ssh-proxy.exe",
+    "claude-make-data-folder.exe"
+  ],
+  "electron": "45.2.1"
+}

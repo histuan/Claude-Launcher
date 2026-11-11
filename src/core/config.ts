@@ -2,7 +2,6 @@
 // The Main account is the default Claude profile: profileDir null, always first, cannot be removed.
 import path from 'node:path';
 import { checkDetails } from './details.js';
-import { isDesktopExe } from './processes.js';
 
 export const CONFIG_VERSION = 1;
 export const MAX_NAME_LENGTH = 40;
@@ -41,6 +40,14 @@ export interface LauncherConfig {
   /** 0.6.2: the last newer launcher version found, so the next start shows the notice at once (the check confirms
    * or clears it). null = none known. */
   knownUpdate: string | null;
+  /** 1.0.1: the last self-check after a Claude update (src/core/selfCheck.ts). null = never run. */
+  claudeCheck: ClaudeCheck | null;
+}
+
+/** Claude's version when the self-check ran and the names of the checks that failed ([] = all passed). */
+export interface ClaudeCheck {
+  version: string | null;
+  failed: string[];
 }
 
 export const isMain = (account: Account): boolean => account.profileDir === null;
@@ -52,7 +59,7 @@ export function profileDirFor(userProfile: string, id: string): string {
 }
 
 export function defaultConfig(): LauncherConfig {
-  return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }], claudeApp: null, windowsName: null, defaultProfile: null, knownUpdate: null };
+  return { version: CONFIG_VERSION, greetingName: null, accounts: [{ ...MAIN }], claudeApp: null, windowsName: null, defaultProfile: null, knownUpdate: null, claudeCheck: null };
 }
 
 /** Only direct children of %USERPROFILE%\ClaudeProfiles may be created or deleted by the launcher. */
@@ -77,12 +84,23 @@ function slugFor(label: string): string {
 
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 
-/** Only an MSIX Claude.exe path is trusted from disk: anything else is dropped (looked up again). */
+// A Claude.exe inside an MSIX package folder (1.0.1: from the package manifest, so not always app\Claude.exe).
+const PACKAGE_EXE = /\\WindowsApps\\[^\\]+\\(?:[^\\]+\\)*Claude\.exe$/i;
+
+/** Only an exe inside a WindowsApps package is trusted from disk: anything else is dropped (looked up again). */
 function parseCachedClaude(value: unknown): CachedClaude | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
   const exe = text(v.exe);
-  return exe && isDesktopExe(exe) ? { exe, family: text(v.family) || null } : null;
+  const safe = exe !== null && PACKAGE_EXE.test(exe) && !exe.split(/[\\/]/).includes('..');
+  return safe ? { exe, family: text(v.family) || null } : null;
+}
+
+function parseClaudeCheck(value: unknown): ClaudeCheck | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const v = value as Record<string, unknown>;
+  const failed = Array.isArray(v.failed) ? v.failed.filter((f): f is string => typeof f === 'string') : [];
+  return { version: text(v.version) || null, failed };
 }
 
 function cleanName(value: string | null): string | null {
@@ -130,11 +148,16 @@ export function parseConfig(raw: unknown): LauncherConfig {
     windowsName: text(data.windowsName),
     defaultProfile: text(data.defaultProfile) || null,
     knownUpdate: text(data.knownUpdate) || null,
+    claudeCheck: parseClaudeCheck(data.claudeCheck),
   };
 }
 
 export function setKnownUpdate(cfg: LauncherConfig, version: string | null): LauncherConfig {
   return { ...cfg, knownUpdate: version };
+}
+
+export function setClaudeCheck(cfg: LauncherConfig, check: ClaudeCheck): LauncherConfig {
+  return { ...cfg, claudeCheck: { version: check.version, failed: [...check.failed] } };
 }
 
 export function setClaudeApp(cfg: LauncherConfig, app: CachedClaude): LauncherConfig {
@@ -187,8 +210,8 @@ export function setPhoto(cfg: LauncherConfig, id: string, photo: string | null):
   return { ...cfg, accounts: cfg.accounts.map((a) => (a.id === id ? { ...a, photo } : a)) };
 }
 
-/** Remembers the last known signed-in state of an extra account (unchanged config if it is already that). */
-export function setSignedIn(cfg: LauncherConfig, id: string, signedIn: boolean): LauncherConfig {
+/** Remembers the last known signed-in state of an extra account (null = unknown; unchanged config if it is already that). */
+export function setSignedIn(cfg: LauncherConfig, id: string, signedIn: boolean | null): LauncherConfig {
   const target = cfg.accounts.find((a) => a.id === id);
   if (!target || isMain(target) || target.signedIn === signedIn) return cfg;
   return { ...cfg, accounts: cfg.accounts.map((a) => (a === target ? { ...a, signedIn } : a)) };

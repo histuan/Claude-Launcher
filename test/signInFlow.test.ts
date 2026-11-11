@@ -743,3 +743,82 @@ test('detection: the baseline is taken when the sign-in window shows; keys writt
   assert.deepEqual(last(w), { phase: 'done', account: w.account });
   assert.ok(w.logs.includes('detect: new account key: selectedAccount'));
 });
+
+test('(1.0.1) "I\'m signed in" after notFound: finishes without the signal when Claude renamed both', async (t) => {
+  const w = await world(t);
+  clockFor(w);
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await blankClaude(w);
+  // A future Claude: new key names and a renamed cookie, so neither signal is ever seen.
+  await writeFile(path.join(w.slot, 'config.json'), JSON.stringify({ locale: 'en', 'auth:v3': 'x' }));
+  await writeFile(cookieFile(w), 'claude.ai renamedSession');
+  await flow.confirm();
+  assert.deepEqual(last(w), { phase: 'notFound' });
+  await flow.finishByHand();
+  assert.deepEqual(last(w), { phase: 'done', account: w.account }, 'the cookie database changed since the window opened');
+  assert.match(await read(path.join(w.target, 'Network', 'Cookies')), /renamedSession/);
+  assert.ok(w.logs.includes('finish: by hand (I\'m signed in)'));
+});
+
+test('(1.0.1) "I\'m signed in" with nothing written since the window opened: notSaved, nothing moved', async (t) => {
+  const w = await world(t);
+  w.deps.cookieWaitMs = 1000;
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await flow.finishByHand();
+  assert.deepEqual(last(w), { phase: 'notSaved' });
+  assert.equal(existsSync(w.target), false);
+  assert.equal(await read(path.join(w.stash, 'main.txt')), 'MAIN', 'the main profile is still set aside');
+});
+
+// ---------- 1.0.1 review: Sign in again never loses the card's working session ----------
+
+const OLD = '.launcher-old';
+async function existingCard(t: Parameters<typeof world>[0]): Promise<World> {
+  const w = await world(t, { isNew: false });
+  await mkdir(path.join(w.target, 'Network'), { recursive: true });
+  await writeFile(path.join(w.target, 'Network', 'Cookies'), 'claude.ai sessionKey old');
+  return w;
+}
+
+test('(1.0.1) Sign in again + "I\'m signed in" without a session: the card\'s folder is kept, Claude opens again', async (t) => {
+  const w = await existingCard(t);
+  clockFor(w);
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await blankClaude(w);
+  await writeFile(cookieFile(w), 'claude.ai otherCookie'); // a cookie write, but no session
+  await flow.confirm();
+  assert.deepEqual(last(w), { phase: 'notFound' });
+  await flow.finishByHand();
+  assert.deepEqual(last(w), { phase: 'notSaved' });
+  assert.match(await read(path.join(w.target, 'Network', 'Cookies')), /sessionKey old/, 'the old session is untouched');
+  assert.equal(existsSync(w.target + OLD), false);
+  assert.equal(w.launches, 2, 'the sign-in Claude is opened again (Wait longer can work)');
+  assert.equal(await read(path.join(w.stash, 'main.txt')), 'MAIN', 'the main profile is still set aside');
+  await flow.cancel();
+  assert.equal(last(w)?.phase, 'cancelled');
+  assert.match(await read(path.join(w.target, 'Network', 'Cookies')), /sessionKey old/);
+  assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN');
+});
+
+test('(1.0.1) Sign in again, signed in: the old folder is replaced and nothing is left aside', async (t) => {
+  const w = await existingCard(t);
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await signInInClaude(w, flow);
+  assert.deepEqual(last(w), { phase: 'done', account: w.account });
+  assert.match(await read(path.join(w.target, 'Network', 'Cookies')), /sessionKey new/);
+  assert.equal(existsSync(w.target + OLD), false);
+});
+
+test('(1.0.1) the card\'s folder set aside when the finish stopped is put back by the restore', async (t) => {
+  const w = await existingCard(t);
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await rename(w.target, w.target + OLD); // as if the finish stopped right after setting it aside
+  await flow.cancel();
+  assert.match(await read(path.join(w.target, 'Network', 'Cookies')), /sessionKey old/);
+  assert.equal(existsSync(w.target + OLD), false);
+});

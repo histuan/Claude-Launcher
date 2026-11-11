@@ -1,0 +1,10 @@
+{
+  "profile": "new profile (signed out)",
+  "keys": [
+    "first_launch_at",
+    "locale",
+    "updaterLastSeenVersion",
+    "version_first_launch",
+    "windowSizeWasSignedIn"
+  ]
+}

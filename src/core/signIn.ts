@@ -71,17 +71,31 @@ export function parseMarker(raw: unknown): Marker | null {
 /**
  * Account-related key NAMES in config.json (values are never read): any "oauth:*" key (Claude 3.x writes
  * oauth:tokenCache / oauth:tokenCacheV2), "lastKnownAccountUuid" (Claude 4.4212, which has no oauth: key any more),
- * or any name containing "Account". Unreadable or non-object JSON gives [].
+ * or any name containing "Account". Unparseable or non-object JSON gives null (unreadable, not "no keys").
  */
-export function accountKeyNames(configJson: string): string[] {
+export function accountKeyNames(configJson: string): string[] | null {
   try {
     const cfg: unknown = JSON.parse(configJson);
-    if (typeof cfg !== 'object' || cfg === null || Array.isArray(cfg)) return [];
+    if (typeof cfg !== 'object' || cfg === null || Array.isArray(cfg)) return null;
     return Object.keys(cfg).filter((key) =>
       key.startsWith('oauth:') || key === 'lastKnownAccountUuid' || key.includes('Account'));
   } catch {
-    return [];
+    return null;
   }
+}
+
+export type CardState = 'signedIn' | 'signedOut' | 'unknown';
+
+/**
+ * A card's state from two signals (1.0.1): the sessionKey cookie and the account key NAMES in the profile's
+ * config.json (null = config.json could not be read). A found cookie = signed in. "Signed out" only when both agree
+ * (no cookie and no account key); when they disagree the state is unknown, never "signed out": a Claude update that
+ * renames its cookie must not mark every card signed out. Shortcut: a real sign-out inside Claude keeps its oauth:*
+ * keys, so it now shows as unknown (the card still opens and Claude shows its own sign-in).
+ */
+export function cardState(cookie: 'found' | 'missing' | 'expired' | 'empty', keys: string[] | null): CardState {
+  if (cookie === 'found') return 'signedIn';
+  return keys !== null && keys.length === 0 ? 'signedOut' : 'unknown';
 }
 
 /**
@@ -89,7 +103,7 @@ export function accountKeyNames(configJson: string): string[] {
  * names when the sign-in window opened), or null.
  */
 export function newAccountKey(baseline: readonly string[], configJson: string): string | null {
-  return accountKeyNames(configJson).find((key) => !baseline.includes(key)) ?? null;
+  return (accountKeyNames(configJson) ?? []).find((key) => !baseline.includes(key)) ?? null;
 }
 
 /** Claude's version from its MSIX exe path (…\WindowsApps\Claude_4.4212.0.0_x64__…\app\Claude.exe), or null. */

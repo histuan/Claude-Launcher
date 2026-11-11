@@ -1,0 +1,86 @@
+[
+  {
+    "ProcessId": 1001,
+    "ParentProcessId": 1,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\""
+  },
+  {
+    "ProcessId": 1002,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=crashpad-handler --user-data-dir=%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc --no-rate-limit --monitor-self-annotation=<value> --database=<value> --url=<value> --annotation=<value> --annotation=<value> --annotation=<value> --annotation=<value> --annotation=<value> --initial-client-data=<value>"
+  },
+  {
+    "ProcessId": 1003,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=gpu-process --gpu-recent-crash-count=<value> --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --gpu-preferences=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value>"
+  },
+  {
+    "ProcessId": 1004,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=utility --utility-sub-type=<value> --lang=<value> --service-sandbox-type=<value> --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --standard-schemes=<value> --secure-schemes=<value> --bypasscsp-schemes=<value> --cors-schemes=<value> --fetch-schemes=<value> --service-worker-schemes=<value> --streaming-schemes=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value>"
+  },
+  {
+    "ProcessId": 1005,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=renderer --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --standard-schemes=<value> --secure-schemes=<value> --bypasscsp-schemes=<value> --cors-schemes=<value> --fetch-schemes=<value> --service-worker-schemes=<value> --streaming-schemes=<value> --app-user-model-id=<value> --app-path=<value> --enable-sandbox --allow-file-access-from-files --blink-settings=<value> --disable-blink-features=<value> --video-capture-use-gpu-memory-buffer --lang=<value> --device-scale-factor=<value> --num-raster-threads=<value> --enable-main-frame-before-activation --renderer-client-id=<value> --launch-time-ticks=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value> --desktop-managed-config=<value> --desktop-boot-placeholder=<value>"
+  },
+  {
+    "ProcessId": 1006,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=renderer --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --standard-schemes=<value> --secure-schemes=<value> --bypasscsp-schemes=<value> --cors-schemes=<value> --fetch-schemes=<value> --service-worker-schemes=<value> --streaming-schemes=<value> --app-user-model-id=<value> --app-path=<value> --enable-sandbox --enable-blink-features=<value> --allow-file-access-from-files --blink-settings=<value> --disable-blink-features=<value> --video-capture-use-gpu-memory-buffer --lang=<value> --device-scale-factor=<value> --num-raster-threads=<value> --enable-main-frame-before-activation --renderer-client-id=<value> --launch-time-ticks=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value> --desktop-features=<value> --desktop-managed-config=<value>"
+  },
+  {
+    "ProcessId": 1007,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=utility --utility-sub-type=<value> --lang=<value> --service-sandbox-type=<value> --video-capture-use-gpu-memory-buffer --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --standard-schemes=<value> --secure-schemes=<value> --bypasscsp-schemes=<value> --cors-schemes=<value> --fetch-schemes=<value> --service-worker-schemes=<value> --streaming-schemes=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value>"
+  },
+  {
+    "ProcessId": 1008,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=utility --utility-sub-type=<value> --lang=<value> --service-sandbox-type=<value> --video-capture-use-gpu-memory-buffer --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --standard-schemes=<value> --secure-schemes=<value> --bypasscsp-schemes=<value> --cors-schemes=<value> --fetch-schemes=<value> --service-worker-schemes=<value> --streaming-schemes=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value>"
+  },
+  {
+    "ProcessId": 1009,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=utility --utility-sub-type=<value> --lang=<value> --service-sandbox-type=<value> --video-capture-use-gpu-memory-buffer --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --standard-schemes=<value> --secure-schemes=<value> --bypasscsp-schemes=<value> --cors-schemes=<value> --fetch-schemes=<value> --service-worker-schemes=<value> --streaming-schemes=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value>"
+  },
+  {
+    "ProcessId": 1010,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=utility --utility-sub-type=<value> --lang=<value> --service-sandbox-type=<value> --video-capture-use-gpu-memory-buffer --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --standard-schemes=<value> --secure-schemes=<value> --bypasscsp-schemes=<value> --cors-schemes=<value> --fetch-schemes=<value> --service-worker-schemes=<value> --streaming-schemes=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value>"
+  },
+  {
+    "ProcessId": 1011,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe",
+    "CommandLine": "\"C:\\Program Files\\WindowsApps\\Claude_5.1231.0.0_x64__pzs8sxrjxfjjc\\app\\Claude.exe\" --type=utility --utility-sub-type=<value> --lang=<value> --service-sandbox-type=<value> --video-capture-use-gpu-memory-buffer --user-data-dir=\"%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\" --standard-schemes=<value> --secure-schemes=<value> --bypasscsp-schemes=<value> --cors-schemes=<value> --fetch-schemes=<value> --service-worker-schemes=<value> --streaming-schemes=<value> --field-trial-handle=<value> --enable-features=<value> --disable-features=<value> --variations-seed-version --pseudonymization-salt-handle=<value> --trace-process-track-uuid=<value> --mojo-platform-channel-handle=<value>"
+  },
+  {
+    "ProcessId": 1012,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\\claude-code\\2.1.321\\d0e23af87588\\claude.exe",
+    "CommandLine": "<Claude Code CLI or other: not kept>"
+  },
+  {
+    "ProcessId": 1013,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\\claude-code\\2.1.321\\d0e23af87588\\claude.exe",
+    "CommandLine": "<Claude Code CLI or other: not kept>"
+  },
+  {
+    "ProcessId": 1014,
+    "ParentProcessId": 1001,
+    "ExecutablePath": "%LOCALAPPDATA%\\Claude-Data\\claude_pzs8sxrjxfjjc\\claude-code\\2.1.321\\d0e23af87588\\claude.exe",
+    "CommandLine": "<Claude Code CLI or other: not kept>"
+  }
+]

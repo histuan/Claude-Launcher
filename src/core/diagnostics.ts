@@ -1,12 +1,13 @@
 // "Copy diagnostics" (0.7.0): a plain-text report for a bug report. Nothing personal: no e-mail, no account (real)
 // name, no Windows or greeting name, no real user folder (written as %LOCALAPPDATA% / %APPDATA% / %USERPROFILE%), no
 // token, cookie or memory text. Card labels are the only names shown. Pure: main.ts gathers the inputs.
+import type { ClaudeCheck } from './config.js';
 
 export interface DiagnosticsAccount {
   /** Card label as shown (Main's default text when it has none). */
   label: string;
-  /** 'signedIn' | 'signedOut' | 'checking' (the card's last known state). */
-  state: 'signedIn' | 'signedOut' | 'checking';
+  /** The card's last known state; unknown = the sign-in signals were not sure (1.0.1). */
+  state: 'signedIn' | 'signedOut' | 'checking' | 'unknown';
   running: boolean;
 }
 
@@ -24,6 +25,12 @@ export interface DiagnosticsInput {
   env: { LOCALAPPDATA?: string; APPDATA?: string; USERPROFILE?: string; USERNAME?: string };
   /** Every personal text known to the launcher (e-mails, real names, Windows and greeting names): removed. */
   personal: (string | null | undefined)[];
+  /** The last self-check after a Claude update (null = never run). */
+  claudeCheck: ClaudeCheck | null;
+  /** Every signed-in card flipped at once after a Claude update. */
+  detectionUnsure: boolean;
+  /** Started with --simulate-claude-change. */
+  simulated: boolean;
 }
 
 export interface DiagnosticsText {
@@ -44,6 +51,12 @@ export interface DiagnosticsText {
   notCached: string;
   logTail: (lines: number) => string;
   emptyLog: string;
+  selfCheck: string;
+  checkOk: (claude: string) => string;
+  checkFailed: (claude: string, failed: string) => string;
+  checkNotRun: string;
+  unsure: string;
+  simulated: string;
 }
 
 export const DIAGNOSTICS_LOG_LINES = 50;
@@ -92,12 +105,17 @@ export function buildDiagnostics(input: DiagnosticsInput, text: DiagnosticsText)
   const signedIn = input.accounts.filter((a) => a.state === 'signedIn').length;
   const tail = input.log.split(/\r?\n/).filter((l) => l.trim() !== '').slice(-DIAGNOSTICS_LOG_LINES);
   const path = (p: string | null): string => (p ? clean(p) : text.notCached);
+  const check = input.claudeCheck;
   const lines = [
     text.title,
     `${text.created}: ${input.createdAt.toISOString()}`,
     `${text.launcher}: ${clean(input.launcherVersion)}`,
     `${text.claude}: ${input.claudeVersion ? clean(input.claudeVersion) : text.unknown}`,
     `${text.windows}: ${clean(input.windowsVersion)}`,
+    `${text.selfCheck}: ${check ? (check.failed.length ? text.checkFailed(check.version ?? text.unknown, check.failed.join(', '))
+      : text.checkOk(check.version ?? text.unknown)) : text.checkNotRun}`,
+    ...(input.detectionUnsure ? [text.unsure] : []),
+    ...(input.simulated ? [text.simulated] : []),
     '',
     text.accounts(input.accounts.length, signedIn),
     ...input.accounts.map((a) => `- ${a.label.replace(EMAIL, '<e-mail>')}: ${text.states[a.state]}${a.running ? `, ${text.running}` : ''}`),

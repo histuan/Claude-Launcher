@@ -45,7 +45,12 @@ const PENCIL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" s
 const cardName = (a: Account): string => a.label ?? strings.mainAccount;
 const isMain = (a: Account): boolean => a.profileDir === null;
 const isSignedOut = (a: Account): boolean => state.signedOut.includes(a.id);
-const signInOff = (): boolean => !state.signInAvailable;
+const signInOff = (): boolean => !state.signInAvailable || state.simulated;
+/** Why sign-in is off (tooltip and note). */
+const signInOffText = (): string => (state.simulated ? strings.simulatedOff : strings.signInOff);
+/** --simulate-claude-change: a greyed item that says why. */
+const simulatedItem = (text: string, extra: Record<string, string> = {}): HTMLButtonElement =>
+  menuItem(text, null, { ...extra, title: strings.simulatedOff });
 const initial = (name: string): string => (Array.from(name.trim())[0] ?? '?').toLocaleUpperCase();
 
 // ---------- Greeting (SCOPE §2.1) ----------
@@ -100,7 +105,8 @@ function renderCards(): void {
       h('span', { class: 'email clip' }, account.email ?? ''),
       h('span', { class: 'real-name clip' }, account.realName ?? ''),
     );
-    open.addEventListener('click', () => void (isSignedOut(account) ? signIn(account) : openAccount(account, open)));
+    // 1.0.1: a click always opens the account (a signed-out one shows Claude's own sign-in); Sign in again is in ⋯.
+    open.addEventListener('click', () => void openAccount(account, open));
     const shown = cardStatus(running.has(account.id), isSignedOut(account), state.checking.includes(account.id));
     const kind = shown === 'checking' ? ' checking' : shown === 'signedOut' ? ' signed-out' : '';
     const status = h('span', { class: `running${kind}` }, shown ? strings.status[shown] : '');
@@ -213,19 +219,23 @@ function openMenu(account: Account, owner: HTMLElement): void {
   if (menuOwner === owner) return closeMenu();
   closeMenu();
   const item = menuItem;
-  const items = !isSignedOut(account) ? []
-    : [signInOff() ? item(strings.menu.signIn, null, { title: strings.signInOff }) : item(strings.menu.signIn, () => void signIn(account))];
+  const items = isMain(account) ? []
+    : [signInOff() ? item(strings.menu.signIn, null, { title: signInOffText() }) : item(strings.menu.signIn, () => void signIn(account))];
   items.push(
     item(strings.menu.rename, () => void rename(account)),
     item(strings.menu.editDetails, () => void editDetails(account)),
-    item(strings.menu.changePhoto, () => pickPhoto(account)),
-    ...(state.photos[account.id] ? [item(strings.menu.removePhoto, () => void setPhoto(account, null))] : []),
+    state.simulated ? simulatedItem(strings.menu.changePhoto) : item(strings.menu.changePhoto, () => pickPhoto(account)),
+    ...(!state.photos[account.id] ? [] : state.simulated ? [simulatedItem(strings.menu.removePhoto)]
+      : [item(strings.menu.removePhoto, () => void setPhoto(account, null))]),
     memoriesItem(account, owner),
     running.has(account.id)
       ? item(strings.menu.close, () => void closeAccount(account))
       : item(strings.menu.close, null, { title: strings.menu.closeOff }),
   );
-  if (!isMain(account)) items.push(item(strings.menu.remove, () => void remove(account), { class: 'danger' }));
+  if (!isMain(account)) {
+    items.push(state.simulated ? simulatedItem(strings.menu.remove, { class: 'danger' })
+      : item(strings.menu.remove, () => void remove(account), { class: 'danger' }));
+  }
   showMenu(owner, items);
 }
 
@@ -780,16 +790,16 @@ memoriesText.addEventListener('drop', (e) => {
 /** Sign-in is off when the main Claude profile was not found with confidence: explain instead of starting. */
 async function explainSignInOff(): Promise<boolean> {
   if (!signInOff()) return false;
-  await showResult({ state, error: 'noProfile' });
+  await showResult({ state, error: state.simulated ? 'simulated' : 'noProfile' });
   return true;
 }
 
 function renderSignInAvailability(): void {
   const off = signInOff();
   add.setAttribute('aria-disabled', String(off));
-  add.title = off ? strings.signInOff : '';
+  add.title = off ? signInOffText() : '';
   const note = byId('signin-note');
-  note.textContent = off ? strings.signInOff : '';
+  note.textContent = off ? signInOffText() : '';
   note.hidden = !off;
 }
 
@@ -840,7 +850,7 @@ signInDialog.addEventListener('cancel', (e) => e.preventDefault()); // Esc does 
 const lockSignIn = (): void => { signInConfirm.disabled = true; signInCancel.disabled = true; };
 signInConfirm.addEventListener('click', () => {
   lockSignIn();
-  void (shownPhase === 'notSaved' ? api.waitLongerSignIn() : api.confirmSignIn());
+  void (shownPhase === 'notSaved' ? api.waitLongerSignIn() : shownPhase === 'notFound' ? api.finishSignIn() : api.confirmSignIn());
 });
 signInCancel.addEventListener('click', () => { lockSignIn(); void api.cancelSignIn(); });
 const signInSteps = byId<HTMLOListElement>('signin-steps');
@@ -856,7 +866,8 @@ function renderSteps(current: StartStep): void {
 function showSignIn(status: SignInStatus): void {
   if (status.phase === 'starting' && !starting) return; // a step that arrived after the reply
   shownPhase = status.phase;
-  signInConfirm.textContent = status.phase === 'notSaved' ? strings.signIn.notSaved.waitLonger : strings.signIn.confirm;
+  signInConfirm.textContent = status.phase === 'notSaved' ? strings.signIn.notSaved.waitLonger
+    : status.phase === 'notFound' ? strings.signIn.finishByHand : strings.signIn.confirm;
   signInSteps.hidden = status.phase !== 'starting';
   signInConfirm.hidden = status.phase === 'starting'; // nothing to confirm before the sign-in window is up
   if (status.phase === 'starting') {

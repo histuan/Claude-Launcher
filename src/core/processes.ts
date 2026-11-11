@@ -13,8 +13,14 @@ export interface ClaudeProcess {
 // Claude Desktop only. The Claude Code CLI is also called claude.exe, but lives elsewhere.
 const DESKTOP_EXE = /\\WindowsApps\\Claude_[^\\]+\\app\\Claude\.exe$/i;
 
-/** The MSIX Claude Desktop exe (…\WindowsApps\Claude_*\app\Claude.exe). */
-export const isDesktopExe = (exe: string): boolean => DESKTOP_EXE.test(exe);
+const samePath = (p: string): string => path.win32.normalize(p.replace(/\//g, '\\')).replace(/\\+$/, '').toLowerCase();
+
+/**
+ * A Claude Desktop exe: the exe the launcher actually found (`known`, from the package manifest; 1.0.1), or, as the
+ * fallback, the usual MSIX path …\WindowsApps\Claude_*\app\Claude.exe.
+ */
+const isDesktopExe = (exe: string, known?: string | null): boolean =>
+  (known ? samePath(exe) === samePath(known) : false) || DESKTOP_EXE.test(exe);
 
 /** Splits a Windows command line into arguments; double quotes group and are removed. */
 function splitArgs(commandLine: string): string[] {
@@ -38,7 +44,7 @@ function splitArgs(commandLine: string): string[] {
 }
 
 /** Parses the PowerShell JSON (one object, an array or nothing) and keeps Claude Desktop main processes. */
-export function parseClaudeProcesses(json: string): ClaudeProcess[] {
+export function parseClaudeProcesses(json: string, knownExe?: string | null): ClaudeProcess[] {
   if (!json.trim()) return [];
   const data: unknown = JSON.parse(json);
   const items = Array.isArray(data) ? data : [data];
@@ -46,7 +52,7 @@ export function parseClaudeProcesses(json: string): ClaudeProcess[] {
   for (const item of items) {
     if (typeof item !== 'object' || item === null) continue;
     const { ProcessId: pid, ExecutablePath: exe, CommandLine: cmd } = item as Record<string, unknown>;
-    if (typeof pid !== 'number' || typeof exe !== 'string' || !DESKTOP_EXE.test(exe)) continue;
+    if (typeof pid !== 'number' || typeof exe !== 'string' || !isDesktopExe(exe, knownExe)) continue;
     const args = splitArgs(typeof cmd === 'string' ? cmd : '');
     if (args.some((a) => a.startsWith('--type='))) continue; // Chromium child process
     const dirArg = args.find((a) => a.startsWith('--user-data-dir='));
@@ -59,8 +65,6 @@ export function parseClaudeProcesses(json: string): ClaudeProcess[] {
   }
   return result;
 }
-
-const samePath = (p: string): string => path.win32.normalize(p.replace(/\//g, '\\')).replace(/\\+$/, '').toLowerCase();
 
 const sameProfile = (a: string | null, b: string | null): boolean =>
   (a === null || b === null ? a === b : samePath(a) === samePath(b));
@@ -125,8 +129,8 @@ const argValue = (args: string[], name: string): string | null => {
  * Real folder of the default profile, as the default Claude uses it right now: its main process has no
  * --user-data-dir, but its Chromium children get --user-data-dir=<profile> (seen on Claude 3.6556.2.0).
  */
-export function defaultProfileFromProcesses(list: RawProcess[]): string | null {
-  const desktop = list.filter((p) => p.exe !== null && DESKTOP_EXE.test(p.exe));
+export function defaultProfileFromProcesses(list: RawProcess[], knownExe?: string | null): string | null {
+  const desktop = list.filter((p) => p.exe !== null && isDesktopExe(p.exe, knownExe));
   const mains = new Set(desktop
     .filter((p) => argValue(p.args, '--type') === null && argValue(p.args, '--user-data-dir') === null)
     .map((p) => p.pid));

@@ -76,6 +76,8 @@ const COOKIE_DB = ['Cookies', 'Cookies-journal', 'Cookies-wal'].map((f) => path.
 // Partitions\*\Network\Cookies (launch previews) are not looked at.
 const COOKIE_FILES = ['Cookies', 'Cookies-journal', 'Cookies-wal'].flatMap((f) => [path.join('Network', f), f]);
 const exists = (p: string): Promise<boolean> => stat(p).then(() => true, () => false);
+/** Sign in again (1.0.1): the card's previous folder waits here until its new session is in place. */
+const OLD_SUFFIX = '.launcher-old';
 
 export class SignInFlow {
   private marker: Marker | null = null;
@@ -85,6 +87,8 @@ export class SignInFlow {
   private notSaved = false;
   /** Cookie database stats when the keys appeared (kept across "Wait longer"). */
   private cookieBase: string | null = null;
+  /** Cookie database stats when the sign-in window opened: the baseline of a finish by hand. */
+  private windowCookies: string | null = null;
   /**
    * Account-related config.json key names when the sign-in window opened: only a key that is not in this set is a
    * sign-in. Empty after a restart ("continue sign-in"): the profile is a blank one, and the person may have
@@ -181,9 +185,10 @@ export class SignInFlow {
     this.baselineSet = false;
     const focus = this.deps.focusDefault;
     this.baselineReady = (focus ? focus().catch(() => undefined) : Promise.resolve()).then(async () => {
-      const keys = accountKeyNames(await this.readConfig(slot));
+      const keys = accountKeyNames(await this.readConfig(slot)) ?? [];
       if (this.marker !== marker) return;
       this.baseline = keys;
+      this.windowCookies = await cookieDbStats(slot);
       this.baselineSet = true;
       this.log(`start: account keys when the window opened: ${keys.join(', ') || 'none'}`);
     });
@@ -260,10 +265,22 @@ export class SignInFlow {
       const closed = await this.closeDefault({ gracefulMs: 0 });
       this.log(`finish: close the sign-in Claude: ${closed || 'still running'}`, t0);
       if (!closed) return this.failed(marker);
+      const { profileDir, isNew } = marker.account;
+      // An existing card's folder may hold a working session: only a profile that reads as signed in replaces it
+      // (the sign-in profile started blank, so the sessionKey text in its cookie files is a sound signal).
+      if (!isNew && !(await this.sessionSaved(marker.slot))) {
+        this.log('finish: the new profile is not signed in; the card\'s folder is kept', t0);
+        await this.deps.launchDefault().catch(() => undefined); // the sign-in Claude again, so Wait longer can work
+        this.notSaved = true;
+        this.deps.onStatus({ phase: 'notSaved' });
+        return;
+      }
       try {
-        await rm(marker.account.profileDir, { recursive: true, force: true, maxRetries: 3 }); // never-signed-in card
-        await mkdir(path.dirname(marker.account.profileDir), { recursive: true });
-        await this.move(marker.slot, marker.account.profileDir);
+        await rm(profileDir + OLD_SUFFIX, { recursive: true, force: true, maxRetries: 3 }); // left by a crash
+        if (isNew) await rm(profileDir, { recursive: true, force: true, maxRetries: 3 }); // a leftover folder
+        else if (await exists(profileDir)) await this.move(profileDir, profileDir + OLD_SUFFIX);
+        await mkdir(path.dirname(profileDir), { recursive: true });
+        await this.move(marker.slot, profileDir);
       } catch (err) {
         console.warn(`Could not move the new session: ${(err as Error).message}`);
         return await this.restore(marker, { phase: 'failed', stashPath: null });
@@ -280,6 +297,19 @@ export class SignInFlow {
     } finally {
       this.busy = false;
     }
+  }
+
+  /**
+   * "I'm signed in" after notFound (1.0.1, guard 4): finishes without the sign-in signal, for a Claude whose key names
+   * and cookie name both changed. Same cookie-write wait as the automatic finish; no write = notSaved, nothing moves.
+   */
+  async finishByHand(): Promise<void> {
+    if (!this.marker || this.busy || this.checking || this.notSaved) return;
+    this.log('finish: by hand (I\'m signed in)');
+    // shortcut: the person clicks only after the ~15 s check, usually after Chromium's cookie commit, so any write
+    // since the sign-in window opened counts (a write the session missed opens the account signed out: Sign in again).
+    this.cookieBase ??= this.windowCookies;
+    await this.finish();
   }
 
   /** "Wait longer" after notSaved: another ~45 s wait for the cookie write (same starting point). */
@@ -418,6 +448,7 @@ export class SignInFlow {
    */
   private async restore(marker: Marker, outcome: SignInStatus): Promise<void> {
     try {
+      await this.settleOldFolder(marker);
       if (await exists(marker.stash)) {
         await rm(marker.slot, { recursive: true, force: true, maxRetries: 5 });
         await this.move(marker.stash, marker.slot);
@@ -433,9 +464,26 @@ export class SignInFlow {
     this.marker = null;
     this.notSaved = false;
     this.cookieBase = null;
+    this.windowCookies = null;
     this.baseline = [];
     if (marker.mainWasRunning) await this.deps.launchDefault().catch(() => undefined);
     this.deps.onStatus(outcome);
+  }
+
+  /**
+   * The card's folder set aside by the finish: deleted once its new session is in place (adopted), else put back
+   * (a failed or stopped finish). An error here only warns: the folder stays aside, never deleted.
+   */
+  private async settleOldFolder(marker: Marker): Promise<void> {
+    const dir = marker.account.profileDir;
+    const old = dir + OLD_SUFFIX;
+    try {
+      if (!(await exists(old))) return;
+      if (marker.state === 'adopted' && (await exists(dir))) await rm(old, { recursive: true, force: true, maxRetries: 5 });
+      else if (!(await exists(dir))) await this.move(old, dir);
+    } catch (err) {
+      console.warn(`Could not settle the card's previous folder: ${(err as Error).message}`);
+    }
   }
 
   /** The marker stays, so the next start offers the restore again. */
@@ -443,6 +491,7 @@ export class SignInFlow {
     this.marker = null;
     this.notSaved = false;
     this.cookieBase = null;
+    this.windowCookies = null;
     this.baseline = [];
     this.deps.onStatus({ phase: 'failed', stashPath: marker.stashed ? marker.stash : null });
   }

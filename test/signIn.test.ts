@@ -38,14 +38,14 @@ test('account key names: oauth:*, lastKnownAccountUuid or *Account*; names only,
   assert.deepEqual(accountKeyNames('{"selectedAccountId":1,"oauth:anything":2}'), ['selectedAccountId', 'oauth:anything']);
   assert.deepEqual(accountKeyNames('{"locale":"lastKnownAccountUuid","windowSizeWasSignedIn":true}'), [],
     'a value that looks like a key, and the SignedIn window key, do not count');
-  for (const bad of ['', 'not json', 'null', '[]', '"x"']) assert.deepEqual(accountKeyNames(bad), [], bad);
+  for (const bad of ['', 'not json', 'null', '[]', '"x"']) assert.equal(accountKeyNames(bad), null, bad); // unreadable, not "no keys" (1.0.1)
 });
 
 test('new account key: only a key that was not there when the sign-in window opened', () => {
   for (const [layout, after] of [['3.x', V3], ['4.x', V4]] as const) {
     assert.notEqual(newAccountKey([], after), null, layout);
     assert.equal(newAccountKey(['locale'], JSON.stringify({ locale: 'en' })), null, layout);
-    assert.equal(newAccountKey(accountKeyNames(after), after), null, `${layout}: already there at the start`);
+    assert.equal(newAccountKey(accountKeyNames(after) ?? [], after), null, `${layout}: already there at the start`);
   }
   assert.equal(newAccountKey([], V3), 'oauth:tokenCache');
   assert.equal(newAccountKey([], V4), 'lastKnownAccountUuid');

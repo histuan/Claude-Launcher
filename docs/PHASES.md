@@ -298,7 +298,7 @@ Read: `docs/ideas/performance-and-size.md` ("Step 0" and "What to measure").
   import is confirmed unless I name accounts that may be changed (fixes go to a 1.1.x patch).
 - Docs only: straight to `main`, no PR. Done when the summary exists.
 
-## Phase 7.5 — Resilience against Claude updates (1.0.1)
+## Phase 7.5 — Resilience against Claude updates (1.0.1) ✅ (2026-11-10)
 
 Read: `docs/ideas/resilience.md`, the Phase 7 summary.
 

@@ -4,16 +4,20 @@ import { statfs } from 'node:fs/promises';
 import path from 'node:path';
 import { defaultProfileFromProcesses, type RawProcess } from '../../core/processes.js';
 import { defaultSlot, STASH_SUFFIX } from '../../core/signIn.js';
+import { CLAUDE_PACKAGES } from './claudeApp.js';
 import type { RunPowerShell } from './windowsUser.js';
 
 const FAMILY_SCRIPT = '[Console]::OutputEncoding = [Text.Encoding]::UTF8; '
-  + 'ConvertTo-Json -Compress -InputObject @(Get-AppxPackage *Claude* | Select-Object Name, PackageFamilyName)';
+  + `ConvertTo-Json -Compress -InputObject @(${CLAUDE_PACKAGES} | Select-Object Name, Publisher, PackageFamilyName)`;
 
+/** The package named "Claude", else one published by Anthropic (1.0.1, guard 7: a renamed package). */
 async function packageFamilyName(run: RunPowerShell): Promise<string | null> {
   const out = (await run(FAMILY_SCRIPT)).trim();
   const data: unknown = out ? JSON.parse(out) : [];
-  const pkgs = (Array.isArray(data) ? data : [data]) as { Name?: unknown; PackageFamilyName?: unknown }[];
-  const pkg = pkgs.find((p) => p?.Name === 'Claude' && typeof p.PackageFamilyName === 'string' && p.PackageFamilyName);
+  const pkgs = (Array.isArray(data) ? data : [data]) as { Name?: unknown; Publisher?: unknown; PackageFamilyName?: unknown }[];
+  const usable = pkgs.filter((p) => typeof p?.PackageFamilyName === 'string' && p.PackageFamilyName);
+  const pkg = usable.find((p) => p.Name === 'Claude')
+    ?? usable.find((p) => typeof p.Publisher === 'string' && /anthropic/i.test(p.Publisher));
   return pkg ? (pkg.PackageFamilyName as string) : null;
 }
 
@@ -38,6 +42,8 @@ export interface ProfileLookupDeps {
   env: Record<string, string | undefined>;
   /** PackageFamilyName already known (launcher cache): skips the PowerShell call. */
   knownFamily?: string | null;
+  /** Claude.exe already found (launcher cache): its processes match first (1.0.1, guard 6). */
+  knownExe?: string | null;
   listClaudeProcesses(): Promise<RawProcess[]>;
   exists(file: string): boolean;
   listDir(dir: string): string[];
@@ -63,7 +69,7 @@ export async function resolveDefaultProfile(deps: ProfileLookupDeps): Promise<De
   const done = (slot: string): DefaultProfile => ({ slot, checked, errors });
 
   try {
-    const raw = defaultProfileFromProcesses(await deps.listClaudeProcesses());
+    const raw = defaultProfileFromProcesses(await deps.listClaudeProcesses(), deps.knownExe);
     const dir = raw === null ? null : defaultSlot(raw);
     if (raw !== null && dir === null) errors.push(`process --user-data-dir is not a Claude profile folder: ${raw}`);
     if (dir && consider('process', dir)) return done(dir);

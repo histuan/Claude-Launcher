@@ -2,15 +2,27 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { parseClaudeProcesses, parseProcessList, type ClaudeProcess, type RawProcess } from '../../core/processes.js';
-import type { ClaudeLookup } from '../../core/claudeApp.js';
+import { pickClaudePackage, type AppxPackage, type ClaudeLookup } from '../../core/claudeApp.js';
 import type { RunPowerShell } from './windowsUser.js';
 
 const UTF8 = '[Console]::OutputEncoding = [Text.Encoding]::UTF8';
 
-const APPX_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-AppxPackage *Claude* `
-  + '| Select-Object Name, InstallLocation, PackageFamilyName)';
+/**
+ * The installed packages that may be Claude (1.0.1, guard 7): named like *Claude*, or published by Anthropic (a
+ * renamed package). Shared with claudeProfile.ts.
+ */
+export const CLAUDE_PACKAGES = "(@(Get-AppxPackage *Claude*) + @(Get-AppxPackage -Publisher '*Anthropic*') "
+  + '| Sort-Object PackageFullName -Unique)';
 
-// Filtering by exe path happens in parseClaudeProcesses (tested), not here.
+// Guard 5: each package's application executables from its manifest (an error there leaves the list empty).
+const APPX_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(${CLAUDE_PACKAGES} | ForEach-Object { $p = $_; `
+  + '$e = @(); try { $e = @((Get-AppxPackageManifest -Package $p.PackageFullName).Package.Applications.Application '
+  + '| ForEach-Object { [string]$_.Executable }) } catch {}; '
+  + '[pscustomobject]@{ Name = $p.Name; Publisher = $p.Publisher; InstallLocation = $p.InstallLocation; '
+  + 'PackageFamilyName = $p.PackageFamilyName; Executables = $e } })';
+
+// Filtering by exe path happens in parseClaudeProcesses (tested), not here. pickClaudePackage only ever returns a
+// Claude.exe, so the name filter stays fixed and nothing from a path is put into these scripts.
 const PROCESS_SCRIPT = `${UTF8}; ConvertTo-Json -Compress -InputObject @(Get-CimInstance Win32_Process -Filter "Name='claude.exe'" `
   + '| Select-Object ProcessId, ParentProcessId, ExecutablePath, CommandLine)';
 
@@ -30,9 +42,9 @@ const LOOKUP_TIMEOUT_MS = 15_000;
 const LOOKUP_TRIES = 2;
 
 /**
- * Looks up Claude.exe and its PackageFamilyName with Get-AppxPackage (the MSIX folder changes on every update), then
- * the old install in %LOCALAPPDATA%\AnthropicClaude. 'notInstalled' only when the lookup completed; a lookup that
- * failed twice (timeout, no PowerShell) is 'failed'. The app itself is never touched. Callers use the launcher's
+ * Looks up Claude.exe and its PackageFamilyName with Get-AppxPackage and the package manifest (the MSIX folder changes
+ * on every update; package and exe choice in pickClaudePackage), then the old install in
+ * %LOCALAPPDATA%\AnthropicClaude. 'notInstalled' only when the lookup completed; a lookup that failed twice (timeout, no PowerShell) is 'failed'. The app itself is never touched. Callers use the launcher's
  * cached path first (core/claudeApp.ts).
  */
 export async function lookUpClaudeApp(
@@ -53,16 +65,8 @@ export async function lookUpClaudeApp(
   if (out !== null) {
     try {
       const data: unknown = out ? JSON.parse(out) : [];
-      const packages = (Array.isArray(data) ? data : [data]) as
-        { Name?: unknown; InstallLocation?: unknown; PackageFamilyName?: unknown }[];
-      // The package named exactly "Claude" first; *Claude* may match other packages.
-      packages.sort((a, b) => Number(b?.Name === 'Claude') - Number(a?.Name === 'Claude'));
-      for (const pkg of packages) {
-        if (typeof pkg?.InstallLocation !== 'string' || !pkg.InstallLocation) continue;
-        const exe = path.win32.join(pkg.InstallLocation, 'app', 'Claude.exe');
-        const family = typeof pkg.PackageFamilyName === 'string' && pkg.PackageFamilyName ? pkg.PackageFamilyName : null;
-        if (exists(exe)) return { state: 'found', app: { exe, family }, source: 'lookup' };
-      }
+      const app = pickClaudePackage((Array.isArray(data) ? data : [data]) as AppxPackage[], exists);
+      if (app) return { state: 'found', app, source: 'lookup' };
     } catch (err) {
       reason = `unexpected Get-AppxPackage output: ${(err as Error).message}`;
       out = null;
@@ -75,18 +79,20 @@ export async function lookUpClaudeApp(
   return out === null ? { state: 'failed', reason } : { state: 'notInstalled' };
 }
 
+// `exe` (all queries below): the Claude.exe the launcher found (config cache), matched first; null = the usual path only.
+
 /** Running Claude Desktop main processes. Throws if the query fails (the sign-in flow must not guess). */
-export async function queryClaudeProcesses(run: RunPowerShell): Promise<ClaudeProcess[]> {
-  return parseClaudeProcesses(await run(PROCESS_SCRIPT));
+export async function queryClaudeProcesses(run: RunPowerShell, exe?: string | null): Promise<ClaudeProcess[]> {
+  return parseClaudeProcesses(await run(PROCESS_SCRIPT), exe);
 }
 
 /** Claude Desktop main processes with hasWindow set (to confirm a window appeared after opening). Throws. */
-export async function queryClaudeWindows(run: RunPowerShell): Promise<ClaudeProcess[]> {
-  return parseClaudeProcesses(await run(WINDOW_SCRIPT));
+export async function queryClaudeWindows(run: RunPowerShell, exe?: string | null): Promise<ClaudeProcess[]> {
+  return parseClaudeProcesses(await run(WINDOW_SCRIPT), exe);
 }
 
 /** Every claude.exe with its parent and command line (to read the default profile from its children). Throws. */
-export async function queryClaudeProcessList(run: RunPowerShell): Promise<RawProcess[]> {
+export async function queryClaudeProcessList(run: RunPowerShell, exe?: string | null): Promise<RawProcess[]> {
   return parseProcessList(await run(PROCESS_SCRIPT));
 }
 
@@ -96,9 +102,9 @@ export async function queryAllProcesses(run: RunPowerShell): Promise<RawProcess[
 }
 
 /** Same, for the "Running" indicator: errors give an empty list (the indicator just stays off). */
-export async function listClaudeProcesses(run: RunPowerShell): Promise<ClaudeProcess[]> {
+export async function listClaudeProcesses(run: RunPowerShell, exe?: string | null): Promise<ClaudeProcess[]> {
   try {
-    return await queryClaudeProcesses(run);
+    return await queryClaudeProcesses(run, exe);
   } catch (err) {
     console.warn(`Process query failed: ${(err as Error).message}`);
     return [];

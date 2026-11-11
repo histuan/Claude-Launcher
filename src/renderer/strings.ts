@@ -37,7 +37,8 @@ export const strings = {
     /** Shown only when the card has a photo. */
     removePhoto: 'Back to the initial',
     remove: 'Remove',
-    signIn: 'Sign in',
+    /** Every extra account (1.0.1): a click on the card always opens it. */
+    signIn: 'Sign in again',
     close: 'Close this account',
     /** Tooltip of the greyed "Close this account". */
     closeOff: 'This account is not running',
@@ -93,7 +94,10 @@ export const strings = {
     },
     confirm: 'I\'ve signed in',
     checking: (seconds: number) => `Checking… (${seconds} s)`,
-    notFound: 'No sign-in found. Sign in in the Claude window, then press I\'ve signed in again.',
+    notFound: 'No sign-in found yet. Sign in in the Claude window. If you are already signed in there, press '
+      + 'I\'m signed in to finish anyway.',
+    /** After notFound (1.0.1): finishes without the sign-in signal. */
+    finishByHand: 'I\'m signed in',
     /** No cookie database write within ~45 s: nothing moved yet. */
     notSaved: {
       title: 'The sign-in was not saved yet',
@@ -136,6 +140,11 @@ export const strings = {
     folder: {
       title: 'Could not change the profile folder',
       body: 'Nothing was changed. Close Claude for this account and try again.',
+    },
+    simulated: {
+      title: 'Turned off in this test mode',
+      body: 'The launcher was started with --simulate-claude-change, which saves nothing. Adding, signing in, '
+        + 'removing and photos are off. Start the launcher the usual way to use them.',
     },
     noProfile: {
       title: 'Sign-in is turned off',
@@ -181,6 +190,8 @@ export const strings = {
   cancel: 'Cancel',
   addAccount: 'Add account',
   signInOff: 'Adding accounts is turned off: the main Claude profile was not found.',
+  /** Tooltip of what --simulate-claude-change turns off (1.0.1). */
+  simulatedOff: 'Turned off: the launcher was started with --simulate-claude-change (a test mode that saves nothing).',
   status: {
     running: 'Running',
     runningSignedOut: 'Running · Not signed in',
@@ -297,6 +308,12 @@ export const strings = {
     finishingDetail: 'The launcher opens again by itself in a few seconds.',
     ok: 'OK',
   },
+  /** 1.0.1: self-check after a Claude update; shown only for a new failure. */
+  selfCheck: {
+    notice: 'A Claude update changed something',
+    detail: 'Opening accounts still works. Some "Not signed in" labels may not show until the launcher is updated. '
+      + 'Copy diagnostics (bottom-right) has the details.',
+  },
   /** 0.7.0: "Copy diagnostics" next to the version label; the report is plain text, nothing personal. */
   diagnostics: {
     link: 'Copy diagnostics',
@@ -310,7 +327,7 @@ export const strings = {
       unknown: 'not found',
       windows: 'Windows',
       accounts: (count: number, signedIn: number) => `Accounts: ${count} (${signedIn} signed in)`,
-      states: { signedIn: 'signed in', signedOut: 'not signed in', checking: 'checking' },
+      states: { signedIn: 'signed in', signedOut: 'not signed in', checking: 'checking', unknown: 'unknown' },
       running: 'running',
       paths: 'Paths',
       claudeExe: 'Claude.exe',
@@ -320,6 +337,12 @@ export const strings = {
       notCached: 'not known yet',
       logTail: (lines: number) => `Last ${lines} lines of sign-in-timings.log`,
       emptyLog: '(empty)',
+      selfCheck: 'Claude check',
+      checkOk: (claude: string) => `ok (Claude ${claude})`,
+      checkFailed: (claude: string, failed: string) => `failed: ${failed} (Claude ${claude})`,
+      checkNotRun: 'not run yet',
+      unsure: 'Sign-in detection: unsure (every signed-in card read as signed out after a Claude update)',
+      simulated: 'Simulated Claude change: yes',
     } satisfies DiagnosticsText,
   },
   photo: {

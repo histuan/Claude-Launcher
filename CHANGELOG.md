@@ -8,6 +8,41 @@ Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-10
+
+Resilience against Claude updates: anything the launcher reads from Claude can change in an update; when it does, the
+launcher degrades instead of breaking (`docs/ideas/resilience.md`).
+
+### Changed
+
+- A click on a card always opens that account, also one marked **Not signed in** (Claude shows its own sign-in).
+  **Sign in again** is in the card's ⋯ menu for every extra account.
+- **Not signed in** needs two signals to agree: no session cookie and no account keys in the profile's `config.json`
+  (names only). When they disagree the state is unknown and the card shows nothing. A sign-out inside Claude keeps
+  those keys, so it now shows as unknown too.
+- Right after a Claude update (its cached exe is gone, or its version differs from the last self-check), if no
+  card reads as signed in, every card that would turn **Not signed in** is treated as unknown; while the last
+  self-check has failures, or while this start's self-check is still running, no card shows **Not signed in**.
+- **Sign in again** replaces a card's folder only with a profile that reads as signed in. Otherwise the old folder
+  stays as it was and the sign-in Claude opens again (Wait longer / Cancel). The old folder is set aside during the
+  move and deleted only once the new session is in place.
+- An unreadable or unparseable `config.json` counts as unreadable (unknown), not as "no account keys".
+- `Claude.exe` comes from the package manifest (`app\Claude.exe` as the fallback); a renamed package is accepted when
+  Anthropic publishes it and its manifest declares a `Claude.exe`. The "Running" indicator and closing accounts match
+  the exe actually found, with the usual path as the fallback.
+
+### Added
+
+- **I'm signed in** in the sign-in dialog after "No sign-in found yet": finishes the sign-in without the automatic
+  signal, after the same wait for Claude to save it.
+- Self-check after a Claude update (and on every start while it fails): `Claude.exe`, the main profile, the process
+  query, the account key names (skipped for a main profile that was never signed in) and the cookie table columns
+  (skipped while every profile runs; a skipped check keeps its last result). The result is in the log and in
+  **Copy diagnostics**; a calm notice appears only when a check fails that did not fail last time.
+- **Copy diagnostics** shows the self-check result, unknown card states and an unsure detection.
+- Tests run the parsers against the stored fixtures of every Claude version (`test/fixtures/claude-<version>/`) and
+  check that no behaviour depends on Claude's version string. New fixtures for Claude 5.1231.0.0.
+
 ## [1.0.0] - 2026-11-07
 
 First stable release. The code is the same as 0.7.0; this release changes only the documentation and the CI.
