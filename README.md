@@ -1,12 +1,12 @@
 # Multi-Account Launcher for Claude
 
-<img src="docs/screenshots/1.0.1-main.png" alt="The launcher with three account cards: Main, Work (running) and Personal" width="675">
-
 <p>
   <a href="https://github.com/histuan/Claude-Launcher/releases/latest/download/Claude-Launcher-Setup.exe"><img src="docs/badges/download.svg" alt="Download for Windows" height="38"></a>
   <img src="docs/badges/windows.svg" alt="Windows 10 / 11" height="36">
   <a href="./LICENSE"><img src="docs/badges/license.svg" alt="MIT license" height="36"></a>
 </p>
+
+<img src="docs/screenshots/1.0.1-main.png" alt="The launcher with three account cards: Main, Work (running) and Personal" width="675">
 
 A small Windows launcher that keeps several Claude accounts signed in at the same time, each one in its own
 isolated instance of the official Claude desktop app. Pick an account, click, done. No more signing out and back in.
