@@ -741,6 +741,7 @@ function createWindow(): void {
   w.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   w.once('ready-to-show', () => w.show());
   // Closing the launcher in the middle of a sign-in cancels it cleanly (a crash is handled on the next start).
+  // flow.active covers a start still running: cancel() waits for it, so the app never quits before the stash.
   // Receive memories: the text goes with the window (and off the clipboard) before it closes.
   w.on('close', (e) => {
     if (!flow?.active && memories.step === null) return;
@@ -754,6 +755,17 @@ function createWindow(): void {
 }
 
 async function start(): Promise<void> {
+  // One launcher at a time, before anything reads the sign-in marker or the config: a second one would run the
+  // sign-in recovery under a live sign-in and rewrite config.json from its own copy.
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+    return;
+  }
+  app.on('second-instance', () => {
+    if (!win) return;
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  });
   await app.whenReady();
   startup.ready = performance.now();
   if (app.isPackaged && onWindows && await updateInstalling()) {

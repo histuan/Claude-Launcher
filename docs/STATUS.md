@@ -1,6 +1,7 @@
 # Status
 
-**Current state:** **v1.0.1 released** (2026-11-10, PR #57): resilience against Claude updates. Works on Windows 10
+**Current state:** **v1.0.2 in review** (patch on top of 1.0.1, released 2026-11-10 in PR #57): single-instance lock,
+two sign-in safety fixes, Cancel focused in Remove, `hidden` always hides. Works on Windows 10
 and 11 (Windows 10 confirmed by users); e-mail and Google sign-in both tested. Next: Phase 8 in
 [`PHASES.md`](./PHASES.md) → "After v1.0". Ideas, verdicts and what was decided against: [`IDEAS.md`](./IDEAS.md).
 
@@ -80,6 +81,26 @@ What each version changed: [`CHANGELOG.md`](../CHANGELOG.md). How the work is do
   Minimum free space 500 MB on the drive of the default profile. The Add card is created only when the sign-in succeeds.
 
 ## How to test
+
+### 1.0.2 (patch)
+
+Install the PR artifact (or 1.0.2 from the Releases page) over 1.0.1. Accounts, names and photos stay.
+
+1. **One launcher.** Open the launcher twice from the desktop shortcut: only one window appears. Minimise it and
+   use the shortcut again: the same window comes back to the front.
+2. **Remove.** On an extra account, ⋯ → **Remove**: the focus ring is on **Cancel**. Press Enter: the dialog closes
+   and the account is still there. Rename still opens with the name selected.
+3. **Receive memories.** ⋯ → **Receive memories from…** → pick an account → **Proceed** → paste any text → **Next**:
+   step 2 shows no **Choose a file…** link. **Cancel** to leave.
+4. **Add account, then close the window at once** (title-bar X while the dialog still says "Closing Claude…" or
+   "Preparing…"): the launcher closes a moment later, by itself. Open it again: no recovery dialog, and Main opens
+   with its account as before.
+5. A normal **Add account** → sign in → the new card opens signed in, and Main is unchanged.
+
+Not covered by a PC step (tests with fakes only): the recovery after a launcher killed between the marker write and
+the stash, and a failed process query during the startup recovery.
+
+### 1.0.1
 
 1.0.1 (resilience, Phase 7.5). Install 1.0.1 from the Releases page over 1.0.0 (or let the self-update do it).
 Accounts, names and photos stay. Close the launcher between steps.

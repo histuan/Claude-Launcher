@@ -39,6 +39,8 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-sans); }
 body { display: flex; flex-direction: column; overflow: hidden; }
+/* The hidden attribute always wins: a display rule with a higher specificity used to keep the element visible. */
+[hidden] { display: none !important; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 

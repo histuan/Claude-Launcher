@@ -61,6 +61,22 @@ test('dialogs open through openModal (focus goes back to the opener when the las
   assert.match(app, /for \(const d of document\.querySelectorAll\('dialog'\)\) d\.addEventListener\('close'/);
 });
 
+test('(1.0.2) a destructive confirmation opens with the focus on Cancel, so Enter never removes an account', () => {
+  assert.match(app, /else \(opts\.danger \? byId\('dialog-cancel'\) : dialogConfirm\)\.focus\(\);/);
+});
+
+test('(1.0.2) one launcher at a time: the lock is taken before the update check and before the sign-in marker is read', () => {
+  const lock = main.indexOf('app.requestSingleInstanceLock()');
+  assert.ok(lock > 0, 'single-instance lock');
+  assert.ok(lock < main.indexOf('await updateInstalling()'), 'before the update-finishing path');
+  assert.ok(lock < main.indexOf('flow.pending()'), 'before the marker read');
+  assert.match(main, /app\.on\('second-instance'/, 'the first window is shown again');
+});
+
+test('(1.0.2) the hidden attribute wins over any display rule', () => {
+  assert.match(css, /\[hidden\] \{ display: none !important; \}/);
+});
+
 test('icon-only buttons have a label', () => {
   assert.match(app, /class: 'pencil'[^)]*'aria-label': strings\.editName/);
   assert.match(app, /class: 'card-menu'[\s\S]{0,120}'aria-label': strings\.accountOptions\(name\)/);
