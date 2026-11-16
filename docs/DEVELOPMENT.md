@@ -24,6 +24,23 @@ to `main`:
 The tests also run the launcher's parsers against stored files from each Claude Desktop version it was tested with
 (`test/fixtures/claude-<version>/`), so a change in what Claude writes shows up as a failing test.
 
+### Installing a PR build (for testers)
+
+[![CI](https://github.com/histuan/Claude-Launcher/actions/workflows/claude-launcher.yml/badge.svg)](https://github.com/histuan/Claude-Launcher/actions/workflows/claude-launcher.yml)
+
+Pull Request builds are not on the Releases page; each PR's Actions run has the installer as the artifact
+**launcher-installer**. [`scripts/install-latest.ps1`](../scripts/install-latest.ps1) installs it in one step. Save it
+(for example in `%USERPROFILE%\Claude-Launcher-tools\`) and run it in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Claude-Launcher-tools\install-latest.ps1"
+```
+
+It takes the newest open PR (or `-Pr <number>`), checks that its CI run passed, downloads the installer through
+[nightly.link](https://nightly.link) (a third-party service, so no GitHub login is needed), closes the launcher,
+installs silently and opens it again. With no open PR it installs the latest release. `-DownloadOnly` only saves
+the installer to `%USERPROFILE%\Downloads`.
+
 ## Tested on a real PC before the merge
 
 Mocks cannot sign in to Claude, so every PR ends with a "How to test" list in [`STATUS.md`](./STATUS.md). The PR's
