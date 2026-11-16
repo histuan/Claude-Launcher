@@ -769,6 +769,8 @@ async function start(): Promise<void> {
   await app.whenReady();
   startup.ready = performance.now();
   if (app.isPackaged && onWindows && await updateInstalling()) {
+    // The installer opens the new version while this dialog shows: it must get the lock, or it quits.
+    app.releaseSingleInstanceLock();
     await showFinishingUpdate();
     app.quit();
     return;

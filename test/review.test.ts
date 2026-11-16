@@ -70,6 +70,9 @@ test('(1.0.2) one launcher at a time: the lock is taken before the update check 
   assert.ok(lock > 0, 'single-instance lock');
   assert.ok(lock < main.indexOf('await updateInstalling()'), 'before the update-finishing path');
   assert.ok(lock < main.indexOf('flow.pending()'), 'before the marker read');
+  const release = main.indexOf('app.releaseSingleInstanceLock()');
+  assert.ok(release > main.indexOf('await updateInstalling()') && release < main.indexOf('await showFinishingUpdate()'),
+    'released before "Finishing the update…", so the new version the installer opens gets the lock');
   assert.match(main, /app\.on\('second-instance'/, 'the first window is shown again');
 });
 
