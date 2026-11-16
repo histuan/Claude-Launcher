@@ -98,6 +98,8 @@ export class SignInFlow {
   /** false from the launch until the baseline is taken: detection waits, "I've signed in" awaits it. */
   private baselineSet = true;
   private baselineReady: Promise<void> = Promise.resolve();
+  /** The start() in flight (never rejects), or null. */
+  private starting: Promise<unknown> | null = null;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly pollMs: number;
 
@@ -106,13 +108,21 @@ export class SignInFlow {
     this.pollMs = deps.pollMs ?? 500;
   }
 
+  /** Also true while start() runs: the window close and a second start wait from the first step on. */
   get active(): boolean {
-    return this.marker !== null;
+    return this.marker !== null || this.starting !== null;
   }
 
   // ---------- Start (steps 1–4) ----------
 
-  async start(slot: string, account: MarkerAccount): Promise<StartError | null> {
+  start(slot: string, account: MarkerAccount): Promise<StartError | null> {
+    if (this.starting) return Promise.resolve('pending');
+    const run = this.begin(slot, account).finally(() => { this.starting = null; });
+    this.starting = run.catch(() => undefined);
+    return run;
+  }
+
+  private async begin(slot: string, account: MarkerAccount): Promise<StartError | null> {
     if (!isLauncherProfileDir(account.profileDir, this.deps.userProfile)) {
       throw new Error(`Refusing a profile folder outside ClaudeProfiles: ${account.profileDir}`);
     }
@@ -176,7 +186,7 @@ export class SignInFlow {
       await this.deps.launchDefault();
     } catch (err) {
       console.warn(`Could not open the default Claude: ${(err as Error).message}`);
-      await this.cancel();
+      await this.stop();
       return 'launchFailed';
     }
     this.log('start: open the sign-in window', t2);
@@ -250,6 +260,11 @@ export class SignInFlow {
     if (!marker || this.busy) return;
     this.busy = true;
     try {
+      // Before Claude is ended or anything moves: without its stash, the folder in the slot is the main profile.
+      if (!(await this.slotIsThrowaway(marker))) {
+        this.log('finish: the slot holds the main profile (no stash); nothing is moved');
+        return await this.restore(marker, { phase: 'failed', stashPath: null });
+      }
       this.deps.onStatus({ phase: 'saving' });
       const t0 = this.now();
       // A close request never works (Claude only closes its window and keeps running), so Claude is force-ended, but only after its cookie
@@ -322,6 +337,12 @@ export class SignInFlow {
   // ---------- Cancel ----------
 
   async cancel(): Promise<void> {
+    // A start in flight settles first: the launcher never quits between the marker write and the stash.
+    await this.starting;
+    await this.stop();
+  }
+
+  private async stop(): Promise<void> {
     const marker = this.marker;
     // While finishing (or already cancelling) Cancel is ignored: a restore running alongside the finish would put the
     // main profile back into the slot, and the finish would then move it into the account folder.
@@ -349,29 +370,46 @@ export class SignInFlow {
     }
   }
 
+  /**
+   * The flow becomes active only for a Continue whose slot holds the throwaway profile. A restore runs with the flow
+   * inactive, and any error ends inactive with the marker kept, so no detection tick can finish alongside or after it.
+   */
   async recover(marker: Marker, choice: 'restore' | 'continue'): Promise<void> {
-    this.marker = marker;
-    this.baseline = [];
-    this.baselineSet = true;
-    if (choice === 'continue' && marker.state === 'signing-in') {
-      if ((await this.deps.listDefaultPids()).length === 0) {
-        try {
-          await this.deps.launchDefault();
-        } catch {
-          return this.cancel();
+    try {
+      // A marker without its stash (the start was interrupted): the slot holds the main profile, so only restore.
+      if (choice === 'continue' && marker.state === 'signing-in' && (await this.slotIsThrowaway(marker))) {
+        const running = (await this.deps.listDefaultPids()).length > 0;
+        this.marker = marker;
+        this.baseline = [];
+        this.baselineSet = true;
+        if (!running) {
+          try {
+            await this.deps.launchDefault();
+          } catch {
+            return await this.cancel();
+          }
         }
+        this.deps.onStatus({ phase: 'waiting' });
+        return;
       }
-      this.deps.onStatus({ phase: 'waiting' });
-      return;
+      if (!(await this.closeDefault())) return this.failed(marker);
+      const done: SignInStatus = marker.state === 'adopted'
+        ? { phase: 'done', account: marker.account }
+        : { phase: 'cancelled' };
+      await this.restore(marker, done);
+    } catch (err) {
+      // E.g. the process query failed: keep the marker, the next start offers the restore.
+      console.warn(`Sign-in recovery failed: ${(err as Error).message}`);
+      this.failed(marker);
     }
-    if (!(await this.closeDefault())) return this.failed(marker);
-    const done: SignInStatus = marker.state === 'adopted'
-      ? { phase: 'done', account: marker.account }
-      : { phase: 'cancelled' };
-    await this.restore(marker, done);
   }
 
   // ---------- Helpers ----------
+
+  /** With a stashed main profile, the folder in the slot is the throwaway one only while the stash exists. */
+  private async slotIsThrowaway(marker: Marker): Promise<boolean> {
+    return !marker.stashed || (await exists(marker.stash));
+  }
 
   /** The sessionKey cookie is on disk. The slot is a blank profile here, so a plain text search is enough. */
   private async sessionSaved(slot: string): Promise<boolean> {

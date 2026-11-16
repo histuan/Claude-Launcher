@@ -1,6 +1,6 @@
 {
   "name": "claude-launcher",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Windows launcher that opens the Claude desktop app in isolated profiles, one account per profile.",
   "type": "module",
@@ -13,7 +13,7 @@
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('out',{recursive:true,force:true})\" && tsc -p . && node scripts/copy-assets.ts",
     "typecheck": "tsc -p . --noEmit && tsc -p scripts",
-    "test": "npm run build && node --test \"out/test/**/*.test.js\"",
+    "test": "npm run build && node --test --test-timeout=30000 \"out/test/**/*.test.js\"",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --win --publish never",
     "icon": "node scripts/make-icon.ts",

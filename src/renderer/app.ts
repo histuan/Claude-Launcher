@@ -342,7 +342,8 @@ function ask(opts: {
   dialog.returnValue = '';
   openModal(dialog);
   if (opts.value !== undefined) dialogInput.select();
-  else dialogConfirm.focus();
+  // A destructive confirmation (Remove) opens on Cancel: Enter must not delete an account.
+  else (opts.danger ? byId('dialog-cancel') : dialogConfirm).focus();
   return new Promise((resolve) => {
     dialog.addEventListener('close', () => resolve(dialog.returnValue === 'confirm' ? dialogInput.value : null), { once: true });
   });

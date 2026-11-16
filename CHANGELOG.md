@@ -8,6 +8,40 @@ Releases are tagged `vX.Y.Z` (up to 0.4.5: `launcher-vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-15
+
+Six fixes, no new features.
+
+### Highlights
+
+- Only one launcher runs at a time. Opening it again brings the window that is already open to the front.
+- **Remove** opens with **Cancel** selected, so pressing Enter by accident no longer deletes an account.
+- If the launcher was closed at the wrong moment while a sign-in was starting, **Continue sign-in** on the next start
+  could move the main Claude profile into the new account's folder. It now puts the main profile back and stops.
+- Receive memories, step 2: the **Choose a file…** link no longer shows there.
+
+### Fixed
+
+- No single-instance lock: a second launcher ran the sign-in recovery while the first was in a sign-in, and each one
+  rewrote the whole `config.json` from its own copy. The lock is taken before the update check and before the sign-in
+  marker is read; the second instance quits.
+- Sign-in: nothing is moved into an account folder unless the default profile's folder holds the blank sign-in
+  profile. With a marker that says the main profile was stashed and no stash on disk, the finish only restores, and
+  **Continue sign-in** only restores. Before, a launcher that quit between the marker write and the stash left that
+  state, and Continue treated the main profile as a new sign-in.
+- Sign-in: closing the window while a sign-in is starting waits for the start to end and then cancels it. Before, the
+  launcher could quit between the marker write and the stash.
+- Startup recovery: when the process query fails, the sign-in ends not active and the marker stays for the next
+  start. Before, the flow stayed active after the error message, and the detection could still finish a sign-in on
+  the main profile, also after **Restore**. A restore now runs with the detection off.
+- Remove account and Close and remove: the dialog opens with the focus on **Cancel** instead of the red button.
+- An element with the `hidden` attribute is never displayed (`[hidden] { display: none !important; }`).
+  `#memories .text-link { display: block }` used to win over `.text-link[hidden]`.
+
+### Changed
+
+- `npm test` runs with `--test-timeout=30000`: a test that hangs fails after 30 s instead of holding the CI job.
+
 ## [1.0.1] - 2026-11-10
 
 Resilience against Claude updates: anything the launcher reads from Claude can change in an update; when it does, the
@@ -482,7 +516,9 @@ First pre-release: the project skeleton (Phase 1) plus the GitHub process and En
 - CI: actions updated to v7 (Node 24); runs `typecheck` and tests before the build; runs on pull requests and on
   pushes to `main`.
 
-[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/histuan/Claude-Launcher/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/histuan/Claude-Launcher/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/histuan/Claude-Launcher/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/histuan/Claude-Launcher/compare/v0.7.0...v1.0.0
 [0.7.0]: https://github.com/histuan/Claude-Launcher/compare/v0.6.2...v0.7.0
 [0.6.2]: https://github.com/histuan/Claude-Launcher/compare/v0.6.1...v0.6.2

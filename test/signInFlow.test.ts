@@ -459,6 +459,89 @@ test('process query fails while cancelling: marker and stash are kept, the exact
   assert.equal(flow.active, false);
 });
 
+// ---------- 1.0.2: nothing moves unless the slot holds the throwaway profile ----------
+
+/** The launcher quit right after the marker write, before the stash: the slot still holds the main profile. */
+async function markerWithoutStash(w: World): Promise<void> {
+  await mkdir(path.dirname(w.markerFile), { recursive: true });
+  await writeFile(w.markerFile, JSON.stringify({
+    version: 1, state: 'signing-in', slot: w.slot, stash: w.stash, stashed: true, mainWasRunning: false,
+    account: w.account, startedAt: 1,
+  }));
+}
+
+const mainProfileUntouched = async (w: World): Promise<void> => {
+  assert.equal(await read(path.join(w.slot, 'main.txt')), 'MAIN', 'the main profile is still in its place');
+  assert.equal(existsSync(w.target), false, 'nothing went into the account folder');
+};
+
+test('(1.0.2) Continue after an interrupted start (marker, no stash) only restores: the main profile never moves', async (t) => {
+  const w = await world(t, { mainRunning: false });
+  await markerWithoutStash(w);
+  const flow = new SignInFlow(w.deps);
+  await flow.recover((await flow.pending())!, 'continue');
+  await writeKeys(w); // the main profile's own account keys
+  await flow.poll();
+  await mainProfileUntouched(w);
+  assert.equal(w.launches, 0, 'Claude is not opened on the main profile as if it were a sign-in');
+  assert.deepEqual(last(w), { phase: 'cancelled' });
+  assert.equal(flow.active, false);
+  assert.equal(existsSync(w.markerFile), false);
+});
+
+test('(1.0.2) the main profile is back in the slot during a sign-in (no stash): the finish moves nothing', async (t) => {
+  const w = await world(t, { mainRunning: false });
+  const flow = new SignInFlow(w.deps);
+  assert.equal(await flow.start(w.slot, w.account), null);
+  await rename(w.stash, w.slot); // something else put it back
+  await writeKeys(w);
+  await flow.poll();
+  await mainProfileUntouched(w);
+  assert.deepEqual(w.calls, [], 'the Claude running on the main profile is not ended');
+  assert.deepEqual(last(w), { phase: 'failed', stashPath: null });
+  assert.equal(flow.active, false);
+  assert.equal(existsSync(w.markerFile), false);
+});
+
+test('(1.0.2) process query fails during the startup recovery: flow not active, marker kept, no later tick moves a folder', async (t) => {
+  for (const choice of ['restore', 'continue'] as const) {
+    const w = await world(t);
+    await markerWithoutStash(w);
+    const flow = new SignInFlow(w.deps);
+    const marker = (await flow.pending())!;
+    w.deps.listDefaultPids = async () => { throw new Error('powershell timeout'); };
+    await flow.recover(marker, choice);
+    assert.equal(flow.active, false, choice);
+    assert.deepEqual(last(w), { phase: 'failed', stashPath: w.stash });
+    w.deps.listDefaultPids = async () => [...w.pids]; // the query works again
+    await writeKeys(w);
+    await flow.poll();
+    await mainProfileUntouched(w);
+    assert.equal(existsSync(w.markerFile), true, 'the next start offers the restore');
+  }
+});
+
+test('(1.0.2) Cancel (the window closing) during the start waits for it, then puts the main profile back', async (t) => {
+  const w = await world(t);
+  let release!: () => void;
+  const gate = new Promise<void>((r) => { release = r; });
+  w.deps.listPidsInside = async () => { await gate; return []; };
+  const flow = new SignInFlow(w.deps);
+  const started = flow.start(w.slot, w.account);
+  assert.equal(flow.active, true, 'active from the first step, so the window close is held');
+  let cancelled = false;
+  const cancel = flow.cancel().then(() => { cancelled = true; });
+  await new Promise((r) => setImmediate(r));
+  assert.equal(cancelled, false, 'not while the start is between the marker and the stash');
+  release();
+  assert.equal(await started, null);
+  await cancel;
+  assert.deepEqual(last(w), { phase: 'cancelled' });
+  await mainProfileUntouched(w);
+  assert.equal(existsSync(w.stash), false);
+  assert.equal(existsSync(w.markerFile), false);
+});
+
 // ---------- 0.4.3 (a): live steps and the graceful close of the main Claude ----------
 
 const phases = (w: World) => w.statuses.map((s) => (s.phase === 'starting' ? `starting:${s.step}` : s.phase));
